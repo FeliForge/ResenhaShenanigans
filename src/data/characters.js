@@ -1,0 +1,183 @@
+// @ts-nocheck
+// 11 personajes originales para "Cursed Blocks: Urban Clash".
+// Nombres, mecánicas y términos 100% originales (sin referencias a propiedades existentes).
+// Cada personaje: stats + 5 moves (m1, special1, special2, special3, ultimate).
+// `key` = tecla por defecto (rebindeable en una futura iteración).
+
+export const MOVE_KEYS = {
+  m1: "1",
+  special1: "2",
+  special2: "3",
+  special3: "4",
+  ultimate: "5",
+};
+
+export const CHARACTERS = [
+  {
+    id: "iron-fist",
+    name: "IronFist",
+    displayName: "Iron Fist Pugilist",
+    bio: "Boxeador urbano con guantes de chatarra reforjada.",
+    colors: { primary: "#c0392b", secondary: "#7f8c8d", accent: "#f1c40f" },
+    stats: { health: 1000, speed: 12.2, jumpForce: 11, weight: 1.1 },
+    moves: {
+      m1: { id: "iron-m1", name: "Straight Barrage", category: "m1", damage: 45, cooldown: 350, meterCost: 0, desc: "Ráfaga de rectos rápidos." },
+      special1: { id: "iron-s1", name: "Hook Crusher", category: "special1", damage: 80, cooldown: 2600, meterCost: 0, desc: "Gancho cargado con empuje." },
+      special2: { id: "iron-s2", name: "Guard Slam", category: "special2", damage: 60, cooldown: 3200, meterCost: 0, desc: "Placaje defensivo con hiperarmor." },
+      special3: { id: "iron-s3", name: "Combo Finisher", category: "special3", damage: 110, cooldown: 5000, meterCost: 0, desc: "Remate de tres golpes." },
+      ultimate: { id: "iron-ult", name: "Furnace Flurry", category: "ultimate", damage: 320, cooldown: 600, meterCost: 100, desc: "Ráfaga ardiente a quema-ropa." },
+    },
+  },
+  {
+    id: "neon-stride",
+    name: "NeonStride",
+    displayName: "Neon Strider",
+    bio: "Corredora de carreras neón con botas de pulso magnético.",
+    colors: { primary: "#00e5ff", secondary: "#d500f9", accent: "#ffea00" },
+    stats: { health: 820, speed: 15.5, jumpForce: 13, weight: 0.85 },
+    moves: {
+      m1: { id: "neon-m1", name: "Pulse Jab", category: "m1", damage: 38, cooldown: 300, meterCost: 0, desc: "Jab de energía rápida." },
+      special1: { id: "neon-s1", name: "Dash Strike", category: "special1", damage: 70, cooldown: 2400, meterCost: 0, desc: "Embestida en dash." },
+      special2: { id: "neon-s2", name: "Shock Field", category: "special2", damage: 55, cooldown: 3600, meterCost: 0, desc: "Campo eléctrico de área." },
+      special3: { id: "neon-s3", name: "Ricochet Kick", category: "special3", damage: 95, cooldown: 4800, meterCost: 0, desc: "Patada rebotadora." },
+      ultimate: { id: "neon-ult", name: "Overclock Storm", category: "ultimate", damage: 280, cooldown: 600, meterCost: 100, desc: "Tormenta de sobrecarga neón." },
+    },
+  },
+  {
+    id: "brick-maul",
+    name: "BrickMaul",
+    displayName: "Brick Mauler",
+    bio: "Demoledor con mazo de hormigón armado.",
+    colors: { primary: "#d35400", secondary: "#7f6c4f", accent: "#a0522d" },
+    stats: { health: 1200, speed: 9.2, jumpForce: 8, weight: 1.4 },
+    moves: {
+      m1: { id: "brick-m1", name: "Maul Swing", category: "m1", damage: 60, cooldown: 520, meterCost: 0, desc: "Giro lento del mazo." },
+      special1: { id: "brick-s1", name: "Quake Pound", category: "special1", damage: 90, cooldown: 3200, meterCost: 0, desc: "Aplastamiento sísmico." },
+      special2: { id: "brick-s2", name: "Bulwark", category: "special2", damage: 40, cooldown: 3800, meterCost: 0, desc: "Bloqueo con contraempuje." },
+      special3: { id: "brick-s3", name: "Crater Toss", category: "special3", damage: 130, cooldown: 5400, meterCost: 0, desc: "Lanzamiento de escombro." },
+      ultimate: { id: "brick-ult", name: "Demolition Quake", category: "ultimate", damage: 360, cooldown: 600, meterCost: 100, desc: "Terremoto demoledor." },
+    },
+  },
+  {
+    id: "volt-jav",
+    name: "VoltJav",
+    displayName: "Volt Javelin",
+    bio: "Lanzadora de jabalinas de corriente alterna.",
+    colors: { primary: "#f4d03f", secondary: "#2e86c1", accent: "#ffffff" },
+    stats: { health: 880, speed: 13.3, jumpForce: 12, weight: 0.95 },
+    moves: {
+      m1: { id: "volt-m1", name: "Spark Poke", category: "m1", damage: 40, cooldown: 320, meterCost: 0, desc: "Piquetazo de chispas." },
+      special1: { id: "volt-s1", name: "Javelin Throw", category: "special1", damage: 85, cooldown: 2800, meterCost: 0, desc: "Jabalina de medio alcance." },
+      special2: { id: "volt-s2", name: "Chain Surge", category: "special2", damage: 65, cooldown: 3400, meterCost: 0, desc: "Corriente que salta entre enemigos." },
+      special3: { id: "volt-s3", name: "Pole Vault Strike", category: "special3", damage: 100, cooldown: 5000, meterCost: 0, desc: "Salto con jabalina." },
+      ultimate: { id: "volt-ult", name: "Thunder Cascade", category: "ultimate", damage: 300, cooldown: 600, meterCost: 100, desc: "Cascada de rayos." },
+    },
+  },
+  {
+    id: "smoke-veil",
+    name: "SmokeVeil",
+    displayName: "Smoke Veil",
+    bio: "Sigilosa de humo que aparece y desaparece entre callejones.",
+    colors: { primary: "#7d6b94", secondary: "#3a3a3a", accent: "#b8a9c9" },
+    stats: { health: 780, speed: 14.3, jumpForce: 12.5, weight: 0.8 },
+    moves: {
+      m1: { id: "smoke-m1", name: "Veil Slash", category: "m1", damage: 36, cooldown: 280, meterCost: 0, desc: "Cortina cortante." },
+      special1: { id: "smoke-s1", name: "Phase Step", category: "special1", damage: 60, cooldown: 2600, meterCost: 0, desc: "Teletransporte corto con golpe." },
+      special2: { id: "smoke-s2", name: "Choke Cloud", category: "special2", damage: 50, cooldown: 3600, meterCost: 0, desc: "Nube que asfixia en área." },
+      special3: { id: "smoke-s3", name: "Shadow Ripper", category: "special3", damage: 105, cooldown: 4900, meterCost: 0, desc: "Garra desde la sombra." },
+      ultimate: { id: "smoke-ult", name: "Eclipse Veil", category: "ultimate", damage: 270, cooldown: 600, meterCost: 100, desc: "Oscuridad que devora." },
+    },
+  },
+  {
+    id: "cinder-roar",
+    name: "CinderRoar",
+    displayName: "Cinder Roar",
+    bio: "Pirómano de acería con brazos de brasas.",
+    colors: { primary: "#e74c3c", secondary: "#212121", accent: "#ff7b00" },
+    stats: { health: 960, speed: 11.6, jumpForce: 10, weight: 1.05 },
+    moves: {
+      m1: { id: "cinder-m1", name: "Ember Punch", category: "m1", damage: 42, cooldown: 340, meterCost: 0, desc: "Puño ardiente." },
+      special1: { id: "cinder-s1", name: "Flame Pillar", category: "special1", damage: 78, cooldown: 3000, meterCost: 0, desc: "Columna de fuego vertical." },
+      special2: { id: "cinder-s2", name: "Cinder Burst", category: "special2", damage: 58, cooldown: 3400, meterCost: 0, desc: "Explosión de brasas." },
+      special3: { id: "cinder-s3", name: "Magma Lariat", category: "special3", damage: 108, cooldown: 5200, meterCost: 0, desc: "Lazo de magma." },
+      ultimate: { id: "cinder-ult", name: "Inferno Roar", category: "ultimate", damage: 340, cooldown: 600, meterCost: 100, desc: "Rugido incinerador." },
+    },
+  },
+  {
+    id: "frost-bite",
+    name: "FrostBite",
+    displayName: "Frost Bite",
+    bio: "Guardiana de nevero con cadenas de hielo reciclado.",
+    colors: { primary: "#aee6ff", secondary: "#2980b9", accent: "#ffffff" },
+    stats: { health: 940, speed: 11.2, jumpForce: 10.5, weight: 1.0 },
+    moves: {
+      m1: { id: "frost-m1", name: "Frost Chop", category: "m1", damage: 40, cooldown: 330, meterCost: 0, desc: "Tajo helado." },
+      special1: { id: "frost-s1", name: "Ice Shard", category: "special1", damage: 75, cooldown: 2900, meterCost: 0, desc: "Lanza de hielo a distancia." },
+      special2: { id: "frost-s2", name: "Glacier Wall", category: "special2", damage: 45, cooldown: 4000, meterCost: 0, desc: "Muro que ralentiza." },
+      special3: { id: "frost-s3", name: "Permafrost Slam", category: "special3", damage: 115, cooldown: 5100, meterCost: 0, desc: "Aplastamiento congelante." },
+      ultimate: { id: "frost-ult", name: "Blizzard Tomb", category: "ultimate", damage: 310, cooldown: 600, meterCost: 100, desc: "Tumba de ventisca." },
+    },
+  },
+  {
+    id: "quartz-golem",
+    name: "QuartzGolem",
+    displayName: "Quartz Golem",
+    bio: "Coloso de cristal de cantera con núcleo de cuarzo.",
+    colors: { primary: "#d2b48c", secondary: "#2e7d32", accent: "#c0ca33" },
+    stats: { health: 1300, speed: 8.2, jumpForce: 7, weight: 1.5 },
+    moves: {
+      m1: { id: "quartz-m1", name: "Crystal Smash", category: "m1", damage: 58, cooldown: 560, meterCost: 0, desc: "Golpe de cristal." },
+      special1: { id: "quartz-s1", name: "Quartz Spike", category: "special1", damage: 88, cooldown: 3300, meterCost: 0, desc: "Pico emergente del suelo." },
+      special2: { id: "quartz-s2", name: "Refract Shield", category: "special2", damage: 42, cooldown: 4200, meterCost: 0, desc: "Escudo que devuelve daño." },
+      special3: { id: "quartz-s3", name: "Boulder Hurl", category: "special3", damage: 125, cooldown: 5500, meterCost: 0, desc: "Lanzamiento de roca." },
+      ultimate: { id: "quartz-ult", name: "Tectonic Shatter", category: "ultimate", damage: 370, cooldown: 600, meterCost: 100, desc: "Estallido tectónico." },
+    },
+  },
+  {
+    id: "pulse-dash",
+    name: "PulseDash",
+    displayName: "Pulse Dasher",
+    bio: "Acrobata de pulso con zapatillas de resonancia.",
+    colors: { primary: "#ec407a", secondary: "#26a69a", accent: "#ffeb3b" },
+    stats: { health: 800, speed: 16.0, jumpForce: 14, weight: 0.82 },
+    moves: {
+      m1: { id: "pulse-m1", name: "Pulse Flick", category: "m1", damage: 34, cooldown: 260, meterCost: 0, desc: "Flick rápido de pulso." },
+      special1: { id: "pulse-s1", name: "Resonance Dash", category: "special1", damage: 66, cooldown: 2300, meterCost: 0, desc: "Dash resonante." },
+      special2: { id: "pulse-s2", name: "Bounce Trap", category: "special2", damage: 52, cooldown: 3500, meterCost: 0, desc: "Trampa que rebota enemigos." },
+      special3: { id: "pulse-s3", name: "Aerial Spin", category: "special3", damage: 98, cooldown: 4700, meterCost: 0, desc: "Giro aéreo en picada." },
+      ultimate: { id: "pulse-ult", name: "Hyperpulse Blitz", category: "ultimate", damage: 260, cooldown: 600, meterCost: 100, desc: "Ráfaga de hiperpulso." },
+    },
+  },
+  {
+    id: "rust-reaper",
+    name: "RustReaper",
+    displayName: "Rust Reaper",
+    bio: "Segadora de chatarra con guadaña oxidada.",
+    colors: { primary: "#a93226", secondary: "#5d4037", accent: "#b71c1c" },
+    stats: { health: 900, speed: 11.9, jumpForce: 11, weight: 1.0 },
+    moves: {
+      m1: { id: "rust-m1", name: "Reap Slash", category: "m1", damage: 44, cooldown: 360, meterCost: 0, desc: "Guadañazo corto." },
+      special1: { id: "rust-s1", name: "Scythe Throw", category: "special1", damage: 72, cooldown: 2700, meterCost: 0, desc: "Guadaña boomerang." },
+      special2: { id: "rust-s2", name: "Rust Cloud", category: "special2", damage: 50, cooldown: 3700, meterCost: 0, desc: "Óxido que corroe." },
+      special3: { id: "rust-s3", name: "Harvest Sweep", category: "special3", damage: 112, cooldown: 5300, meterCost: 0, desc: "Barrida cosechadora." },
+      ultimate: { id: "rust-ult", name: "Scrap Requiem", category: "ultimate", damage: 330, cooldown: 600, meterCost: 100, desc: "Réquiem de chatarra." },
+    },
+  },
+  {
+    id: "echo-wraith",
+    name: "EchoWraith",
+    displayName: "Echo Wraith",
+    bio: "Espectro de eco que repite cada golpe dos veces.",
+    colors: { primary: "#8e44ad", secondary: "#ecf0f1", accent: "#9b59b6" },
+    stats: { health: 860, speed: 12.9, jumpForce: 12, weight: 0.9 },
+    moves: {
+      m1: { id: "echo-m1", name: "Echo Tap", category: "m1", damage: 32, cooldown: 300, meterCost: 0, desc: "Toque que repite eco." },
+      special1: { id: "echo-s1", name: "Phantom Echo", category: "special1", damage: 64, cooldown: 2500, meterCost: 0, desc: "Doble fantasma del golpe." },
+      special2: { id: "echo-s2", name: "Resonant Wail", category: "special2", damage: 56, cooldown: 3600, meterCost: 0, desc: "Aullido de ondas." },
+      special3: { id: "echo-s3", name: "Mirror Strike", category: "special3", damage: 102, cooldown: 5000, meterCost: 0, desc: "Golpe espejo." },
+      ultimate: { id: "echo-ult", name: "Echo Cataclysm", category: "ultimate", damage: 290, cooldown: 600, meterCost: 100, desc: "Catástrofe de ecos." },
+    },
+  },
+];
+
+export const getCharacter = (id) => CHARACTERS.find((c) => c.id === id);
