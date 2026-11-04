@@ -1,0 +1,84 @@
+      playerTex = character.customImage
+        ? (() => { const t = new THREE.TextureLoader().load(character.customImage); t.colorSpace = THREE.SRGBColorSpace; return t; })()
+        : makeCharacterTexture(character);
+    } catch { playerTex = makeCharacterTexture(character); }
+
+    const playerMat = new THREE.MeshBasicMaterial({ map: playerTex, transparent: true, side: THREE.DoubleSide, alphaTest: 0.1 });
+    const player = new THREE.Group();
+    player.position.set(0, 1.6, 0);
+    scene.add(player);
+    const sprite = new THREE.Mesh(new THREE.PlaneGeometry(2, 3.2), playerMat);
+    player.add(sprite);
+
+    const shadowTex = makeShadowTexture();
+    const shadowMat = new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false });
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2), shadowMat);
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.02;
+    player.add(shadow);
+
+    const vfx = new VfxManager(scene, camera);
+    if (dashStyle) vfx.setDashStyle?.(dashStyle);
+
+    
+    // NPCs / dummies locales
+    const npcs = [];
+    const botCount = roomCode ? 2 : 4;
+    const others = CHARACTERS.filter((c) => c.id !== character.id).slice(0, botCount);
+    others.forEach((c, i) => {
+      const tex = makeCharacterTexture(c);
+      const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, alphaTest: 0.1 });
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 3.2), mat);
+      const ang = (i / Math.max(1, others.length)) * Math.PI * 2;
+      mesh.position.set(Math.cos(ang) * 14, 1.6, Math.sin(ang) * 14);
+      scene.add(mesh);
+      const barBg = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.16), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+      const bar = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.16), new THREE.MeshBasicMaterial({ color: 0x2ecc71 }));
+      barBg.position.y = 3.7; bar.position.y = 3.7; bar.position.z = 0.01;
+      mesh.add(barBg, bar);
+      const sh = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), shadowMat);
+      sh.rotation.x = -Math.PI / 2; sh.position.y = -1.57;
+      mesh.add(sh);
+      npcs.push({ mesh, bar, mat, health: 1000, maxHealth: 1000, respawnAt: 0, flashUntil: 0, flashColor: new THREE.Color(c.colors?.accent || "#fff") });
+    });
+
+
+    const baseCharId = baseIdOf(character) || character.id;
+    const passive = getPassive(baseCharId);
+
+    const game = {
+      player, velocity: new THREE.Vector3(), facing: new THREE.Vector3(0, 0, -1),
+      health: character.stats?.health || 1000, maxHealth: character.stats?.health || 1000,
+      meter: 0, meterPeak: 0, dead: false, stunUntil: 0, invulnUntil: 0,
+      dashTime: 0, dashDir: new THREE.Vector3(), dashSpeed: DASH_SPEED,
+      cooldowns: { m1: 0, special1: 0, special2: 0, special3: 0, ultimate: 0, dash: 0 },
+      hits: 0, comboStep: 0, comboUntil: 0, comboShown: 0, lurch: 0, castMove: null,
+      counters: { jumps: 0, distance: 0, dashes: 0, damage: 0, hits: 0, kills: 0, ultimates: 0, skills: 0, playtime: 0 },
+      lastStats: 0, grounded: false, echoCount: 0, onGround: true, jumpsLeft: 2, npcs, kills: 0, deaths: 0, bubble: null, bubbleUntil: 0,
+    };
+
+    let lastHitSound = 0;
+    const skills = new SkillSystem({
+      scene, vfx, colliders: city.colliders,
+      onHit: (target, dmg) => {
+        const t = performance.now();
+        if (t - lastHitSound > 90) { lastHitSound = t; audio.playHit(1); }
+        game.counters.hits += 1;
+        game.counters.damage += dmg || 0;
+        game.hits += 1;
+        game.meter = Math.min(100, game.meter + 8 * (passive?.type === "combo" ? passive.meterGain || 1.4 : 1));
+        game.meterPeak = Math.max(game.meterPeak, game.meter);
+        const pct = passive?.type === "lifesteal" ? passive.pct : (game.castMove?.lifesteal || 0);
+        if (pct > 0) game.health = Math.min(game.maxHealth, game.health + dmg * pct);
+        if (passive?.type === "dashReset") game.cooldowns.dash = Math.max(0, game.cooldowns.dash - (passive.reduce || 400));
+        if (passive?.type === "echo") {
+          game.echoCount = (game.echoCount || 0) + 1;
+          if (game.echoCount % (passive.every || 3) === 0) {
+            const at = target.pos.clone();
+            skills.later(150, () => skills.applyRadialDamage(at, 2.4, dmg * 0.45, 2, null));
+          }
+        }
+      },
+      onHeal: (amt) => { game.health = Math.min(game.maxHealth, game.health + amt); },
+      onDash: (opts) => startSkillDash(opts),
+    });
