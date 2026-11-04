@@ -6,7 +6,7 @@ import { gunzipSync } from "zlib";
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(dir, "..");
 
-function concatParts(prefix, max = 30) {
+function concatTxt(prefix, max = 30) {
   let src = "";
   for (let i = 0; i < max; i++) {
     const p = path.join(dir, `${prefix}${i}.txt`);
@@ -16,27 +16,41 @@ function concatParts(prefix, max = 30) {
   return src;
 }
 
-const ga = concatParts("ga");
-if (ga.length > 5000 && ga.includes("export default function GameApp")) {
-  const out = path.join(root, "src/components/game/GameApp.jsx");
-  fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, ga);
-  console.log("[prebuild] GameApp", ga.length);
-} else {
-  console.log("[prebuild] GameApp skip", ga.length);
-}
-
-function fromText() {
-  const src = concatParts("t");
-  return src.length > 10000 ? src : null;
-}
-function fromHex() {
+function concatHex(prefix, max = 30) {
   let hx = "";
-  for (let i = 0; i < 20; i++) {
-    const p = path.join(dir, `h${i}.hex`);
+  for (let i = 0; i < max; i++) {
+    const p = path.join(dir, `${prefix}${i}.hex`);
     if (!fs.existsSync(p)) break;
     hx += fs.readFileSync(p, "utf8").trim();
   }
+  return hx;
+}
+
+// GameApp from hex (preferred) or text chunks
+{
+  let ga = "";
+  const hx = concatHex("gah");
+  if (hx.length > 100) {
+    try { ga = Buffer.from(hx, "hex").toString("utf8"); } catch {}
+  }
+  if (!ga || ga.length < 5000) ga = concatTxt("ga");
+  if (ga.length > 5000 && ga.includes("export default function GameApp")) {
+    const out = path.join(root, "src/components/game/GameApp.jsx");
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    fs.writeFileSync(out, ga);
+    console.log("[prebuild] GameApp", ga.length);
+  } else {
+    console.log("[prebuild] GameApp skip", ga.length);
+  }
+}
+
+// GameCanvas
+function fromText() {
+  const src = concatTxt("t");
+  return src.length > 10000 ? src : null;
+}
+function fromHex() {
+  const hx = concatHex("h");
   if (!hx || hx.length < 100) return null;
   return gunzipSync(Buffer.from(hx, "hex")).toString("utf8");
 }
@@ -48,11 +62,8 @@ function fromGzipB64() {
     b64 += fs.readFileSync(p, "utf8").trim();
   }
   if (!b64) return null;
-  try {
-    return gunzipSync(Buffer.from(b64, "base64")).toString("utf8");
-  } catch {
-    return null;
-  }
+  try { return gunzipSync(Buffer.from(b64, "base64")).toString("utf8"); }
+  catch { return null; }
 }
 
 const gc = fromText() || fromHex() || fromGzipB64() || "";
