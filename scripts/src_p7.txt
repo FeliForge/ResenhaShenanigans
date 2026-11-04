@@ -1,2 +1,23 @@
+ game.bubble.material.dispose(); }
+      cinematics.dispose();
+      skills.dispose?.();
+      vfx.dispose();
+      shop.dispose?.();
+      city.dispose?.();
+      renderer.dispose();
+      groundTex.dispose?.(); shadowTex.dispose?.(); playerTex.dispose?.();
+      playerMat.dispose(); shadowMat.dispose();
+      moon.geometry.dispose(); moon.material.dispose();
+      if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
+      apiRef.current = null;
+    };
+  }, [character, roomCode]);
+
+  useEffect(() => { apiRef.current?.setMyBillboard(billboardUrl || ""); }, [billboardUrl, character]);
+  useEffect(() => { apiRef.current?.setDashStyle(dashStyle || null); }, [dashStyle, character]);
+
+  return <div ref={mountRef} className="absolute inset-0" />;
+});
+
 export default GameCanvas;
 export { BILLBOARD_COUNT };
