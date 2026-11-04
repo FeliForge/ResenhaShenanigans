@@ -1,12 +1,10 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { gunzipSync } from "zlib";
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(dir, "..");
-const n = 3;
-let b64 = "";
-for (let i = 0; i < n; i++) b64 += fs.readFileSync(path.join(dir, `gc_p${i}.b64`), "utf8").trim();
-const buf = gunzipSync(Buffer.from(b64, "base64"));
-fs.writeFileSync(path.join(root, "src/components/game/GameCanvas.jsx"), buf);
-console.log("[prebuild] wrote GameCanvas", buf.length);
+const n = 8;
+let src = "";
+for (let i = 0; i < n; i++) src += fs.readFileSync(path.join(dir, `src_p${i}.txt`), "utf8");
+fs.writeFileSync(path.join(root, "src/components/game/GameCanvas.jsx"), src);
+console.log("[prebuild] wrote GameCanvas", src.length);

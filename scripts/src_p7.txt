@@ -1,0 +1,2 @@
+export default GameCanvas;
+export { BILLBOARD_COUNT };
