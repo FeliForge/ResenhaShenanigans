@@ -1,12 +1,39 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { gunzipSync } from "zlib";
+
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(dir, "..");
-const n = 4;
-let b64 = "";
-for (let i = 0; i < n; i++) b64 += fs.readFileSync(path.join(dir, `z${i}.b64`), "utf8").trim();
-const buf = gunzipSync(Buffer.from(b64, "base64"));
-fs.writeFileSync(path.join(root, "src/components/game/GameCanvas.jsx"), buf);
-console.log("[prebuild] wrote GameCanvas", buf.length);
+const chunksDir = path.join(root, "src/components/game/gcchunks");
+const out = path.join(root, "src/components/game/GameCanvas.jsx");
+
+let src = "";
+if (fs.existsSync(chunksDir)) {
+  const files = fs.readdirSync(chunksDir).filter((f) => /^c\d+\.txt$/.test(f)).sort((a, b) => {
+    return parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10);
+  });
+  for (const f of files) src += fs.readFileSync(path.join(chunksDir, f), "utf8");
+  console.log("[prebuild] concatenated", files.length, "chunks,", src.length, "bytes");
+} else {
+  const { gunzipSync } = await import("zlib");
+  let b64 = "";
+  for (let i = 0; i < 4; i++) {
+    const p = path.join(dir, `z${i}.b64`);
+    if (fs.existsSync(p)) b64 += fs.readFileSync(p, "utf8").trim();
+  }
+  if (b64) {
+    src = gunzipSync(Buffer.from(b64, "base64")).toString("utf8");
+    console.log("[prebuild] gunzip fallback", src.length);
+  }
+}
+
+if (!src || src.length < 10000) {
+  console.error("[prebuild] FATAL: GameCanvas source missing or too small", src?.length);
+  process.exit(1);
+}
+if (!src.includes("buildCity") || !src.includes("export default GameCanvas")) {
+  console.error("[prebuild] FATAL: GameCanvas source incomplete");
+  process.exit(1);
+}
+fs.writeFileSync(out, src);
+console.log("[prebuild] wrote", out, src.length);
