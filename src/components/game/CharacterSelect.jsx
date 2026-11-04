@@ -1,30 +1,15 @@
 // @ts-nocheck
 import { useState } from "react";
-import { ChevronLeft, Check, Plus, Palette, Shield } from "lucide-react";
-import { CHARACTERS, getCharacter } from "@/data/characters";
-import CustomCharacterBuilder from "@/components/game/CustomCharacterBuilder";
-import SkinEditor from "@/components/game/SkinEditor";
+import { ChevronLeft, Check, Wrench, Shield } from "lucide-react";
+import { CHARACTERS } from "@/data/characters";
+import CharacterWorkshop from "@/components/game/CharacterWorkshop";
 import { getArchetype, getPassive } from "@/data/movesets";
 import { useI18n } from "@/lib/i18n";
-
-const PASSIVE_KEY = {
-  combo: "passive.combo",
-  afterDash: "passive.afterDash",
-  armor: "passive.armor",
-  charge: "passive.charge",
-  vanish: "passive.vanish",
-  burn: "passive.burn",
-  chill: "passive.chill",
-  dashReset: "passive.dashReset",
-  lifesteal: "passive.lifesteal",
-  echo: "passive.echo",
-};
 
 export default function CharacterSelect({ onConfirm, onBack }) {
   const { t, character: localChar, move: localMove } = useI18n();
   const [selectedId, setSelectedId] = useState(CHARACTERS[0].id);
-  const [showCustom, setShowCustom] = useState(false);
-  const [showSkin, setShowSkin] = useState(false);
+  const [showWorkshop, setShowWorkshop] = useState(false);
   const selected = CHARACTERS.find((c) => c.id === selectedId);
   const info = localChar(selected) || selected;
   const archetype = getArchetype(selected.id);
@@ -46,27 +31,17 @@ export default function CharacterSelect({ onConfirm, onBack }) {
         {/* Lista */}
         <div className="grid grid-cols-2 gap-2 overflow-y-auto p-3 sm:grid-cols-3 lg:w-1/2 lg:grid-cols-2">
           <button
-            onClick={() => setShowCustom(true)}
+            onClick={() => setShowWorkshop(true)}
             className="col-span-full flex items-center gap-3 rounded-lg border border-dashed border-primary p-2 text-left transition hover:bg-accent/60"
           >
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Plus size={18} />
+              <Wrench size={18} />
             </span>
             <span>
-              <span className="block text-sm font-semibold">{t("select.custom")}</span>
-              <span className="block text-xs text-muted-foreground">{t("select.customHint")}</span>
-            </span>
-          </button>
-          <button
-            onClick={() => setShowSkin(true)}
-            className="col-span-full flex items-center gap-3 rounded-lg border border-dashed border-accent p-2 text-left transition hover:bg-accent/60"
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
-              <Palette size={18} />
-            </span>
-            <span>
-              <span className="block text-sm font-semibold">{t("select.skin")}</span>
-              <span className="block text-xs text-muted-foreground">{t("select.skinHint")}</span>
+              <span className="block text-sm font-semibold">Character Workshop</span>
+              <span className="block text-xs text-muted-foreground">
+                Appearance · Moveset · Ultimate
+              </span>
             </span>
           </button>
           {CHARACTERS.map((c) => {
@@ -89,7 +64,9 @@ export default function CharacterSelect({ onConfirm, onBack }) {
                 />
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold">{localized.displayName}</span>
-                  <span className="block truncate text-xs text-muted-foreground">{t(`arch.${getArchetype(c.id)}`)}</span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {t(`arch.${getArchetype(c.id)}`)}
+                  </span>
                 </span>
               </button>
             );
@@ -143,7 +120,8 @@ export default function CharacterSelect({ onConfirm, onBack }) {
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">{m.name}</span>
                     <span className="shrink-0 text-xs text-muted-foreground">
-                      {category === "ultimate" ? "ULT" : category.toUpperCase()} · {t("select.dmg", { n: m.damage })}
+                      {category === "ultimate" ? "ULT" : category.toUpperCase()} ·{" "}
+                      {t("select.dmg", { n: m.damage })}
                     </span>
                   </div>
                   {m.desc && <p className="mt-0.5 text-xs text-muted-foreground">{m.desc}</p>}
@@ -160,16 +138,14 @@ export default function CharacterSelect({ onConfirm, onBack }) {
           </button>
         </div>
       </div>
-      {showCustom && (
-        <CustomCharacterBuilder
-          onConfirm={(c) => { setShowCustom(false); onConfirm(c); }}
-          onCancel={() => setShowCustom(false)}
-        />
-      )}
-      {showSkin && (
-        <SkinEditor
-          onConfirm={(c) => { setShowSkin(false); onConfirm(c); }}
-          onCancel={() => setShowSkin(false)}
+
+      {showWorkshop && (
+        <CharacterWorkshop
+          onConfirm={(c) => {
+            setShowWorkshop(false);
+            onConfirm(c);
+          }}
+          onCancel={() => setShowWorkshop(false)}
         />
       )}
     </div>
