@@ -6,6 +6,7 @@ import { VfxManager } from "@/lib/game/vfx";
 import { audio } from "@/lib/game/audio";
 import { CinematicUltimateManager, hasCinematicUlt } from "@/lib/game/cinematics";
 import "@/lib/game/cinematicsExtra";
+import "@/lib/game/cinematicsExtra2";
 import { baseIdOf } from "@/lib/game/loadout";
 import { SkillSystem } from "@/lib/game/skills";
 
@@ -93,7 +94,6 @@ const GameCanvas = forwardRef(function GameCanvas({ character, onStats }, ref) {
       cinematics.tryStart(baseId, player.position.clone(), game.facing.clone());
     };
 
-    // Demo auto-play once for cinematic characters
     const t0 = setTimeout(() => {
       if (hasCinematicUlt(baseId)) {
         cinematics.tryStart(baseId, player.position.clone(), new THREE.Vector3(0, 0, -1));
