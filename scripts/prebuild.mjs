@@ -9,4 +9,4 @@ let b64 = "";
 for (let i = 0; i < n; i++) b64 += fs.readFileSync(path.join(dir, `z${i}.b64`), "utf8").trim();
 const buf = gunzipSync(Buffer.from(b64, "base64"));
 fs.writeFileSync(path.join(root, "src/components/game/GameCanvas.jsx"), buf);
-console.log("[prebuild] wrote", buf.length);
+console.log("[prebuild] wrote GameCanvas", buf.length);
