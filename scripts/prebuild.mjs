@@ -5,10 +5,20 @@ import { gunzipSync } from "zlib";
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(dir, "..");
-const chunksDir = path.join(root, "src/components/game/gcchunks");
 const out = path.join(root, "src/components/game/GameCanvas.jsx");
 
-function fromGzip() {
+function fromHex() {
+  let hx = "";
+  for (let i = 0; i < 20; i++) {
+    const p = path.join(dir, `h${i}.hex`);
+    if (!fs.existsSync(p)) break;
+    hx += fs.readFileSync(p, "utf8").trim();
+  }
+  if (!hx || hx.length < 100) return null;
+  return gunzipSync(Buffer.from(hx, "hex")).toString("utf8");
+}
+
+function fromGzipB64() {
   let b64 = "";
   for (let i = 0; i < 4; i++) {
     const p = path.join(dir, `z${i}.b64`);
@@ -19,21 +29,7 @@ function fromGzip() {
   return gunzipSync(Buffer.from(b64, "base64")).toString("utf8");
 }
 
-function fromChunks() {
-  if (!fs.existsSync(chunksDir)) return null;
-  const files = fs.readdirSync(chunksDir).filter((f) => /^c\d+\.txt$/.test(f)).sort((a, b) => {
-    return parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10);
-  });
-  if (files.length < 7) {
-    console.log("[prebuild] incomplete chunks", files.length, "- skipping");
-    return null;
-  }
-  let src = "";
-  for (const f of files) src += fs.readFileSync(path.join(chunksDir, f), "utf8");
-  return src;
-}
-
-let src = fromGzip() || fromChunks() || "";
+let src = fromHex() || fromGzipB64() || "";
 if (src) console.log("[prebuild] source length", src.length);
 
 if (!src || src.length < 10000) {
