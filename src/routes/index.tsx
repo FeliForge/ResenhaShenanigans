@@ -9,8 +9,10 @@ function Home() {
     let cancelled = false;
     (async () => {
       try {
-        const mod = await import("@/components/game/GameApp");
-        if (!cancelled) setApp(() => mod.default);
+        // Build path at runtime so the server bundle does not pull game modules.
+        const id = ["@", "/components/game/GameApp"].join("");
+        const mod = await import(/* @vite-ignore */ id);
+        if (!cancelled) setApp(() => mod.default as ComponentType);
       } catch (e: any) {
         console.error("[Home] GameApp load failed", e);
         if (!cancelled) setErr(String(e?.message || e));
@@ -26,10 +28,7 @@ function Home() {
       <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[#0a0a14] px-4 text-white">
         <p className="text-lg font-bold text-[#ff9620]">Error cargando el juego</p>
         <p className="max-w-md text-center text-sm text-white/60">{err}</p>
-        <button
-          className="rounded-lg bg-white/10 px-4 py-2 text-sm"
-          onClick={() => location.reload()}
-        >
+        <button className="rounded-lg bg-white/10 px-4 py-2 text-sm" onClick={() => location.reload()}>
           Reintentar
         </button>
       </div>
