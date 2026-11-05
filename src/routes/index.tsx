@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 
-// .client.tsx is excluded from the server bundle by TanStack Start / Vite.
-const GameApp = lazy(() => import("@/components/game/GameAppEntry.client"));
+// Relative path so Vite emits a client chunk. Route has ssr:false.
+const GameApp = lazy(() => import("../components/game/GameApp"));
 
 function Home() {
   return (
