@@ -1,24 +1,27 @@
 import fs from "fs";
 import path from "path";
+import zlib from "zlib";
 import { fileURLToPath } from "url";
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(dir, "..");
 
-const URLS = {
-  gameTexture: [
-    "https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/d599d4df6223/src/lib/gameTexture.js",
-    "https://cdn.jsdelivr.net/gh/FeliForge/ResenhaShenanigans@d599d4df6223/src/lib/gameTexture.js",
-  ],
-  gameCanvas: [
-    "https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/d599d4df6223/src/components/game/GameCanvas.jsx",
-    "https://cdn.jsdelivr.net/gh/FeliForge/ResenhaShenanigans@d599d4df6223/src/components/game/GameCanvas.jsx",
-  ],
-  gameApp: [
-    "https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/d134aafcdbd4d5b285843bb36a8e3da1b8d4057f/src/components/game/GameApp.jsx",
-    "https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/95d297a36528559eb00bdf9db065d5ee6a52f903/src/components/game/GameApp.jsx",
-  ],
-};
+function write(rel, src) {
+  const out = path.join(root, rel);
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, src);
+  console.log("[prebuild] wrote", rel, src.length);
+}
+
+function assembleGzipB64(partsDir) {
+  const abs = path.join(root, partsDir);
+  if (!fs.existsSync(abs)) return null;
+  const files = fs.readdirSync(abs).filter((f) => f.endsWith(".b64")).sort();
+  if (!files.length) return null;
+  const b64 = files.map((f) => fs.readFileSync(path.join(abs, f), "utf8").trim()).join("");
+  const buf = Buffer.from(b64, "base64");
+  return zlib.gunzipSync(buf).toString("utf8");
+}
 
 async function fetchText(urls) {
   let lastErr;
@@ -27,23 +30,16 @@ async function fetchText(urls) {
       const res = await fetch(url, { redirect: "follow" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
-      if (text && text.length > 1000) {
-        console.log("[prebuild] fetched", url.slice(0, 80), text.length);
+      if (text && text.length > 5000) {
+        console.log("[prebuild] fetched", url.slice(0, 70), text.length);
         return text;
       }
     } catch (e) {
       lastErr = e;
-      console.warn("[prebuild] fetch fail", url, e?.message || e);
+      console.warn("[prebuild] fetch fail", e?.message || e);
     }
   }
-  throw lastErr || new Error("all mirrors failed");
-}
-
-function write(rel, src) {
-  const out = path.join(root, rel);
-  fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, src);
-  console.log("[prebuild] wrote", rel, src.length);
+  throw lastErr || new Error("fetch failed");
 }
 
 function injectCinematics(src) {
@@ -69,9 +65,10 @@ function injectCinematics(src) {
     const n = "      skills.cast({ ...move, damage: dmg }, { config: cfg, origin, dir, color: character.colors.accent });";
     const block =
       '      if (category === "ultimate" && hasCinematicUlt(baseCharId)) {\n' +
-      "        try { cinematics.tryStart(baseCharId, origin, dir); } catch (err) { console.warn(\"[cinematic]\", err); }\n" +
+      '        try { cinematics.tryStart(baseCharId, origin, dir); } catch (err) { console.warn("[cinematic]", err); }\n' +
       "        return;\n" +
-      "      }\n" + n;
+      "      }\n" +
+      n;
     if (src.includes(n)) src = src.replace(n, block);
   }
   if (!src.includes("cinematics.update") && !src.includes("cinematics?.update")) {
@@ -118,7 +115,7 @@ function ensureRoomMusicImport(src) {
     'import { audio } from "@/lib/game/audio";',
     'import { audio } from "@/lib/game/audio";\nimport RoomMusicPlayer from "@/components/game/RoomMusicPlayer";\nimport { loadRoomMusic, saveRoomMusic } from "@/lib/game/roomMusic";'
   );
-  if (!out.includes("musicUrl")) {
+  if (!out.includes("const [musicUrl")) {
     out = out.replace(
       'const [roomCode, setRoomCode] = useState("");',
       'const [roomCode, setRoomCode] = useState("");\n  const [musicUrl, setMusicUrl] = useState("");'
@@ -134,45 +131,49 @@ function ensureRoomMusicImport(src) {
 }
 
 async function main() {
-  try {
-    const gt = await fetchText(URLS.gameTexture);
-    if (gt.includes("makeCharacterTexture") && gt.includes("piernas con degradado")) {
-      write("src/lib/gameTexture.js", gt);
-    } else {
-      throw new Error("gameTexture content invalid");
-    }
-  } catch (e) {
-    console.error("[prebuild] FATAL gameTexture", e?.message || e);
+  let gc = assembleGzipB64("scripts/gc_parts");
+  if (gc && gc.includes("buildCity") && gc.length > 20000) {
+    console.log("[prebuild] GameCanvas from local parts", gc.length);
+  } else {
+    console.log("[prebuild] local GameCanvas parts missing/invalid, fetching...");
+    gc = await fetchText([
+      "https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/d599d4df6223/src/components/game/GameCanvas.jsx",
+      "https://cdn.jsdelivr.net/gh/FeliForge/ResenhaShenanigans@d599d4df6223/src/components/game/GameCanvas.jsx",
+    ]);
+  }
+  if (!gc.includes("buildCity") || gc.length < 20000) {
+    console.error("[prebuild] FATAL: GameCanvas incomplete");
     process.exit(1);
   }
+  gc = injectCinematics(gc);
+  gc = injectRoomMusic(gc);
+  write("src/components/game/GameCanvas.jsx", gc);
 
-  try {
-    let gc = await fetchText(URLS.gameCanvas);
-    if (!gc.includes("buildCity") || gc.length < 20000) throw new Error("GameCanvas too small");
-    gc = injectCinematics(gc);
-    gc = injectRoomMusic(gc);
-    write("src/components/game/GameCanvas.jsx", gc);
-  } catch (e) {
-    console.error("[prebuild] FATAL GameCanvas", e?.message || e);
-    process.exit(1);
+  const gtPath = path.join(root, "src/lib/gameTexture.js");
+  let gt = fs.existsSync(gtPath) ? fs.readFileSync(gtPath, "utf8") : "";
+  if (!gt.includes("makeCharacterTexture") || gt.includes("return null") || gt.length < 3000) {
+    gt = await fetchText([
+      "https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/d599d4df6223/src/lib/gameTexture.js",
+      "https://cdn.jsdelivr.net/gh/FeliForge/ResenhaShenanigans@d599d4df6223/src/lib/gameTexture.js",
+    ]);
+    write("src/lib/gameTexture.js", gt);
+  } else {
+    console.log("[prebuild] gameTexture OK", gt.length);
   }
 
-  try {
-    const local = path.join(root, "src/components/game/GameApp.jsx");
-    let ga = fs.existsSync(local) ? fs.readFileSync(local, "utf8") : "";
-    if (!ga.includes("export default function GameApp") || ga.includes("__CONTINUE__") || ga.includes("PLACEHOLDER") || ga.length < 5000) {
-      ga = await fetchText(URLS.gameApp);
-    }
-    ga = ensureSkillsTargetFix(ga);
-    ga = ensureRoomMusicImport(ga);
-    if (!ga.includes("export default function GameApp")) throw new Error("GameApp invalid");
-    write("src/components/game/GameApp.jsx", ga);
-  } catch (e) {
-    console.error("[prebuild] FATAL GameApp", e?.message || e);
-    process.exit(1);
+  const gaPath = path.join(root, "src/components/game/GameApp.jsx");
+  let ga = fs.existsSync(gaPath) ? fs.readFileSync(gaPath, "utf8") : "";
+  if (!ga.includes("export default function GameApp") || ga.includes("__CONTINUE__") || ga.includes("PLACEHOLDER") || ga.length < 5000) {
+    ga = await fetchText([
+      "https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/d134aafcdbd4d5b285843bb36a8e3da1b8d4057f/src/components/game/GameApp.jsx",
+      "https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/95d297a36528559eb00bdf9db065d5ee6a52f903/src/components/game/GameApp.jsx",
+    ]);
   }
+  ga = ensureSkillsTargetFix(ga);
+  ga = ensureRoomMusicImport(ga);
+  write("src/components/game/GameApp.jsx", ga);
 
-  console.log("[prebuild] OK — textures, canvas, app restored");
+  console.log("[prebuild] OK");
 }
 
 main().catch((e) => {
