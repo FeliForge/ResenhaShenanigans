@@ -1,5 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import GameApp from "@/components/game/GameApp";
+import { lazy, Suspense } from "react";
+
+const GameApp = lazy(() => import("@/components/game/GameApp"));
+
+function Home() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-full w-full items-center justify-center bg-[#0a0a14] text-white">
+          <p className="text-lg font-bold text-[#ff9620]">Cargando Resenha Shenanigans…</p>
+        </div>
+      }
+    >
+      <GameApp />
+    </Suspense>
+  );
+}
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -19,5 +35,5 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: GameApp,
+  component: Home,
 });
