@@ -1,1 +1,2 @@
-// PLACEHOLDER - will replace via content from disk in next call if needed
+// restored via prebuild from known-good if placeholder
+export { default } from "./CharacterWorkshopCore.jsx";
