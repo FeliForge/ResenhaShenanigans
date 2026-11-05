@@ -5,15 +5,32 @@ import { fileURLToPath } from "url";
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(dir, "..");
 
-const GOOD_GAMEAPP =
-  "https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/95d297a36528559eb00bdf9db065d5ee6a52f903/src/components/game/GameApp.jsx";
-const GOOD_GAMECANVAS =
-  "https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/d599d4df6223/src/components/game/GameCanvas.jsx";
+const GAMEAPP_URLS = [
+  "https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/95d297a36528559eb00bdf9db065d5ee6a52f903/src/components/game/GameApp.jsx",
+  "https://cdn.jsdelivr.net/gh/FeliForge/ResenhaShenanigans@95d297a36528559eb00bdf9db065d5ee6a52f903/src/components/game/GameApp.jsx",
+];
+const GAMECANVAS_URLS = [
+  "https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/d599d4df6223/src/components/game/GameCanvas.jsx",
+  "https://cdn.jsdelivr.net/gh/FeliForge/ResenhaShenanigans@d599d4df6223/src/components/game/GameCanvas.jsx",
+];
 
-async function fetchText(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-  return await res.text();
+async function fetchText(urls) {
+  let lastErr;
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { redirect: "follow" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      if (text && text.length > 1000) {
+        console.log("[prebuild] fetched", url, text.length);
+        return text;
+      }
+    } catch (e) {
+      lastErr = e;
+      console.warn("[prebuild] fetch fail", url, e?.message || e);
+    }
+  }
+  throw lastErr || new Error("all fetch mirrors failed");
 }
 
 function ensureSkillsTargetFix(src) {
@@ -24,7 +41,6 @@ function ensureSkillsTargetFix(src) {
   );
 }
 
-/** Inject cinematic ultimate support into the full original GameCanvas. */
 function injectCinematics(src) {
   if (src.includes("CinematicUltimateManager") && src.includes("tryStart")) return src;
 
@@ -42,13 +58,11 @@ function injectCinematics(src) {
     );
   }
 
-  // Guard at start of doMove
   src = src.replace(
     "    function doMove(category) {\n      if (game.dead || performance.now() < game.stunUntil) return;",
       "    function doMove(category) {\n      if (game.dead || performance.now() < game.stunUntil || cinematics?.isPlaying) return;"
   );
 
-  // Try cinematic before skills.cast
   if (!src.includes("cinematics.tryStart") && !src.includes("cinematics?.tryStart")) {
     const needle =
       "      const origin = game.player.position.clone();\n      const dir = game.facing.clone().setY(0).normalize();";
@@ -60,14 +74,10 @@ function injectCinematics(src) {
       "          return;\n" +
       "        }\n" +
       "      }";
-    if (src.includes(needle)) {
-      src = src.replace(needle, inject);
-    } else {
-      console.warn("[prebuild] could not inject tryStart — origin/dir pattern missing");
-    }
+    if (src.includes(needle)) src = src.replace(needle, inject);
+    else console.warn("[prebuild] tryStart inject pattern missing");
   }
 
-  // Update cinematics each frame
   if (!src.includes("cinematics.update")) {
     const tickNeedle = "      const now = performance.now();\n      const b = bindsRef.current;";
     const tickInject =
@@ -78,14 +88,11 @@ function injectCinematics(src) {
       "        return;\n" +
       "      }\n" +
       "      const b = bindsRef.current;";
-    if (src.includes(tickNeedle)) {
-      src = src.replace(tickNeedle, tickInject);
-    } else if (src.includes("      // NPCs")) {
+    if (src.includes(tickNeedle)) src = src.replace(tickNeedle, tickInject);
+    else if (src.includes("      // NPCs"))
       src = src.replace("      // NPCs", "      if (cinematics) cinematics.update(dt);\n\n      // NPCs");
-    }
   }
 
-  // Dispose
   if (!src.includes("cinematics?.dispose") && !src.includes("cinematics.dispose")) {
     src = src.replace(
       "return () => {",
@@ -114,57 +121,61 @@ function writeIfGood(relPath, src, mustInclude) {
   return true;
 }
 
+function alreadyGood(relPath, checks) {
+  const p = path.join(root, relPath);
+  if (!fs.existsSync(p)) return false;
+  const t = fs.readFileSync(p, "utf8");
+  if (t.includes("__CONTINUE__") || t.includes("PLACEHOLDER")) return false;
+  return checks.every((c) => t.includes(c));
+}
+
 async function main() {
-  let okApp = false;
-  let okCanvas = false;
+  let okApp = alreadyGood("src/components/game/GameApp.jsx", [
+    "export default function GameApp",
+    "showQuests",
+  ]);
+  let okCanvas = alreadyGood("src/components/game/GameCanvas.jsx", [
+    "buildCity",
+    "export default GameCanvas",
+  ]);
 
-  try {
-    let ga = await fetchText(GOOD_GAMEAPP);
-    ga = ensureSkillsTargetFix(ga);
-    okApp = writeIfGood("src/components/game/GameApp.jsx", ga, [
-      "export default function GameApp",
-      "showQuests",
-      "ShopPanel",
-    ]);
-  } catch (e) {
-    console.error("[prebuild] GameApp fetch failed:", e?.message || e);
-  }
-
-  try {
-    let gc = await fetchText(GOOD_GAMECANVAS);
-    gc = injectCinematics(gc);
-    okCanvas = writeIfGood("src/components/game/GameCanvas.jsx", gc, [
-      "buildCity",
-      "export default GameCanvas",
-      "SkillSystem",
-    ]);
-  } catch (e) {
-    console.error("[prebuild] GameCanvas fetch failed:", e?.message || e);
-  }
-
-  // If repo already has good files from a previous run, accept them
   if (!okApp) {
-    const p = path.join(root, "src/components/game/GameApp.jsx");
-    if (fs.existsSync(p) && fs.readFileSync(p, "utf8").includes("showQuests")) {
-      okApp = true;
-      console.log("[prebuild] GameApp already present");
+    try {
+      let ga = await fetchText(GAMEAPP_URLS);
+      ga = ensureSkillsTargetFix(ga);
+      okApp = writeIfGood("src/components/game/GameApp.jsx", ga, [
+        "export default function GameApp",
+        "showQuests",
+        "ShopPanel",
+      ]);
+    } catch (e) {
+      console.error("[prebuild] GameApp failed:", e?.message || e);
     }
+  } else {
+    console.log("[prebuild] GameApp already good");
   }
+
   if (!okCanvas) {
-    const p = path.join(root, "src/components/game/GameCanvas.jsx");
-    if (fs.existsSync(p)) {
-      const t = fs.readFileSync(p, "utf8");
-      if (t.includes("buildCity") && t.includes("export default GameCanvas") && !t.includes("__CONTINUE__")) {
-        okCanvas = true;
-        console.log("[prebuild] GameCanvas already present");
-      }
+    try {
+      let gc = await fetchText(GAMECANVAS_URLS);
+      gc = injectCinematics(gc);
+      okCanvas = writeIfGood("src/components/game/GameCanvas.jsx", gc, [
+        "buildCity",
+        "export default GameCanvas",
+        "SkillSystem",
+      ]);
+    } catch (e) {
+      console.error("[prebuild] GameCanvas failed:", e?.message || e);
     }
+  } else {
+    console.log("[prebuild] GameCanvas already good");
   }
 
   if (!okApp || !okCanvas) {
     console.error("[prebuild] FATAL: missing GameApp or GameCanvas");
     process.exit(1);
   }
+  console.log("[prebuild] OK");
 }
 
 main().catch((e) => {
