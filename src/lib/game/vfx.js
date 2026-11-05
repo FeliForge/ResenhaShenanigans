@@ -1,9 +1,7 @@
 // @ts-nocheck
 import * as THREE from "three";
 
-// Gestor de VFX: chispas, polvo, ondas de choque, escombros, brillos aditivos,
-// estelas de dash con textura, golpes con impacto y estallidos de ultimate.
-// Geometrías y texturas compartidas para evitar GC.
+// VFX potenciado: más partículas, brillos más grandes, sacudidas más fuertes.
 
 function makeGlowTexture() {
   const c = document.createElement("canvas");
@@ -11,8 +9,9 @@ function makeGlowTexture() {
   const x = c.getContext("2d");
   const g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
   g.addColorStop(0, "rgba(255,255,255,1)");
-  g.addColorStop(0.25, "rgba(255,255,255,0.7)");
-  g.addColorStop(0.55, "rgba(255,255,255,0.25)");
+  g.addColorStop(0.2, "rgba(255,255,255,0.85)");
+  g.addColorStop(0.45, "rgba(255,255,255,0.35)");
+  g.addColorStop(0.75, "rgba(255,255,255,0.08)");
   g.addColorStop(1, "rgba(255,255,255,0)");
   x.fillStyle = g;
   x.fillRect(0, 0, 256, 256);
@@ -32,25 +31,25 @@ export class VfxManager {
     this.dashCache = new Map();
     this.glowTex = makeGlowTexture();
     this.geo = {
-      spark: new THREE.OctahedronGeometry(0.18, 0),
-      shard: new THREE.TetrahedronGeometry(0.22, 0),
-      dust: new THREE.PlaneGeometry(0.5, 0.5),
-      ring: new THREE.RingGeometry(0.4, 0.7, 48),
-      ringInner: new THREE.RingGeometry(0.18, 0.34, 32),
-      debris: new THREE.BoxGeometry(0.25, 0.25, 0.25),
+      spark: new THREE.OctahedronGeometry(0.2, 0),
+      shard: new THREE.TetrahedronGeometry(0.26, 0),
+      dust: new THREE.PlaneGeometry(0.55, 0.55),
+      ring: new THREE.RingGeometry(0.4, 0.75, 64),
+      ringInner: new THREE.RingGeometry(0.15, 0.36, 40),
+      debris: new THREE.BoxGeometry(0.28, 0.28, 0.28),
     };
   }
 
-  addShake(v) { this.shake = Math.min(1.8, this.shake + v); }
+  addShake(v) { this.shake = Math.min(2.2, this.shake + v); }
 
-  addGlow(position, color, size = 2.4, life = 0.32, stretch = 1) {
+  addGlow(position, color, size = 2.8, life = 0.36, stretch = 1) {
     const mat = new THREE.MeshBasicMaterial({
       map: this.glowTex, color, transparent: true, opacity: 1.0,
       blending: THREE.AdditiveBlending, depthWrite: false,
     });
     const m = new THREE.Mesh(this.geo.dust, mat);
     m.position.copy(position);
-    m.scale.set(size * 2 * stretch, size * 2, 1);
+    m.scale.set(size * 2.2 * stretch, size * 2.2, 1);
     m.quaternion.copy(this.camera.quaternion);
     this.scene.add(m);
     this.items.push({ mesh: m, mat, shared: true, life, age: 0, kind: "glow", size, stretch });
@@ -59,33 +58,34 @@ export class VfxManager {
   addHitSpark(position, color) {
     const white = new THREE.Color(0xffffff);
     const base = new THREE.Color(color);
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 22; i++) {
       const col = i % 3 === 0 ? white : base;
       const mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 1, blending: THREE.AdditiveBlending });
       const m = new THREE.Mesh(i % 4 === 0 ? this.geo.shard : this.geo.spark, mat);
       m.position.copy(position);
       const a = Math.random() * Math.PI * 2;
-      const sp = 5 + Math.random() * 9;
+      const sp = 6 + Math.random() * 11;
       this.scene.add(m);
       this.items.push({
         mesh: m, mat, shared: true,
-        vel: new THREE.Vector3(Math.cos(a) * sp, 2 + Math.random() * 5, Math.sin(a) * sp),
-        life: 0.48 + Math.random() * 0.22, age: 0, kind: "spark",
+        vel: new THREE.Vector3(Math.cos(a) * sp, 2.5 + Math.random() * 6, Math.sin(a) * sp),
+        life: 0.5 + Math.random() * 0.25, age: 0, kind: "spark",
       });
     }
-    this.addGlow(position, color, 1.45, 0.28);
+    this.addGlow(position, color, 1.7, 0.3);
+    this.addGlow(position, white, 0.9, 0.18);
   }
 
   addImpact(position, color, strength = 1) {
     this.addHitSpark(position, color);
-    this.addShockwave(position, color, strength > 1.3);
-    this.addShake(0.12 * strength);
-    if (strength > 1.1) this.addGlow(position, color, 1.8 * strength, 0.22);
+    this.addShockwave(position, color, strength > 1.15);
+    this.addShake(0.16 * strength);
+    this.addGlow(position, color, 2.0 * strength, 0.26);
   }
 
   addDust(position) {
-    for (let i = 0; i < 11; i++) {
-      const mat = new THREE.MeshBasicMaterial({ color: 0xb9b3a8, transparent: true, opacity: 0.55, depthWrite: false });
+    for (let i = 0; i < 14; i++) {
+      const mat = new THREE.MeshBasicMaterial({ color: 0xb9b3a8, transparent: true, opacity: 0.6, depthWrite: false });
       const m = new THREE.Mesh(this.geo.dust, mat);
       m.position.copy(position);
       m.position.y = 0.1;
@@ -94,8 +94,8 @@ export class VfxManager {
       const a = Math.random() * Math.PI * 2;
       this.items.push({
         mesh: m, mat, shared: true,
-        vel: new THREE.Vector3(Math.cos(a) * 2.2, 0.4, Math.sin(a) * 2.2),
-        life: 0.65, age: 0, kind: "dust",
+        vel: new THREE.Vector3(Math.cos(a) * 2.6, 0.5, Math.sin(a) * 2.6),
+        life: 0.75, age: 0, kind: "dust",
       });
     }
   }
@@ -103,7 +103,7 @@ export class VfxManager {
   addShockwave(position, color, big = false) {
     for (const inner of [false, true]) {
       const mat = new THREE.MeshBasicMaterial({
-        color, transparent: true, opacity: inner ? 0.9 : 0.75, side: THREE.DoubleSide,
+        color, transparent: true, opacity: inner ? 0.95 : 0.8, side: THREE.DoubleSide,
         blending: THREE.AdditiveBlending, depthWrite: false,
       });
       const m = new THREE.Mesh(inner ? this.geo.ringInner : this.geo.ring, mat);
@@ -111,15 +111,15 @@ export class VfxManager {
       m.rotation.x = -Math.PI / 2;
       this.scene.add(m);
       this.items.push({
-        mesh: m, mat, shared: true, life: big ? 0.65 : 0.38, age: 0, kind: "ring",
-        big, inner, spin: (Math.random() > 0.5 ? 1 : -1) * 0.6,
+        mesh: m, mat, shared: true, life: big ? 0.75 : 0.42, age: 0, kind: "ring",
+        big, inner, spin: (Math.random() > 0.5 ? 1 : -1) * 0.85,
       });
     }
   }
 
   addDebris(position, color) {
-    for (let i = 0; i < 10; i++) {
-      const mat = new THREE.MeshStandardMaterial({ color, flatShading: true });
+    for (let i = 0; i < 14; i++) {
+      const mat = new THREE.MeshStandardMaterial({ color, flatShading: true, emissive: color, emissiveIntensity: 0.25 });
       const m = new THREE.Mesh(this.geo.debris, mat);
       m.position.copy(position);
       m.castShadow = true;
@@ -127,8 +127,8 @@ export class VfxManager {
       const a = Math.random() * Math.PI * 2;
       this.items.push({
         mesh: m, mat, shared: true,
-        vel: new THREE.Vector3(Math.cos(a) * 4, 4 + Math.random() * 4, Math.sin(a) * 4),
-        life: 0.9, age: 0, kind: "debris",
+        vel: new THREE.Vector3(Math.cos(a) * 5, 5 + Math.random() * 5, Math.sin(a) * 5),
+        life: 1.0, age: 0, kind: "debris",
       });
     }
   }
@@ -150,7 +150,7 @@ export class VfxManager {
     x.fill();
     x.restore();
     const g2 = x.createRadialGradient(64, 52, 2, 64, 64, 48);
-    g2.addColorStop(0, "rgba(255,255,255,0.85)");
+    g2.addColorStop(0, "rgba(255,255,255,0.9)");
     g2.addColorStop(1, "rgba(255,255,255,0)");
     x.fillStyle = g2;
     x.beginPath();
@@ -175,125 +175,112 @@ export class VfxManager {
     const tex = this.dashTex;
     const mat = new THREE.MeshBasicMaterial(
       tex
-        ? { map: tex, transparent: true, opacity: 0.9, depthWrite: false }
-        : { color, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false }
+        ? { map: tex, transparent: true, opacity: 0.95, depthWrite: false }
+        : { color, transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending, depthWrite: false }
     );
     const m = new THREE.Mesh(this.geo.dust, mat);
     m.position.copy(position); m.position.y = 1.6;
-    m.scale.set(1.7, 3.1, 1);
+    m.scale.set(2.0, 3.4, 1);
     m.lookAt(this.camera.position.x, m.position.y, this.camera.position.z);
     this.scene.add(m);
-    this.items.push({ mesh: m, mat, shared: true, life: tex ? 0.36 : 0.3, age: 0, kind: "trail", op: tex ? 0.9 : 0.55 });
+    this.items.push({ mesh: m, mat, shared: true, life: tex ? 0.4 : 0.34, age: 0, kind: "trail", op: tex ? 0.95 : 0.65 });
+    this.addGlow(position.clone().setY(1.4), color, 1.4, 0.2);
 
-    if (Math.random() < 0.55) {
+    if (Math.random() < 0.7) {
       const sparkColor = tex && this.dashStyle ? this.dashStyle.b : color;
-      const smat = new THREE.MeshBasicMaterial({ color: sparkColor, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending });
+      const smat = new THREE.MeshBasicMaterial({ color: sparkColor, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending });
       const s = new THREE.Mesh(this.geo.spark, smat);
       s.position.copy(position);
-      s.position.x += (Math.random() - 0.5) * 1.2;
-      s.position.z += (Math.random() - 0.5) * 1.2;
-      s.position.y = 0.6 + Math.random() * 1.6;
-      s.scale.setScalar(0.7);
+      s.position.x += (Math.random() - 0.5) * 1.4;
+      s.position.z += (Math.random() - 0.5) * 1.4;
+      s.position.y = 0.6 + Math.random() * 1.8;
+      s.scale.setScalar(0.85);
       this.scene.add(s);
       this.items.push({
         mesh: s, mat: smat, shared: true,
-        vel: new THREE.Vector3((Math.random() - 0.5) * 3, 1.5 + Math.random() * 2, (Math.random() - 0.5) * 3),
-        life: 0.35, age: 0, kind: "spark",
+        vel: new THREE.Vector3((Math.random() - 0.5) * 4, 2 + Math.random() * 2, (Math.random() - 0.5) * 4),
+        life: 0.4, age: 0, kind: "spark",
       });
     }
   }
 
   addEmoteBurst(position, color) {
     this.addShockwave(position, color, false);
-    this.addGlow(position.clone().setY(position.y + 1.6), color, 1.6, 0.32);
+    this.addGlow(position.clone().setY(position.y + 1.6), color, 2.0, 0.36);
   }
 
   addUltimateBurst(position, color) {
-    this.addGlow(position.clone().setY(position.y + 1.2), color, 6.2, 0.62);
-    this.addGlow(position.clone().setY(position.y + 0.4), new THREE.Color(0xffffff), 3.2, 0.28);
+    this.addGlow(position.clone().setY(position.y + 1.2), color, 7.5, 0.7);
+    this.addGlow(position.clone().setY(position.y + 0.4), new THREE.Color(0xffffff), 4.0, 0.32);
     this.addShockwave(position, color, true);
-    const mat2 = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.6, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+    const mat2 = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
     const r2 = new THREE.Mesh(this.geo.ring, mat2);
     r2.position.copy(position); r2.position.y = 0.14; r2.rotation.x = -Math.PI / 2;
     this.scene.add(r2);
-    this.items.push({ mesh: r2, mat: mat2, shared: true, life: 0.95, age: -0.12, kind: "ring", big: true, spin: -0.8 });
-    const pmat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false });
-    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 4.0, 20, 20, 1, true), pmat);
-    pillar.position.copy(position); pillar.position.y = 10;
+    this.items.push({ mesh: r2, mat: mat2, shared: true, life: 1.05, age: -0.12, kind: "ring", big: true, spin: -1.0 });
+    const pmat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false });
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 4.6, 24, 24, 1, true), pmat);
+    pillar.position.copy(position); pillar.position.y = 12;
     this.scene.add(pillar);
-    this.items.push({ mesh: pillar, mat: pmat, shared: false, life: 0.85, age: 0, kind: "pillar" });
-    const fmat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
-    const flash = new THREE.Mesh(new THREE.SphereGeometry(2.4, 16, 12), fmat);
+    this.items.push({ mesh: pillar, mat: pmat, shared: false, life: 0.95, age: 0, kind: "pillar" });
+    const fmat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1.0, blending: THREE.AdditiveBlending, depthWrite: false });
+    const flash = new THREE.Mesh(new THREE.SphereGeometry(3.0, 18, 14), fmat);
     flash.position.copy(position);
     this.scene.add(flash);
-    this.items.push({ mesh: flash, mat: fmat, shared: false, life: 0.28, age: 0, kind: "flash" });
-    for (let i = 0; i < 36; i++) {
+    this.items.push({ mesh: flash, mat: fmat, shared: false, life: 0.32, age: 0, kind: "flash" });
+    for (let i = 0; i < 48; i++) {
       const mat = new THREE.MeshBasicMaterial({ color: i % 4 === 0 ? 0xffffff : color, transparent: true, opacity: 1, blending: THREE.AdditiveBlending });
       const m = new THREE.Mesh(this.geo.spark, mat);
       m.position.copy(position);
       const a = Math.random() * Math.PI * 2;
-      const sp = 9 + Math.random() * 12;
+      const sp = 11 + Math.random() * 14;
       this.scene.add(m);
       this.items.push({
         mesh: m, mat, shared: true,
-        vel: new THREE.Vector3(Math.cos(a) * sp, 5 + Math.random() * 9, Math.sin(a) * sp),
-        life: 0.75, age: 0, kind: "spark",
+        vel: new THREE.Vector3(Math.cos(a) * sp, 6 + Math.random() * 11, Math.sin(a) * sp),
+        life: 0.85, age: 0, kind: "spark",
       });
     }
-    this.addShake(1.25);
+    this.addShake(1.45);
   }
 
   addDefeatBurst(position, color, style = {}) {
     const tint = style.tint ? new THREE.Color(style.tint) : color;
-    this.addGlow(position.clone().setY(position.y + 1.5), tint, 6, 0.8);
+    this.addGlow(position.clone().setY(position.y + 1.5), tint, 7, 0.9);
     this.addShockwave(position.clone().setY(0.2), tint, true);
-    this.addShake(style.shake ?? 0.6);
-
+    this.addShake(style.shake ?? 0.75);
     const kind = style.particle || "sparks";
-    const count = kind === "debris" ? 18 : kind === "smoke" ? 9 : 14;
+    const count = kind === "debris" ? 22 : kind === "smoke" ? 12 : 18;
     for (let i = 0; i < count; i++) {
       const mat = new THREE.MeshBasicMaterial({
         color: i % 3 === 0 ? 0xffffff : tint, transparent: true, opacity: 1, blending: THREE.AdditiveBlending,
       });
       const mesh = new THREE.Mesh(kind === "debris" ? this.geo.debris : this.geo.spark, mat);
       mesh.position.copy(position).setY(position.y + 1.1);
-      mesh.scale.setScalar(kind === "debris" ? 1.2 : 1.6);
+      mesh.scale.setScalar(kind === "debris" ? 1.3 : 1.8);
       const a = (i / count) * Math.PI * 2 + Math.random() * 0.4;
-      const sp = (kind === "streaks" ? 13 : kind === "smoke" ? 2.6 : 7.5) + Math.random() * 5;
+      const sp = (kind === "streaks" ? 15 : kind === "smoke" ? 3 : 9) + Math.random() * 6;
       this.scene.add(mesh);
       this.items.push({
         mesh, mat, shared: true,
         kind: kind === "debris" ? "debris" : "spark",
-        vel: new THREE.Vector3(Math.cos(a) * sp, kind === "smoke" ? 3 + Math.random() * 2 : 6 + Math.random() * 7, Math.sin(a) * sp),
-        life: 0.8 + Math.random() * 0.5, age: 0,
+        vel: new THREE.Vector3(Math.cos(a) * sp, kind === "smoke" ? 3 + Math.random() * 2 : 7 + Math.random() * 8, Math.sin(a) * sp),
+        life: 0.9 + Math.random() * 0.5, age: 0,
       });
-    }
-
-    if (kind === "shards" || kind === "freeze") {
-      const mat = new THREE.MeshBasicMaterial({
-        color: tint, transparent: true, opacity: 0.5, side: THREE.DoubleSide,
-        blending: THREE.AdditiveBlending, depthWrite: false,
-      });
-      const disc = new THREE.Mesh(this.geo.ring, mat);
-      disc.rotation.x = -Math.PI / 2;
-      disc.position.copy(position).setY(0.12);
-      disc.scale.setScalar(3.4);
-      this.scene.add(disc);
-      this.items.push({ mesh: disc, mat, shared: true, kind: "ring", life: 1.6, age: 0, big: true });
     }
   }
 
   addRespawnRing(position, color) {
-    this.addGlow(position.clone().setY(position.y + 1.4), color, 3.2, 0.6);
+    this.addGlow(position.clone().setY(position.y + 1.4), color, 3.8, 0.65);
     const mat = new THREE.MeshBasicMaterial({
-      color, transparent: true, opacity: 0.8, side: THREE.DoubleSide,
+      color, transparent: true, opacity: 0.9, side: THREE.DoubleSide,
       blending: THREE.AdditiveBlending, depthWrite: false,
     });
     const ring = new THREE.Mesh(this.geo.ring, mat);
     ring.rotation.x = -Math.PI / 2;
     ring.position.copy(position).setY(0.12);
     this.scene.add(ring);
-    this.items.push({ mesh: ring, mat, shared: true, kind: "ring", life: 0.9, age: 0, inner: true });
+    this.items.push({ mesh: ring, mat, shared: true, kind: "ring", life: 1.0, age: 0, inner: true });
   }
 
   update(dt) {
@@ -315,38 +302,38 @@ export class VfxManager {
         it.mesh.position.z += it.vel.z * dt;
       }
       if (it.kind === "spark" || it.kind === "debris") {
-        it.vel.y -= 18 * dt;
+        it.vel.y -= 20 * dt;
         if (it.mesh.position.y < 0.2) { it.mesh.position.y = 0.2; it.vel.y *= -0.4; it.vel.x *= 0.7; it.vel.z *= 0.7; }
         it.mat.opacity = 1 - t;
-        it.mesh.rotation.x += dt * 9; it.mesh.rotation.y += dt * 7;
+        it.mesh.rotation.x += dt * 10; it.mesh.rotation.y += dt * 8;
         if (it.kind === "spark") it.mesh.scale.setScalar(1 - t * 0.7);
       } else if (it.kind === "dust") {
-        it.mat.opacity = 0.55 * (1 - t);
-        it.mesh.scale.setScalar(1 + t * 2.4);
+        it.mat.opacity = 0.6 * (1 - t);
+        it.mesh.scale.setScalar(1 + t * 2.8);
       } else if (it.kind === "ring") {
         const base = it.inner ? 0.8 : (it.big ? 1 : 0.6);
-        const grow = it.inner ? 3.2 : (it.big ? 16 : 6.5);
+        const grow = it.inner ? 3.6 : (it.big ? 18 : 7.5);
         const s = base + t * grow;
         it.mesh.scale.set(s, s, s);
         it.mesh.rotation.z += dt * (it.spin || 0);
-        it.mat.opacity = (it.big ? 0.7 : it.inner ? 0.9 : 0.75) * (1 - t);
+        it.mat.opacity = (it.big ? 0.75 : it.inner ? 0.95 : 0.8) * (1 - t);
       } else if (it.kind === "pillar") {
-        const s = 0.6 + t * 1.6;
-        it.mesh.scale.set(s, 1 - t * 0.3, s);
-        it.mat.opacity = 0.5 * (1 - t);
+        const s = 0.7 + t * 1.8;
+        it.mesh.scale.set(s, 1 - t * 0.25, s);
+        it.mat.opacity = 0.6 * (1 - t);
       } else if (it.kind === "flash") {
-        const s = 1 + t * 5;
+        const s = 1 + t * 6;
         it.mesh.scale.set(s, s, s);
-        it.mat.opacity = 0.95 * (1 - t);
+        it.mat.opacity = 1.0 * (1 - t);
       } else if (it.kind === "glow") {
         it.mesh.quaternion.copy(this.camera.quaternion);
-        const s = 1 + t * 1.1;
-        it.mesh.scale.set(it.size * 2 * it.stretch * s, it.size * 2 * s, 1);
+        const s = 1 + t * 1.25;
+        it.mesh.scale.set(it.size * 2.2 * it.stretch * s, it.size * 2.2 * s, 1);
         it.mat.opacity = 1.0 * (1 - t) * (1 - t);
       } else if (it.kind === "trail") {
         it.mat.opacity = (it.op ?? 0.5) * (1 - t);
-        const s = 1 - t * 0.45;
-        it.mesh.scale.set(1.7 * s, 3.1 * s, 1);
+        const s = 1 - t * 0.4;
+        it.mesh.scale.set(2.0 * s, 3.4 * s, 1);
       }
     }
   }
@@ -354,9 +341,9 @@ export class VfxManager {
   applyShake() {
     if (this.shake > 0.001) {
       const o = this.shake;
-      this.camera.position.x += (Math.random() - 0.5) * o;
-      this.camera.position.y += (Math.random() - 0.5) * o;
-      this.shake *= 0.84;
+      this.camera.position.x += (Math.random() - 0.5) * o * 1.15;
+      this.camera.position.y += (Math.random() - 0.5) * o * 0.9;
+      this.shake *= 0.82;
     } else this.shake = 0;
   }
 
