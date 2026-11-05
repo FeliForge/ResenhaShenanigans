@@ -4,10 +4,41 @@ import { fileURLToPath } from "url";
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(dir, "..");
+const SHA = "d599d4df6223";
 
-const URLS = [
-  "https://cdn.jsdelivr.net/gh/FeliForge/ResenhaShenanigans@d599d4df6223/src/components/game/GameCanvas.jsx",
-  "https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/d599d4df6223/src/components/game/GameCanvas.jsx",
+const FILES = [
+  {
+    rel: "src/components/game/GameCanvas.jsx",
+    urls: [
+      `https://cdn.jsdelivr.net/gh/FeliForge/ResenhaShenanigans@${SHA}/src/components/game/GameCanvas.jsx`,
+      `https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/${SHA}/src/components/game/GameCanvas.jsx`,
+    ],
+    test: (t) => t.includes("buildCity") && t.includes("export default") && t.length > 20000 && !t.includes("__CONTINUE__"),
+  },
+  {
+    rel: "src/components/game/GameApp.jsx",
+    urls: [
+      `https://cdn.jsdelivr.net/gh/FeliForge/ResenhaShenanigans@${SHA}/src/components/game/GameApp.jsx`,
+      `https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/${SHA}/src/components/game/GameApp.jsx`,
+    ],
+    test: (t) => t.includes("export default function GameApp") && t.length > 8000 && !t.includes("PLACEHOLDER"),
+  },
+  {
+    rel: "src/lib/gameTexture.js",
+    urls: [
+      `https://cdn.jsdelivr.net/gh/FeliForge/ResenhaShenanigans@${SHA}/src/lib/gameTexture.js`,
+      `https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/${SHA}/src/lib/gameTexture.js`,
+    ],
+    test: (t) => t.includes("makeCharacterTexture") && t.includes("makeBuildingTextures") && t.length > 8000 && !t.includes("return null"),
+  },
+  {
+    rel: "src/components/game/StartMenu.jsx",
+    urls: [
+      `https://cdn.jsdelivr.net/gh/FeliForge/ResenhaShenanigans@${SHA}/src/components/game/StartMenu.jsx`,
+      `https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/${SHA}/src/components/game/StartMenu.jsx`,
+    ],
+    test: (t) => t.includes("export default function StartMenu") && t.length > 5000,
+  },
 ];
 
 async function fetchText(urls) {
@@ -16,8 +47,8 @@ async function fetchText(urls) {
       const res = await fetch(url, { redirect: "follow" });
       if (!res.ok) continue;
       const text = await res.text();
-      if (text.includes("buildCity") && text.includes("export default") && text.length > 20000) {
-        console.log("[prebuild] OK fetched", text.length, "from", url.slice(0, 60));
+      if (text && text.length > 1000) {
+        console.log("[prebuild] fetched", text.length, url.slice(0, 70));
         return text;
       }
     } catch (e) {
@@ -27,27 +58,35 @@ async function fetchText(urls) {
   return null;
 }
 
-async function main() {
-  const out = path.join(root, "src/components/game/GameCanvas.jsx");
+async function ensureFile(entry) {
+  const out = path.join(root, entry.rel);
   let cur = fs.existsSync(out) ? fs.readFileSync(out, "utf8") : "";
-  const good =
-    cur.includes("buildCity") &&
-    cur.includes("export default") &&
-    cur.length > 20000 &&
-    !cur.includes("__CONTINUE__");
-  if (good) {
-    console.log("[prebuild] GameCanvas already complete", cur.length);
-    return;
+  if (entry.test(cur)) {
+    console.log("[prebuild] OK keep", entry.rel, cur.length);
+    return true;
   }
-  const text = await fetchText(URLS);
-  if (text) {
+  const text = await fetchText(entry.urls);
+  if (text && entry.test(text)) {
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, text);
-    console.log("[prebuild] restored GameCanvas", text.length);
-  } else {
-    console.error("[prebuild] FATAL: could not restore GameCanvas");
+    console.log("[prebuild] restored", entry.rel, text.length);
+    return true;
+  }
+  console.error("[prebuild] FAIL", entry.rel);
+  return false;
+}
+
+async function main() {
+  let ok = true;
+  for (const entry of FILES) {
+    const r = await ensureFile(entry);
+    if (!r) ok = false;
+  }
+  if (!ok) {
+    console.error("[prebuild] FATAL: could not restore one or more core files");
     process.exit(1);
   }
+  console.log("[prebuild] OK — core game files restored from", SHA);
 }
 
 main().catch((e) => {
