@@ -7,15 +7,15 @@ import * as THREE from "three";
 
 function makeGlowTexture() {
   const c = document.createElement("canvas");
-  c.width = 128; c.height = 128;
+  c.width = 256; c.height = 256;
   const x = c.getContext("2d");
-  const g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+  const g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
   g.addColorStop(0, "rgba(255,255,255,1)");
-  g.addColorStop(0.35, "rgba(255,255,255,0.55)");
-  g.addColorStop(0.7, "rgba(255,255,255,0.15)");
+  g.addColorStop(0.25, "rgba(255,255,255,0.7)");
+  g.addColorStop(0.55, "rgba(255,255,255,0.25)");
   g.addColorStop(1, "rgba(255,255,255,0)");
   x.fillStyle = g;
-  x.fillRect(0, 0, 128, 128);
+  x.fillRect(0, 0, 256, 256);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
@@ -35,18 +35,17 @@ export class VfxManager {
       spark: new THREE.OctahedronGeometry(0.18, 0),
       shard: new THREE.TetrahedronGeometry(0.22, 0),
       dust: new THREE.PlaneGeometry(0.5, 0.5),
-      ring: new THREE.RingGeometry(0.4, 0.7, 32),
-      ringInner: new THREE.RingGeometry(0.18, 0.34, 24),
+      ring: new THREE.RingGeometry(0.4, 0.7, 48),
+      ringInner: new THREE.RingGeometry(0.18, 0.34, 32),
       debris: new THREE.BoxGeometry(0.25, 0.25, 0.25),
     };
   }
 
-  addShake(v) { this.shake = Math.min(1.4, this.shake + v); }
+  addShake(v) { this.shake = Math.min(1.8, this.shake + v); }
 
-  // Brillo aditivo con textura radial: la base de casi todo el "jugo" visual.
-  addGlow(position, color, size = 2, life = 0.28, stretch = 1) {
+  addGlow(position, color, size = 2.4, life = 0.32, stretch = 1) {
     const mat = new THREE.MeshBasicMaterial({
-      map: this.glowTex, color, transparent: true, opacity: 0.95,
+      map: this.glowTex, color, transparent: true, opacity: 1.0,
       blending: THREE.AdditiveBlending, depthWrite: false,
     });
     const m = new THREE.Mesh(this.geo.dust, mat);
@@ -60,32 +59,32 @@ export class VfxManager {
   addHitSpark(position, color) {
     const white = new THREE.Color(0xffffff);
     const base = new THREE.Color(color);
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 16; i++) {
       const col = i % 3 === 0 ? white : base;
       const mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 1, blending: THREE.AdditiveBlending });
       const m = new THREE.Mesh(i % 4 === 0 ? this.geo.shard : this.geo.spark, mat);
       m.position.copy(position);
       const a = Math.random() * Math.PI * 2;
-      const sp = 4 + Math.random() * 7;
+      const sp = 5 + Math.random() * 9;
       this.scene.add(m);
       this.items.push({
         mesh: m, mat, shared: true,
         vel: new THREE.Vector3(Math.cos(a) * sp, 2 + Math.random() * 5, Math.sin(a) * sp),
-        life: 0.42 + Math.random() * 0.18, age: 0, kind: "spark",
+        life: 0.48 + Math.random() * 0.22, age: 0, kind: "spark",
       });
     }
-    this.addGlow(position, color, 1.15, 0.24);
+    this.addGlow(position, color, 1.45, 0.28);
   }
 
-  // Golpe completo: brillo, anillo, chispas y sacudida proporcional.
   addImpact(position, color, strength = 1) {
     this.addHitSpark(position, color);
     this.addShockwave(position, color, strength > 1.3);
-    this.addShake(0.08 * strength);
+    this.addShake(0.12 * strength);
+    if (strength > 1.1) this.addGlow(position, color, 1.8 * strength, 0.22);
   }
 
   addDust(position) {
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 11; i++) {
       const mat = new THREE.MeshBasicMaterial({ color: 0xb9b3a8, transparent: true, opacity: 0.55, depthWrite: false });
       const m = new THREE.Mesh(this.geo.dust, mat);
       m.position.copy(position);
@@ -102,7 +101,6 @@ export class VfxManager {
   }
 
   addShockwave(position, color, big = false) {
-    // anillo exterior + núcleo brillante
     for (const inner of [false, true]) {
       const mat = new THREE.MeshBasicMaterial({
         color, transparent: true, opacity: inner ? 0.9 : 0.75, side: THREE.DoubleSide,
@@ -120,7 +118,7 @@ export class VfxManager {
   }
 
   addDebris(position, color) {
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 10; i++) {
       const mat = new THREE.MeshStandardMaterial({ color, flatShading: true });
       const m = new THREE.Mesh(this.geo.debris, mat);
       m.position.copy(position);
@@ -135,7 +133,6 @@ export class VfxManager {
     }
   }
 
-  // Estela con los dos colores del efecto en degradado y su emoji encima.
   dashTexture(style) {
     const key = `${style.a}|${style.b}|${style.emoji}`;
     if (this.dashCache.has(key)) return this.dashCache.get(key);
@@ -152,7 +149,6 @@ export class VfxManager {
     x.arc(64, 64, 54, 0, Math.PI * 2);
     x.fill();
     x.restore();
-    // destello interior para dar volumen
     const g2 = x.createRadialGradient(64, 52, 2, 64, 64, 48);
     g2.addColorStop(0, "rgba(255,255,255,0.85)");
     g2.addColorStop(1, "rgba(255,255,255,0)");
@@ -175,7 +171,6 @@ export class VfxManager {
     this.dashTex = style ? this.dashTexture(style) : null;
   }
 
-  // Estela del dash: fantasma texturizado + chispas del color secundario.
   addDashTrail(position, color) {
     const tex = this.dashTex;
     const mat = new THREE.MeshBasicMaterial(
@@ -190,7 +185,6 @@ export class VfxManager {
     this.scene.add(m);
     this.items.push({ mesh: m, mat, shared: true, life: tex ? 0.36 : 0.3, age: 0, kind: "trail", op: tex ? 0.9 : 0.55 });
 
-    // pequeña chispa de velocidad
     if (Math.random() < 0.55) {
       const sparkColor = tex && this.dashStyle ? this.dashStyle.b : color;
       const smat = new THREE.MeshBasicMaterial({ color: sparkColor, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending });
@@ -209,40 +203,36 @@ export class VfxManager {
     }
   }
 
-  // Emote: destello corto alrededor del personaje para acompañar el movimiento.
   addEmoteBurst(position, color) {
     this.addShockwave(position, color, false);
     this.addGlow(position.clone().setY(position.y + 1.6), color, 1.6, 0.32);
   }
 
-  // Estallido épico para ultimates: brillo, ondas, pilar de luz, flash y chispas.
   addUltimateBurst(position, color) {
-    this.addGlow(position.clone().setY(position.y + 1.2), color, 4.5, 0.5);
+    this.addGlow(position.clone().setY(position.y + 1.2), color, 6.2, 0.62);
+    this.addGlow(position.clone().setY(position.y + 0.4), new THREE.Color(0xffffff), 3.2, 0.28);
     this.addShockwave(position, color, true);
     const mat2 = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.6, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
     const r2 = new THREE.Mesh(this.geo.ring, mat2);
     r2.position.copy(position); r2.position.y = 0.14; r2.rotation.x = -Math.PI / 2;
     this.scene.add(r2);
     this.items.push({ mesh: r2, mat: mat2, shared: true, life: 0.95, age: -0.12, kind: "ring", big: true, spin: -0.8 });
-    // pilar de luz
     const pmat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false });
-    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 3.2, 16, 18, 1, true), pmat);
-    pillar.position.copy(position); pillar.position.y = 8;
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 4.0, 20, 20, 1, true), pmat);
+    pillar.position.copy(position); pillar.position.y = 10;
     this.scene.add(pillar);
-    this.items.push({ mesh: pillar, mat: pmat, shared: false, life: 0.7, age: 0, kind: "pillar" });
-    // flash esférico blanco
-    const fmat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
-    const flash = new THREE.Mesh(new THREE.SphereGeometry(2, 16, 12), fmat);
+    this.items.push({ mesh: pillar, mat: pmat, shared: false, life: 0.85, age: 0, kind: "pillar" });
+    const fmat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
+    const flash = new THREE.Mesh(new THREE.SphereGeometry(2.4, 16, 12), fmat);
     flash.position.copy(position);
     this.scene.add(flash);
-    this.items.push({ mesh: flash, mat: fmat, shared: false, life: 0.26, age: 0, kind: "flash" });
-    // lluvia de chispas
-    for (let i = 0; i < 26; i++) {
+    this.items.push({ mesh: flash, mat: fmat, shared: false, life: 0.28, age: 0, kind: "flash" });
+    for (let i = 0; i < 36; i++) {
       const mat = new THREE.MeshBasicMaterial({ color: i % 4 === 0 ? 0xffffff : color, transparent: true, opacity: 1, blending: THREE.AdditiveBlending });
       const m = new THREE.Mesh(this.geo.spark, mat);
       m.position.copy(position);
       const a = Math.random() * Math.PI * 2;
-      const sp = 7 + Math.random() * 10;
+      const sp = 9 + Math.random() * 12;
       this.scene.add(m);
       this.items.push({
         mesh: m, mat, shared: true,
@@ -250,10 +240,9 @@ export class VfxManager {
         life: 0.75, age: 0, kind: "spark",
       });
     }
-    this.addShake(1.0);
+    this.addShake(1.25);
   }
 
-  // Derrota cinematográfica: cambia la lluvia de partículas según el estilo.
   addDefeatBurst(position, color, style = {}) {
     const tint = style.tint ? new THREE.Color(style.tint) : color;
     this.addGlow(position.clone().setY(position.y + 1.5), tint, 6, 0.8);
@@ -294,7 +283,6 @@ export class VfxManager {
     }
   }
 
-  // Aro de protección al reaparecer.
   addRespawnRing(position, color) {
     this.addGlow(position.clone().setY(position.y + 1.4), color, 3.2, 0.6);
     const mat = new THREE.MeshBasicMaterial({
@@ -349,12 +337,12 @@ export class VfxManager {
       } else if (it.kind === "flash") {
         const s = 1 + t * 5;
         it.mesh.scale.set(s, s, s);
-        it.mat.opacity = 0.85 * (1 - t);
+        it.mat.opacity = 0.95 * (1 - t);
       } else if (it.kind === "glow") {
         it.mesh.quaternion.copy(this.camera.quaternion);
         const s = 1 + t * 1.1;
         it.mesh.scale.set(it.size * 2 * it.stretch * s, it.size * 2 * s, 1);
-        it.mat.opacity = 0.95 * (1 - t) * (1 - t);
+        it.mat.opacity = 1.0 * (1 - t) * (1 - t);
       } else if (it.kind === "trail") {
         it.mat.opacity = (it.op ?? 0.5) * (1 - t);
         const s = 1 - t * 0.45;
