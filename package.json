@@ -12,8 +12,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prebuild": "node scripts/prebuild.mjs",
-    "postinstall": "node scripts/prebuild.mjs || true"
+    "prebuild": "node scripts/prebuild.mjs"
   },
   "overrides": {
     "rolldown": "1.2.1"
