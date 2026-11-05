@@ -1,1 +1,28 @@
-// PLACEHOLDER_WILL_FAIL
+// @ts-nocheck
+import { forwardRef, useEffect, useImperativeHandle } from "react";
+
+/** Boot stub — scripts/prebuild.mjs replaces this with the full GameCanvas at build time. */
+const GameCanvas = forwardRef(function GameCanvas(_props, ref) {
+  useImperativeHandle(ref, () => ({
+    triggerMove() {},
+    triggerDash() {},
+    triggerJump() {},
+    setMobileMove() {},
+    showQuickChat() {},
+    showEmote() {},
+  }));
+  useEffect(() => {
+    console.warn("[GameCanvas] stub — full canvas missing from build");
+  }, []);
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#0a0a14] text-white">
+      <p className="text-lg font-bold text-[#ff9620]">Cargando combate…</p>
+      <p className="max-w-sm text-center text-sm text-white/50">
+        El menú debería funcionar. Si el combate no carga, revisa el log de prebuild en Vercel.
+      </p>
+    </div>
+  );
+});
+
+export default GameCanvas;
+export const BILLBOARD_COUNT = 4;
