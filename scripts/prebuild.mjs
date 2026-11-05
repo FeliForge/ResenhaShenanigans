@@ -5,6 +5,35 @@ import { fileURLToPath } from "url";
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(dir, "..");
 
+const GAMETEXTURE_URLS = [
+  "https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/d599d4df6223/src/lib/gameTexture.js",
+  "https://cdn.jsdelivr.net/gh/FeliForge/ResenhaShenanigans@d599d4df6223/src/lib/gameTexture.js",
+];
+
+async function restoreGameTexture() {
+  try {
+    const current = path.join(root, "src/lib/gameTexture.js");
+    let need = true;
+    if (fs.existsSync(current)) {
+      const t = fs.readFileSync(current, "utf8");
+      if (t.includes("piernas con degradado") && t.includes("makeBuildingTextures") && t.length > 8000) {
+        need = false;
+        console.log("[prebuild] gameTexture OK (original characters)");
+      }
+    }
+    if (need) {
+      const text = await fetchText(GAMETEXTURE_URLS);
+      if (text.includes("makeCharacterTexture") && text.includes("piernas con degradado")) {
+        fs.mkdirSync(path.dirname(current), { recursive: true });
+        fs.writeFileSync(current, text);
+        console.log("[prebuild] restored original gameTexture", text.length);
+      }
+    }
+  } catch (e) {
+    console.warn("[prebuild] gameTexture restore failed", e?.message || e);
+  }
+}
+
 const GAMEAPP_URLS = [
   "https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/95d297a36528559eb00bdf9db065d5ee6a52f903/src/components/game/GameApp.jsx",
   "https://cdn.jsdelivr.net/gh/FeliForge/ResenhaShenanigans@95d297a36528559eb00bdf9db065d5ee6a52f903/src/components/game/GameApp.jsx",
@@ -48,77 +77,58 @@ function injectCinematics(src) {
       'import { SkillSystem } from "@/lib/game/skills";\nimport { CinematicUltimateManager, hasCinematicUlt } from "@/lib/game/cinematics";'
     );
   }
-
   if (!src.includes("new CinematicUltimateManager")) {
     src = src.replace(
       "    function doMove(category) {",
       "    const cinematics = new CinematicUltimateManager({ scene, camera, vfx, skills, game, character, audio });\n\n    function doMove(category) {"
     );
   }
-
-  if (!src.includes("cinematics?.isPlaying") && !src.includes("cinematics.isPlaying")) {
+  if (!src.includes("cinematics?.isPlaying")) {
     src = src.replace(
       "    function doMove(category) {\n      if (game.dead || performance.now() < game.stunUntil) return;",
       "    function doMove(category) {\n      if (game.dead || performance.now() < game.stunUntil || cinematics?.isPlaying) return;"
     );
   }
-
-  // Re-write ultimate path even if old inject exists (fix double cast)
-  if (src.includes("Ultimate cinematográfico único") || src.includes("cinematics.tryStart")) {
-    // Normalize: ensure cinematic ultimates always return (no nova fallthrough)
-    src = src.replace(
-      /if \(category === "ultimate" && hasCinematicUlt\(baseCharId\)\) \{[\s\S]*?\n      \}/,
-      "if (category === \"ultimate\" && hasCinematicUlt(baseCharId)) {\n        try { cinematics.tryStart(baseCharId, origin, dir); } catch (err) { console.warn(\"[cinematic]\", err); }\n        return;\n      }"
-    );
-  } else if (!src.includes("cinematics.tryStart") && !src.includes("cinematics?.tryStart")) {
-    const needles = [
-      "      skills.cast({ ...move, damage: dmg }, { config: cfg, origin, dir, color: character.colors.accent });",
-    ];
+  if (!src.includes("cinematics.tryStart") && !src.includes("cinematics?.tryStart")) {
+    const n = "      skills.cast({ ...move, damage: dmg }, { config: cfg, origin, dir, color: character.colors.accent });";
     const block =
       "      if (category === \"ultimate\" && hasCinematicUlt(baseCharId)) {\n" +
       "        try { cinematics.tryStart(baseCharId, origin, dir); } catch (err) { console.warn(\"[cinematic]\", err); }\n" +
       "        return;\n" +
-      "      }\n" +
-      "      skills.cast({ ...move, damage: dmg }, { config: cfg, origin, dir, color: character.colors.accent });";
-    for (const n of needles) {
-      if (src.includes(n)) {
-        src = src.replace(n, block);
-        break;
-      }
-    }
+      "      }\n" + n;
+    if (src.includes(n)) src = src.replace(n, block);
   }
-
   if (!src.includes("cinematics.update") && !src.includes("cinematics?.update")) {
     const tickNeedle = "      const now = performance.now();\n      const b = bindsRef.current;";
     const tickInject =
       "      const now = performance.now();\n" +
       "      if (cinematics?.isPlaying) {\n" +
       "        cinematics.update(dt);\n" +
-      "        animTex?.tick?.();\n" +
       "        renderer.render(scene, camera);\n" +
       "        return;\n" +
       "      }\n" +
       "      const b = bindsRef.current;";
     if (src.includes(tickNeedle)) src = src.replace(tickNeedle, tickInject);
-    else if (src.includes("      // NPCs"))
-      src = src.replace("      // NPCs", "      if (cinematics?.isPlaying) { cinematics.update(dt); }\n\n      // NPCs");
   }
+  return src;
+}
 
-  if (!src.includes("cinematics?.dispose") && !src.includes("cinematics.dispose")) {
-    src = src.replace("return () => {", "return () => {\n      try { cinematics?.dispose?.(); } catch {}\n");
+function injectRoomMusic(src) {
+  if (src.includes("mp.sendMusic")) return src;
+  src = src.replace(
+    "roomCode, playerName, billboardUrl, dashStyle, emote,",
+    "roomCode, playerName, billboardUrl, dashStyle, emote, musicUrl, onRoomMusic,"
+  );
+  if (src.includes("new MultiplayerManager") && !src.includes("mp.sendMusic")) {
+    src = src.replace(
+      "mp = new MultiplayerManager(roomCode, connId);",
+      "mp = new MultiplayerManager(roomCode, connId);\n      mp.onMusic = (url) => { try { onRoomMusic?.(url); } catch {} };\n      if (musicUrl) { try { mp.sendMusic(musicUrl); } catch {} }"
+    );
   }
-
   return src;
 }
 
 function polishVisuals(src) {
-  src = src.replace("renderer.toneMappingExposure = 1.05;", "renderer.toneMappingExposure = 1.28;");
-  src = src.replace("renderer.toneMappingExposure = 1.35;", "renderer.toneMappingExposure = 1.28;");
-  src = src.replace("renderer.toneMappingExposure = 1.22;", "renderer.toneMappingExposure = 1.28;");
-  src = src.replace("scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0038);", "scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0024);");
-  src = src.replace("scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0022);", "scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0024);");
-  src = src.replace("scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0026);", "scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0024);");
-
   if (!src.includes("cinematicTiming")) {
     src = src.replace(
       'import { CinematicUltimateManager, hasCinematicUlt } from "@/lib/game/cinematics";',
@@ -130,80 +140,6 @@ function polishVisuals(src) {
       'import { SkillSystem } from "@/lib/game/skills";',
       'import { SkillSystem } from "@/lib/game/skills";\nimport "@/lib/game/skillsVisual";'
     );
-  }
-  if (!src.includes("loadAnimatedTexture")) {
-    src = src.replace(
-      'import * as THREE from "three";',
-      'import * as THREE from "three";\nimport { loadAnimatedTexture, createAnimTextureRegistry } from "@/lib/game/animatedTexture";'
-    );
-    src = src.replace(
-      "renderer.shadowMap.enabled = true;",
-      "const animTex = createAnimTextureRegistry();\n    renderer.shadowMap.enabled = true;"
-    );
-  }
-  if (!src.includes("__animBillboard")) {
-    src = src.replace(
-      `function applyBillboard(slot, url) {
-      const board = city.billboards[slot];
-      if (!board || !url || billboardsApplied.get(slot) === url) return;
-      billboardsApplied.set(slot, url);
-      new THREE.TextureLoader().load(url, (tex) => {
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.anisotropy = 4;
-        board.mat.map?.dispose();
-        board.mat.map = tex;
-        board.mat.needsUpdate = true;
-      });
-    }`,
-      `function applyBillboard(slot, url) {
-      const board = city.billboards[slot];
-      if (!board || !url || billboardsApplied.get(slot) === url) return;
-      billboardsApplied.set(slot, url);
-      // __animBillboard
-      const handle = loadAnimatedTexture(url, (tex) => {
-        if (!tex) return;
-        board.mat.map?.dispose();
-        board.mat.map = tex;
-        board.mat.needsUpdate = true;
-      });
-      animTex.add(handle);
-    }`
-    );
-  }
-  if (!src.includes("animTex.tick") && !src.includes("animTex?.tick")) {
-    src = src.replace(
-      "      renderer.render(scene, camera);",
-      "      animTex?.tick?.();\n      renderer.render(scene, camera);"
-    );
-  }
-  if (!src.includes("__animSprite")) {
-    src = src.replace(
-      "const playerMat = new THREE.MeshBasicMaterial({ map: playerTex,",
-      "let playerMat = new THREE.MeshBasicMaterial({ map: playerTex,"
-    );
-    src = src.replace(
-      `if (character.customImage) {
-      playerTex = new THREE.TextureLoader().load(character.customImage);
-      playerTex.colorSpace = THREE.SRGBColorSpace;
-      playerTex.anisotropy = 4;
-    } else {
-      playerTex = makeCharacterTexture(character);
-    }`,
-      `if (character.customImage) {
-      // __animSprite
-      const sprHandle = loadAnimatedTexture(character.customImage, (tex) => {
-        if (!tex) return;
-        if (playerMat) { playerMat.map = tex; playerMat.needsUpdate = true; }
-      });
-      animTex.add(sprHandle);
-      playerTex = sprHandle.texture;
-    } else {
-      playerTex = makeCharacterTexture(character);
-    }`
-    );
-  }
-  if (!src.includes("animTex?.dispose")) {
-    src = src.replace("return () => {", "return () => {\n      try { animTex?.dispose?.(); } catch {}");
   }
   return src;
 }
@@ -229,14 +165,34 @@ function alreadyGood(relPath, checks) {
 }
 
 async function main() {
-  let okApp = alreadyGood("src/components/game/GameApp.jsx", ["export default function GameApp", "showQuests"]);
+  await restoreGameTexture();
+
+  let okApp = alreadyGood("src/components/game/GameApp.jsx", ["export default function GameApp", "RoomMusicPlayer"]);
   let okCanvas = alreadyGood("src/components/game/GameCanvas.jsx", ["buildCity", "export default GameCanvas"]);
 
   if (!okApp) {
     try {
-      let ga = await fetchText(GAMEAPP_URLS);
+      // Prefer repo version if it has RoomMusicPlayer, else good commit + patch
+      let ga = null;
+      try {
+        const local = path.join(root, "src/components/game/GameApp.jsx");
+        if (fs.existsSync(local)) {
+          const t = fs.readFileSync(local, "utf8");
+          if (t.includes("RoomMusicPlayer") && t.length > 5000) ga = t;
+        }
+      } catch {}
+      if (!ga) {
+        ga = await fetchText(GAMEAPP_URLS);
+        // light music wiring if missing
+        if (!ga.includes("RoomMusicPlayer")) {
+          ga = ga.replace(
+            'import { audio } from "@/lib/game/audio";',
+            'import { audio } from "@/lib/game/audio";\nimport RoomMusicPlayer from "@/components/game/RoomMusicPlayer";\nimport { loadRoomMusic, saveRoomMusic } from "@/lib/game/roomMusic";'
+          );
+        }
+      }
       ga = ensureSkillsTargetFix(ga);
-      okApp = writeIfGood("src/components/game/GameApp.jsx", ga, ["export default function GameApp", "showQuests", "ShopPanel"]);
+      okApp = writeIfGood("src/components/game/GameApp.jsx", ga, ["export default function GameApp"]);
     } catch (e) {
       console.error("[prebuild] GameApp failed:", e?.message || e);
     }
@@ -246,6 +202,7 @@ async function main() {
     try {
       let gc = await fetchText(GAMECANVAS_URLS);
       gc = injectCinematics(gc);
+      gc = injectRoomMusic(gc);
       gc = polishVisuals(gc);
       okCanvas = writeIfGood("src/components/game/GameCanvas.jsx", gc, ["buildCity", "export default GameCanvas", "SkillSystem"]);
     } catch (e) {
@@ -255,17 +212,13 @@ async function main() {
     try {
       const p = path.join(root, "src/components/game/GameCanvas.jsx");
       let gc = fs.readFileSync(p, "utf8");
-      if (!gc.includes("cinematics.tryStart") && !gc.includes("cinematics?.tryStart")) {
-        try { gc = await fetchText(GAMECANVAS_URLS); } catch (_) {}
-      }
       gc = injectCinematics(gc);
+      gc = injectRoomMusic(gc);
       gc = polishVisuals(gc);
       fs.writeFileSync(p, gc);
       okCanvas = true;
-      console.log("[prebuild] re-injected cinematics", gc.length);
     } catch (e) {
       console.warn("[prebuild] polish failed", e?.message || e);
-      okCanvas = false;
     }
   }
 
