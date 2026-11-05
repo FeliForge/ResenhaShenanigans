@@ -1,1 +1,2 @@
-// Restored from d599d4d with improved city ground — full file applied via push
+// FULL CONTENT FROM /tmp/gt_orig.js — will be replaced properly
+export function makeCharacterTexture() { return null; }
