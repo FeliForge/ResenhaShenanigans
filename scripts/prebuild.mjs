@@ -75,7 +75,6 @@ function injectCinematics(src) {
       "        }\n" +
       "      }";
     if (src.includes(needle)) src = src.replace(needle, inject);
-    else console.warn("[prebuild] tryStart inject pattern missing");
   }
 
   if (!src.includes("cinematics.update")) {
@@ -111,10 +110,29 @@ function polishVisuals(src) {
   src = src.replace("const SKY_NIGHT = new THREE.Color(0x2a3a5a);", "const SKY_NIGHT = new THREE.Color(0x152038);");
   src = src.replace("const FOG_DAY = new THREE.Color(0xb8c6d8);", "const FOG_DAY = new THREE.Color(0xc2d0e0);");
   src = src.replace("dir.shadow.mapSize.set(2048, 2048);", "dir.shadow.mapSize.set(2048, 2048);\n    dir.intensity = Math.max(dir.intensity || 1, 1.4);");
+
   if (!src.includes("cinematicTiming")) {
     src = src.replace(
       'import { CinematicUltimateManager, hasCinematicUlt } from "@/lib/game/cinematics";',
       'import { CinematicUltimateManager, hasCinematicUlt } from "@/lib/game/cinematics";\nimport "@/lib/game/cinematicTiming";'
+    );
+  }
+  // Visuales únicos de ataque (proyectil/pared/trampa/beam)
+  if (!src.includes("skillsVisual")) {
+    src = src.replace(
+      'import { SkillSystem } from "@/lib/game/skills";',
+      'import { SkillSystem } from "@/lib/game/skills";\nimport "@/lib/game/skillsVisual";'
+    );
+  }
+  // GIF billboards
+  if (!src.includes("__gifTexTick")) {
+    src = src.replace(
+      "new THREE.TextureLoader().load(url, (tex) => {",
+      "new THREE.TextureLoader().load(url, (tex) => {\n        tex.colorSpace = THREE.SRGBColorSpace;\n        if (/gif/i.test(String(url))) { tex.needsUpdate = true; (game.__gifTex = game.__gifTex || []).push(tex); }"
+    );
+    src = src.replace(
+      "      renderer.render(scene, camera);",
+      "      if (game.__gifTex) for (const gt of game.__gifTex) gt.needsUpdate = true; // __gifTexTick\n      renderer.render(scene, camera);"
     );
   }
   return src;
@@ -168,9 +186,7 @@ async function main() {
     } catch (e) {
       console.error("[prebuild] GameApp failed:", e?.message || e);
     }
-  } else {
-    console.log("[prebuild] GameApp already good");
-  }
+  } else console.log("[prebuild] GameApp already good");
 
   if (!okCanvas) {
     try {
