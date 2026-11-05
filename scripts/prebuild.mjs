@@ -103,13 +103,27 @@ function injectCinematics(src) {
 }
 
 function polishVisuals(src) {
-  src = src.replace("renderer.toneMappingExposure = 1.05;", "renderer.toneMappingExposure = 1.22;");
-  src = src.replace("scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0038);", "scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0026);");
-  src = src.replace("scene.fog.density = 0.0026 + 0.0014 * nightFactor;", "scene.fog.density = 0.0019 + 0.0011 * nightFactor;");
-  src = src.replace("const SKY_DAY = new THREE.Color(0x9fb8d8);", "const SKY_DAY = new THREE.Color(0xa8c4e8);");
-  src = src.replace("const SKY_NIGHT = new THREE.Color(0x2a3a5a);", "const SKY_NIGHT = new THREE.Color(0x152038);");
-  src = src.replace("const FOG_DAY = new THREE.Color(0xb8c6d8);", "const FOG_DAY = new THREE.Color(0xc2d0e0);");
-  src = src.replace("dir.shadow.mapSize.set(2048, 2048);", "dir.shadow.mapSize.set(2048, 2048);\n    dir.intensity = Math.max(dir.intensity || 1, 1.4);");
+  src = src.replace("renderer.toneMappingExposure = 1.05;", "renderer.toneMappingExposure = 1.35;");
+  src = src.replace("renderer.toneMappingExposure = 1.22;", "renderer.toneMappingExposure = 1.35;");
+  src = src.replace("scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0038);", "scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0022);");
+  src = src.replace("scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0026);", "scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0022);");
+  src = src.replace("scene.fog.density = 0.0026 + 0.0014 * nightFactor;", "scene.fog.density = 0.0016 + 0.0010 * nightFactor;");
+  src = src.replace("scene.fog.density = 0.0019 + 0.0011 * nightFactor;", "scene.fog.density = 0.0016 + 0.0010 * nightFactor;");
+  src = src.replace("const SKY_DAY = new THREE.Color(0x9fb8d8);", "const SKY_DAY = new THREE.Color(0xb0d0f5);");
+  src = src.replace("const SKY_DAY = new THREE.Color(0xa8c4e8);", "const SKY_DAY = new THREE.Color(0xb0d0f5);");
+  src = src.replace("const SKY_NIGHT = new THREE.Color(0x2a3a5a);", "const SKY_NIGHT = new THREE.Color(0x0e1a30);");
+  src = src.replace("const SKY_NIGHT = new THREE.Color(0x152038);", "const SKY_NIGHT = new THREE.Color(0x0e1a30);");
+  src = src.replace("const FOG_DAY = new THREE.Color(0xb8c6d8);", "const FOG_DAY = new THREE.Color(0xc8daf0);");
+  src = src.replace("const FOG_DAY = new THREE.Color(0xc2d0e0);", "const FOG_DAY = new THREE.Color(0xc8daf0);");
+  if (!src.includes("dir.intensity = Math.max")) {
+    src = src.replace(
+      "dir.shadow.mapSize.set(2048, 2048);",
+      "dir.shadow.mapSize.set(2048, 2048);\n    dir.intensity = Math.max(dir.intensity || 1, 1.55);\n    dir.color = new THREE.Color(0xfff2dd);"
+    );
+  }
+  src = src.replace("hemi.intensity = 0.55", "hemi.intensity = 0.85");
+  src = src.replace("hemi.intensity = 0.6", "hemi.intensity = 0.85");
+  src = src.replace("ambient.intensity = 0.35", "ambient.intensity = 0.55");
 
   if (!src.includes("cinematicTiming")) {
     src = src.replace(
@@ -117,24 +131,97 @@ function polishVisuals(src) {
       'import { CinematicUltimateManager, hasCinematicUlt } from "@/lib/game/cinematics";\nimport "@/lib/game/cinematicTiming";'
     );
   }
-  // Visuales únicos de ataque (proyectil/pared/trampa/beam)
   if (!src.includes("skillsVisual")) {
     src = src.replace(
       'import { SkillSystem } from "@/lib/game/skills";',
       'import { SkillSystem } from "@/lib/game/skills";\nimport "@/lib/game/skillsVisual";'
     );
   }
-  // GIF billboards
-  if (!src.includes("__gifTexTick")) {
+
+  if (!src.includes("loadAnimatedTexture")) {
     src = src.replace(
-      "new THREE.TextureLoader().load(url, (tex) => {",
-      "new THREE.TextureLoader().load(url, (tex) => {\n        tex.colorSpace = THREE.SRGBColorSpace;\n        if (/gif/i.test(String(url))) { tex.needsUpdate = true; (game.__gifTex = game.__gifTex || []).push(tex); }"
+      'import * as THREE from "three";',
+      'import * as THREE from "three";\nimport { loadAnimatedTexture, createAnimTextureRegistry } from "@/lib/game/animatedTexture";'
     );
     src = src.replace(
-      "      renderer.render(scene, camera);",
-      "      if (game.__gifTex) for (const gt of game.__gifTex) gt.needsUpdate = true; // __gifTexTick\n      renderer.render(scene, camera);"
+      "renderer.shadowMap.enabled = true;",
+      "const animTex = createAnimTextureRegistry();\n    renderer.shadowMap.enabled = true;"
     );
   }
+
+  if (!src.includes("__animBillboard")) {
+    src = src.replace(
+      `function applyBillboard(slot, url) {
+      const board = city.billboards[slot];
+      if (!board || !url || billboardsApplied.get(slot) === url) return;
+      billboardsApplied.set(slot, url);
+      new THREE.TextureLoader().load(url, (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 4;
+        board.mat.map?.dispose();
+        board.mat.map = tex;
+        board.mat.needsUpdate = true;
+      });
+    }`,
+      `function applyBillboard(slot, url) {
+      const board = city.billboards[slot];
+      if (!board || !url || billboardsApplied.get(slot) === url) return;
+      billboardsApplied.set(slot, url);
+      // __animBillboard
+      const handle = loadAnimatedTexture(url, (tex) => {
+        if (!tex) return;
+        tex.anisotropy = 4;
+        board.mat.map?.dispose();
+        board.mat.map = tex;
+        board.mat.needsUpdate = true;
+      });
+      animTex.add(handle);
+    }`
+    );
+  }
+
+  if (!src.includes("animTex.tick") && !src.includes("animTex?.tick")) {
+    src = src.replace(
+      "      renderer.render(scene, camera);",
+      "      animTex?.tick?.();\n      renderer.render(scene, camera);"
+    );
+  }
+
+  if (!src.includes("__animSprite")) {
+    src = src.replace(
+      "const playerMat = new THREE.MeshBasicMaterial({ map: playerTex,",
+      "let playerMat = new THREE.MeshBasicMaterial({ map: playerTex,"
+    );
+    src = src.replace(
+      `if (character.customImage) {
+      playerTex = new THREE.TextureLoader().load(character.customImage);
+      playerTex.colorSpace = THREE.SRGBColorSpace;
+      playerTex.anisotropy = 4;
+    } else {
+      playerTex = makeCharacterTexture(character);
+    }`,
+      `if (character.customImage) {
+      // __animSprite
+      const sprHandle = loadAnimatedTexture(character.customImage, (tex) => {
+        if (!tex) return;
+        tex.anisotropy = 4;
+        if (playerMat) { playerMat.map = tex; playerMat.needsUpdate = true; }
+      });
+      animTex.add(sprHandle);
+      playerTex = sprHandle.texture;
+    } else {
+      playerTex = makeCharacterTexture(character);
+    }`
+    );
+  }
+
+  if (!src.includes("animTex?.dispose")) {
+    src = src.replace(
+      "return () => {",
+      "return () => {\n      try { animTex?.dispose?.(); } catch {}"
+    );
+  }
+
   return src;
 }
 
