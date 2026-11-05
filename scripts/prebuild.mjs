@@ -26,25 +26,45 @@ function concatHex(prefix, max = 30) {
   return hx;
 }
 
-// GameApp from hex (preferred) or text chunks
+// --- GameApp: prefer hex chunks, else fetch known-good commit ---
 {
   let ga = "";
   const hx = concatHex("gah");
-  if (hx.length > 100) {
+  if (hx.length > 1000) {
     try { ga = Buffer.from(hx, "hex").toString("utf8"); } catch {}
   }
   if (!ga || ga.length < 5000) ga = concatTxt("ga");
-  if (ga.length > 5000 && ga.includes("export default function GameApp")) {
+
+  if (!ga || ga.length < 5000 || !ga.includes("export default function GameApp")) {
+    const GOOD = "https://raw.githubusercontent.com/FeliForge/ResenhaShenanigans/95d297a36528559eb00bdf9db065d5ee6a52f903/src/components/game/GameApp.jsx";
+    try {
+      const res = await fetch(GOOD);
+      if (res.ok) {
+        ga = await res.text();
+        console.log("[prebuild] GameApp fetched from good commit", ga.length);
+      }
+    } catch (e) {
+      console.log("[prebuild] GameApp fetch failed", e?.message || e);
+    }
+  }
+
+  if (ga && ga.length > 5000 && ga.includes("export default function GameApp")) {
+    if (!ga.includes("skillsTargetFix")) {
+      ga = ga.replace(
+        'import { useEffect, useRef, useState } from "react";',
+        'import { useEffect, useRef, useState } from "react";\nimport "@/lib/game/skillsTargetFix";'
+      );
+    }
     const out = path.join(root, "src/components/game/GameApp.jsx");
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, ga);
-    console.log("[prebuild] GameApp", ga.length);
+    console.log("[prebuild] GameApp wrote", ga.length);
   } else {
-    console.log("[prebuild] GameApp skip", ga.length);
+    console.log("[prebuild] GameApp skip", ga?.length || 0);
   }
 }
 
-// GameCanvas
+// --- GameCanvas ---
 function fromText() {
   const src = concatTxt("t");
   return src.length > 10000 ? src : null;
@@ -52,7 +72,8 @@ function fromText() {
 function fromHex() {
   const hx = concatHex("h");
   if (!hx || hx.length < 100) return null;
-  return gunzipSync(Buffer.from(hx, "hex")).toString("utf8");
+  try { return gunzipSync(Buffer.from(hx, "hex")).toString("utf8"); }
+  catch { return null; }
 }
 function fromGzipB64() {
   let b64 = "";
