@@ -31,6 +31,7 @@ const KEY = "cb_bindsv2";
 
 export function loadBinds() {
   try {
+    if (typeof localStorage === "undefined") return { ...DEFAULT_BINDS };
     const raw = localStorage.getItem(KEY);
     if (raw) return { ...DEFAULT_BINDS, ...JSON.parse(raw) };
   } catch {}
@@ -38,7 +39,10 @@ export function loadBinds() {
 }
 
 export function saveBinds(binds) {
-  try { localStorage.setItem(KEY, JSON.stringify(binds)); } catch {}
+  try {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(KEY, JSON.stringify(binds));
+  } catch {}
 }
 
 export function codeToLabel(code) {
