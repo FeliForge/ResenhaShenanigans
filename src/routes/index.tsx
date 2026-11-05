@@ -1,15 +1,42 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState } from "react";
-
-const GameApp = lazy(() => import("@/components/game/GameApp"));
+import { useEffect, useState, type ComponentType } from "react";
 
 function Home() {
-  const [ready, setReady] = useState(false);
+  const [App, setApp] = useState<ComponentType | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
   useEffect(() => {
-    setReady(true);
+    let cancelled = false;
+    (async () => {
+      try {
+        const mod = await import("@/components/game/GameApp");
+        if (!cancelled) setApp(() => mod.default);
+      } catch (e: any) {
+        console.error("[Home] GameApp load failed", e);
+        if (!cancelled) setErr(String(e?.message || e));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  if (!ready) {
+  if (err) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[#0a0a14] px-4 text-white">
+        <p className="text-lg font-bold text-[#ff9620]">Error cargando el juego</p>
+        <p className="max-w-md text-center text-sm text-white/60">{err}</p>
+        <button
+          className="rounded-lg bg-white/10 px-4 py-2 text-sm"
+          onClick={() => location.reload()}
+        >
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
+  if (!App) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-[#0a0a14] text-white">
         <p className="text-lg font-bold text-[#ff9620]">Cargando Resenha Shenanigans…</p>
@@ -17,17 +44,7 @@ function Home() {
     );
   }
 
-  return (
-    <Suspense
-      fallback={
-        <div className="flex h-full w-full items-center justify-center bg-[#0a0a14] text-white">
-          <p className="text-lg font-bold text-[#ff9620]">Cargando juego…</p>
-        </div>
-      }
-    >
-      <GameApp />
-    </Suspense>
-  );
+  return <App />;
 }
 
 export const Route = createFileRoute("/")({
