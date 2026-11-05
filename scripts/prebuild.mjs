@@ -26,62 +26,67 @@ function ensureSkillsTargetFix(src) {
 
 /** Inject cinematic ultimate support into the full original GameCanvas. */
 function injectCinematics(src) {
-  if (src.includes("CinematicUltimateManager")) return src;
+  if (src.includes("CinematicUltimateManager") && src.includes("tryStart")) return src;
 
-  // 1) import
-  src = src.replace(
-    'import { SkillSystem } from "@/lib/game/skills";',
-    'import { SkillSystem } from "@/lib/game/skills";\nimport { CinematicUltimateManager, hasCinematicUlt } from "@/lib/game/cinematics";'
-  );
+  if (!src.includes("CinematicUltimateManager")) {
+    src = src.replace(
+      'import { SkillSystem } from "@/lib/game/skills";',
+      'import { SkillSystem } from "@/lib/game/skills";\nimport { CinematicUltimateManager, hasCinematicUlt } from "@/lib/game/cinematics";'
+    );
+  }
 
-  // 2) create manager after skills is constructed — look for common pattern
-  if (src.includes("const skills = new SkillSystem")) {
-    // Insert after the skills block closes is hard; insert right before doMove instead
+  if (!src.includes("new CinematicUltimateManager")) {
     src = src.replace(
       "    function doMove(category) {",
       "    const cinematics = new CinematicUltimateManager({ scene, camera, vfx, skills, game, character, audio });\n\n    function doMove(category) {"
     );
   }
 
-  // 3) ultimate path: try cinematic first
+  // Guard at start of doMove
   src = src.replace(
     "    function doMove(category) {\n      if (game.dead || performance.now() < game.stunUntil) return;",
       "    function doMove(category) {\n      if (game.dead || performance.now() < game.stunUntil || cinematics?.isPlaying) return;"
   );
 
-  // Before skills.cast for ultimates, attempt cinematic
-  if (!src.includes("hasCinematicUlt")) {
-    src = src.replace(
-      "      const big = category === \"ultimate\";",
-      `      const big = category === "ultimate";
-      if (big && hasCinematicUlt(baseCharId)) {
-        const origin = player.position.clone();
-        const dir = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)).normalize();
-        if (cinematics.tryStart(baseCharId, origin, dir)) {
-          game.meter = 0;
-          return;
-        }
-      }`
-    );
+  // Try cinematic before skills.cast
+  if (!src.includes("cinematics.tryStart") && !src.includes("cinematics?.tryStart")) {
+    const needle =
+      "      const origin = game.player.position.clone();\n      const dir = game.facing.clone().setY(0).normalize();";
+    const inject =
+      needle +
+      "\n      if (category === \"ultimate\" && hasCinematicUlt(baseCharId)) {\n" +
+      "        if (cinematics.tryStart(baseCharId, origin, dir)) {\n" +
+      "          game.meter = Math.max(0, game.meter - (character.moves.ultimate?.meterCost || 0));\n" +
+      "          return;\n" +
+      "        }\n" +
+      "      }";
+    if (src.includes(needle)) {
+      src = src.replace(needle, inject);
+    } else {
+      console.warn("[prebuild] could not inject tryStart — origin/dir pattern missing");
+    }
   }
 
-  // 4) update loop — call cinematics.update at start of tick body if present
-  // Find "const now = performance.now()" inside tick and inject after
-  src = src.replace(
-    /function tick\(nowTs\) \{\s*const now = performance\.now\(\);/,
-    "function tick(nowTs) {\n      const now = performance.now();\n      if (cinematics) {\n        const cinePlaying = cinematics.update((nowTs - (tick._last || nowTs)) / 1000);\n        tick._last = nowTs;\n        if (cinePlaying) {\n          renderer.render(scene, camera);\n          raf = requestAnimationFrame(tick);\n          return;\n        }\n      }"
-  );
-
-  // Fallback simpler update injection if pattern not found
-  if (!src.includes("cinematics.update") && src.includes("raf = requestAnimationFrame(tick)")) {
-    src = src.replace(
-      "      // NPCs",
-      "      if (cinematics) cinematics.update(dt);\n\n      // NPCs"
-    );
+  // Update cinematics each frame
+  if (!src.includes("cinematics.update")) {
+    const tickNeedle = "      const now = performance.now();\n      const b = bindsRef.current;";
+    const tickInject =
+      "      const now = performance.now();\n" +
+      "      if (cinematics?.isPlaying) {\n" +
+      "        cinematics.update(dt);\n" +
+      "        renderer.render(scene, camera);\n" +
+      "        return;\n" +
+      "      }\n" +
+      "      const b = bindsRef.current;";
+    if (src.includes(tickNeedle)) {
+      src = src.replace(tickNeedle, tickInject);
+    } else if (src.includes("      // NPCs")) {
+      src = src.replace("      // NPCs", "      if (cinematics) cinematics.update(dt);\n\n      // NPCs");
+    }
   }
 
-  // 5) dispose
-  if (src.includes("return () => {") && !src.includes("cinematics.dispose")) {
+  // Dispose
+  if (!src.includes("cinematics?.dispose") && !src.includes("cinematics.dispose")) {
     src = src.replace(
       "return () => {",
       "return () => {\n      try { cinematics?.dispose?.(); } catch {}\n"
@@ -110,11 +115,13 @@ function writeIfGood(relPath, src, mustInclude) {
 }
 
 async function main() {
-  // GameApp
+  let okApp = false;
+  let okCanvas = false;
+
   try {
     let ga = await fetchText(GOOD_GAMEAPP);
     ga = ensureSkillsTargetFix(ga);
-    writeIfGood("src/components/game/GameApp.jsx", ga, [
+    okApp = writeIfGood("src/components/game/GameApp.jsx", ga, [
       "export default function GameApp",
       "showQuests",
       "ShopPanel",
@@ -123,11 +130,10 @@ async function main() {
     console.error("[prebuild] GameApp fetch failed:", e?.message || e);
   }
 
-  // GameCanvas
   try {
     let gc = await fetchText(GOOD_GAMECANVAS);
     gc = injectCinematics(gc);
-    writeIfGood("src/components/game/GameCanvas.jsx", gc, [
+    okCanvas = writeIfGood("src/components/game/GameCanvas.jsx", gc, [
       "buildCity",
       "export default GameCanvas",
       "SkillSystem",
@@ -135,10 +141,33 @@ async function main() {
   } catch (e) {
     console.error("[prebuild] GameCanvas fetch failed:", e?.message || e);
   }
+
+  // If repo already has good files from a previous run, accept them
+  if (!okApp) {
+    const p = path.join(root, "src/components/game/GameApp.jsx");
+    if (fs.existsSync(p) && fs.readFileSync(p, "utf8").includes("showQuests")) {
+      okApp = true;
+      console.log("[prebuild] GameApp already present");
+    }
+  }
+  if (!okCanvas) {
+    const p = path.join(root, "src/components/game/GameCanvas.jsx");
+    if (fs.existsSync(p)) {
+      const t = fs.readFileSync(p, "utf8");
+      if (t.includes("buildCity") && t.includes("export default GameCanvas") && !t.includes("__CONTINUE__")) {
+        okCanvas = true;
+        console.log("[prebuild] GameCanvas already present");
+      }
+    }
+  }
+
+  if (!okApp || !okCanvas) {
+    console.error("[prebuild] FATAL: missing GameApp or GameCanvas");
+    process.exit(1);
+  }
 }
 
 main().catch((e) => {
   console.error("[prebuild] fatal", e);
-  // Do not fail the build hard if files already exist on disk
-  process.exitCode = 0;
+  process.exit(1);
 });
