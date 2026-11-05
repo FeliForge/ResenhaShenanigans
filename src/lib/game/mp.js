@@ -1,9 +1,6 @@
 // @ts-nocheck
 import { P2PRoom } from "@/lib/multiplayer";
 
-// Sala multijugador: WebRTC directo entre jugadores
-// que comparten el mismo código. El servidor solo presenta a los pares.
-
 function hashSeat(id) {
   let h = 2166136261;
   for (let i = 0; i < id.length; i++) {
@@ -43,6 +40,8 @@ export class MultiplayerManager {
     this.remotes = new Map();
     this.loadouts = new Map();
     this.onEvent = null;
+    this.onMusic = null;
+    this.roomMusic = "";
     this.byPeer = new Map();
     this.peerIds = [];
     const room = `arena-${safeId(roomCode, "lobby")}`;
@@ -53,6 +52,8 @@ export class MultiplayerManager {
       onPeersChanged: (peers) => {
         this.peerIds = (peers || []).map((p) => p.id);
         this.reindex();
+        // Pedir música actual al unirse
+        try { this.room.broadcast({ type: "music_request" }); } catch {}
       },
       onMessage: (from, data) => this.handle(from, data),
     });
@@ -81,6 +82,17 @@ export class MultiplayerManager {
     if (!data || typeof data !== "object") return;
     if (!this.peerIds.includes(fromPeer)) this.peerIds.push(fromPeer);
     const rec = this.byPeer.get(fromPeer) || {};
+    if (data.type === "music") {
+      this.roomMusic = data.url || "";
+      try { this.onMusic?.(this.roomMusic); } catch {}
+      return;
+    }
+    if (data.type === "music_request") {
+      if (this.roomMusic) {
+        try { this.room.broadcast({ type: "music", url: this.roomMusic }); } catch {}
+      }
+      return;
+    }
     if (data.type === "state") {
       const { type, ...state } = data;
       rec.state = state;
@@ -91,40 +103,39 @@ export class MultiplayerManager {
       rec.loadout = loadout;
       this.byPeer.set(fromPeer, rec);
       this.reindex();
-    } else if (data.type === "event" && this.onEvent) {
-      this.onEvent({ ...data, from: this.seatFor(fromPeer) });
+    } else if (data.type === "event") {
+      try { this.onEvent?.(data, fromPeer); } catch {}
     }
   }
 
   sendState(s) {
     try {
       this.room.broadcast({ type: "state", ...s });
-    } catch {
-      /* canal aún cerrado */
-    }
+    } catch {}
   }
 
   sendLoadout(l) {
     try {
       this.room.send({ type: "loadout", ...l });
-    } catch {
-      /* canal aún cerrado */
-    }
+    } catch {}
   }
 
   sendEvent(e) {
     try {
       this.room.send({ type: "event", ...e });
-    } catch {
-      /* canal aún cerrado */
-    }
+    } catch {}
+  }
+
+  sendMusic(url) {
+    this.roomMusic = url || "";
+    try {
+      this.room.broadcast({ type: "music", url: this.roomMusic });
+    } catch {}
   }
 
   close() {
     try {
       this.room.close();
-    } catch {
-      /* ya cerrado */
-    }
+    } catch {}
   }
 }
