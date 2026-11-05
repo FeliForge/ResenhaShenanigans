@@ -63,44 +63,27 @@ function injectCinematics(src) {
     );
   }
 
-  if (!src.includes("cinematics.tryStart") && !src.includes("cinematics?.tryStart")) {
+  // Re-write ultimate path even if old inject exists (fix double cast)
+  if (src.includes("Ultimate cinematográfico único") || src.includes("cinematics.tryStart")) {
+    // Normalize: ensure cinematic ultimates always return (no nova fallthrough)
+    src = src.replace(
+      /if \(category === "ultimate" && hasCinematicUlt\(baseCharId\)\) \{[\s\S]*?\n      \}/,
+      "if (category === \"ultimate\" && hasCinematicUlt(baseCharId)) {\n        try { cinematics.tryStart(baseCharId, origin, dir); } catch (err) { console.warn(\"[cinematic]\", err); }\n        return;\n      }"
+    );
+  } else if (!src.includes("cinematics.tryStart") && !src.includes("cinematics?.tryStart")) {
     const needles = [
       "      skills.cast({ ...move, damage: dmg }, { config: cfg, origin, dir, color: character.colors.accent });",
-      "      skills.cast({ ...move, damage: dmg }, { config: cfg, origin, dir, color: character.colors.primary });",
     ];
     const block =
-      "      // Ultimate cinematográfico único por personaje\n" +
       "      if (category === \"ultimate\" && hasCinematicUlt(baseCharId)) {\n" +
-      "        try {\n" +
-      "          if (cinematics.tryStart(baseCharId, origin, dir)) {\n" +
-      "            return;\n" +
-      "          }\n" +
-      "        } catch (err) {\n" +
-      "          console.warn(\"[cinematic] tryStart error\", err);\n" +
-      "        }\n" +
+      "        try { cinematics.tryStart(baseCharId, origin, dir); } catch (err) { console.warn(\"[cinematic]\", err); }\n" +
+      "        return;\n" +
       "      }\n" +
       "      skills.cast({ ...move, damage: dmg }, { config: cfg, origin, dir, color: character.colors.accent });";
-    let replaced = false;
     for (const n of needles) {
       if (src.includes(n)) {
         src = src.replace(n, block);
-        replaced = true;
         break;
-      }
-    }
-    if (!replaced) {
-      const needle =
-        "      const origin = game.player.position.clone();\n      const dir = game.facing.clone().setY(0).normalize();";
-      if (src.includes(needle)) {
-        src = src.replace(
-          needle,
-          needle +
-            "\n      if (category === \"ultimate\" && hasCinematicUlt(baseCharId)) {\n" +
-            "        try {\n" +
-            "          if (cinematics.tryStart(baseCharId, origin, dir)) return;\n" +
-            "        } catch (err) { console.warn(\"[cinematic]\", err); }\n" +
-            "      }"
-        );
       }
     }
   }
@@ -116,50 +99,25 @@ function injectCinematics(src) {
       "        return;\n" +
       "      }\n" +
       "      const b = bindsRef.current;";
-    if (src.includes(tickNeedle)) {
-      src = src.replace(tickNeedle, tickInject);
-    } else if (src.includes("      // NPCs")) {
+    if (src.includes(tickNeedle)) src = src.replace(tickNeedle, tickInject);
+    else if (src.includes("      // NPCs"))
       src = src.replace("      // NPCs", "      if (cinematics?.isPlaying) { cinematics.update(dt); }\n\n      // NPCs");
-    } else {
-      src = src.replace(
-        "      renderer.render(scene, camera);",
-        "      if (cinematics?.isPlaying) cinematics.update(dt);\n      renderer.render(scene, camera);"
-      );
-    }
   }
 
   if (!src.includes("cinematics?.dispose") && !src.includes("cinematics.dispose")) {
-    src = src.replace(
-      "return () => {",
-      "return () => {\n      try { cinematics?.dispose?.(); } catch {}\n"
-    );
+    src = src.replace("return () => {", "return () => {\n      try { cinematics?.dispose?.(); } catch {}\n");
   }
 
   return src;
 }
 
 function polishVisuals(src) {
-  src = src.replace("renderer.toneMappingExposure = 1.05;", "renderer.toneMappingExposure = 1.35;");
-  src = src.replace("renderer.toneMappingExposure = 1.22;", "renderer.toneMappingExposure = 1.35;");
-  src = src.replace("scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0038);", "scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0022);");
-  src = src.replace("scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0026);", "scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0022);");
-  src = src.replace("scene.fog.density = 0.0026 + 0.0014 * nightFactor;", "scene.fog.density = 0.0016 + 0.0010 * nightFactor;");
-  src = src.replace("scene.fog.density = 0.0019 + 0.0011 * nightFactor;", "scene.fog.density = 0.0016 + 0.0010 * nightFactor;");
-  src = src.replace("const SKY_DAY = new THREE.Color(0x9fb8d8);", "const SKY_DAY = new THREE.Color(0xb0d0f5);");
-  src = src.replace("const SKY_DAY = new THREE.Color(0xa8c4e8);", "const SKY_DAY = new THREE.Color(0xb0d0f5);");
-  src = src.replace("const SKY_NIGHT = new THREE.Color(0x2a3a5a);", "const SKY_NIGHT = new THREE.Color(0x0e1a30);");
-  src = src.replace("const SKY_NIGHT = new THREE.Color(0x152038);", "const SKY_NIGHT = new THREE.Color(0x0e1a30);");
-  src = src.replace("const FOG_DAY = new THREE.Color(0xb8c6d8);", "const FOG_DAY = new THREE.Color(0xc8daf0);");
-  src = src.replace("const FOG_DAY = new THREE.Color(0xc2d0e0);", "const FOG_DAY = new THREE.Color(0xc8daf0);");
-  if (!src.includes("dir.intensity = Math.max")) {
-    src = src.replace(
-      "dir.shadow.mapSize.set(2048, 2048);",
-      "dir.shadow.mapSize.set(2048, 2048);\n    dir.intensity = Math.max(dir.intensity || 1, 1.55);\n    dir.color = new THREE.Color(0xfff2dd);"
-    );
-  }
-  src = src.replace("hemi.intensity = 0.55", "hemi.intensity = 0.85");
-  src = src.replace("hemi.intensity = 0.6", "hemi.intensity = 0.85");
-  src = src.replace("ambient.intensity = 0.35", "ambient.intensity = 0.55");
+  src = src.replace("renderer.toneMappingExposure = 1.05;", "renderer.toneMappingExposure = 1.28;");
+  src = src.replace("renderer.toneMappingExposure = 1.35;", "renderer.toneMappingExposure = 1.28;");
+  src = src.replace("renderer.toneMappingExposure = 1.22;", "renderer.toneMappingExposure = 1.28;");
+  src = src.replace("scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0038);", "scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0024);");
+  src = src.replace("scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0022);", "scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0024);");
+  src = src.replace("scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0026);", "scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0024);");
 
   if (!src.includes("cinematicTiming")) {
     src = src.replace(
@@ -173,7 +131,6 @@ function polishVisuals(src) {
       'import { SkillSystem } from "@/lib/game/skills";\nimport "@/lib/game/skillsVisual";'
     );
   }
-
   if (!src.includes("loadAnimatedTexture")) {
     src = src.replace(
       'import * as THREE from "three";',
@@ -184,7 +141,6 @@ function polishVisuals(src) {
       "const animTex = createAnimTextureRegistry();\n    renderer.shadowMap.enabled = true;"
     );
   }
-
   if (!src.includes("__animBillboard")) {
     src = src.replace(
       `function applyBillboard(slot, url) {
@@ -206,7 +162,6 @@ function polishVisuals(src) {
       // __animBillboard
       const handle = loadAnimatedTexture(url, (tex) => {
         if (!tex) return;
-        tex.anisotropy = 4;
         board.mat.map?.dispose();
         board.mat.map = tex;
         board.mat.needsUpdate = true;
@@ -215,14 +170,12 @@ function polishVisuals(src) {
     }`
     );
   }
-
   if (!src.includes("animTex.tick") && !src.includes("animTex?.tick")) {
     src = src.replace(
       "      renderer.render(scene, camera);",
       "      animTex?.tick?.();\n      renderer.render(scene, camera);"
     );
   }
-
   if (!src.includes("__animSprite")) {
     src = src.replace(
       "const playerMat = new THREE.MeshBasicMaterial({ map: playerTex,",
@@ -240,7 +193,6 @@ function polishVisuals(src) {
       // __animSprite
       const sprHandle = loadAnimatedTexture(character.customImage, (tex) => {
         if (!tex) return;
-        tex.anisotropy = 4;
         if (playerMat) { playerMat.map = tex; playerMat.needsUpdate = true; }
       });
       animTex.add(sprHandle);
@@ -250,27 +202,16 @@ function polishVisuals(src) {
     }`
     );
   }
-
   if (!src.includes("animTex?.dispose")) {
-    src = src.replace(
-      "return () => {",
-      "return () => {\n      try { animTex?.dispose?.(); } catch {}"
-    );
+    src = src.replace("return () => {", "return () => {\n      try { animTex?.dispose?.(); } catch {}");
   }
-
   return src;
 }
 
 function writeIfGood(relPath, src, mustInclude) {
-  if (!src || src.length < 5000) {
-    console.log("[prebuild] skip short", relPath, src?.length || 0);
-    return false;
-  }
+  if (!src || src.length < 5000) return false;
   for (const s of mustInclude) {
-    if (!src.includes(s)) {
-      console.log("[prebuild] skip missing", s, "in", relPath);
-      return false;
-    }
+    if (!src.includes(s)) return false;
   }
   const out = path.join(root, relPath);
   fs.mkdirSync(path.dirname(out), { recursive: true });
@@ -288,67 +229,48 @@ function alreadyGood(relPath, checks) {
 }
 
 async function main() {
-  let okApp = alreadyGood("src/components/game/GameApp.jsx", [
-    "export default function GameApp",
-    "showQuests",
-  ]);
-  let okCanvas = alreadyGood("src/components/game/GameCanvas.jsx", [
-    "buildCity",
-    "export default GameCanvas",
-  ]);
+  let okApp = alreadyGood("src/components/game/GameApp.jsx", ["export default function GameApp", "showQuests"]);
+  let okCanvas = alreadyGood("src/components/game/GameCanvas.jsx", ["buildCity", "export default GameCanvas"]);
 
   if (!okApp) {
     try {
       let ga = await fetchText(GAMEAPP_URLS);
       ga = ensureSkillsTargetFix(ga);
-      okApp = writeIfGood("src/components/game/GameApp.jsx", ga, [
-        "export default function GameApp",
-        "showQuests",
-        "ShopPanel",
-      ]);
+      okApp = writeIfGood("src/components/game/GameApp.jsx", ga, ["export default function GameApp", "showQuests", "ShopPanel"]);
     } catch (e) {
       console.error("[prebuild] GameApp failed:", e?.message || e);
     }
-  } else console.log("[prebuild] GameApp already good");
+  }
 
   if (!okCanvas) {
     try {
       let gc = await fetchText(GAMECANVAS_URLS);
       gc = injectCinematics(gc);
       gc = polishVisuals(gc);
-      okCanvas = writeIfGood("src/components/game/GameCanvas.jsx", gc, [
-        "buildCity",
-        "export default GameCanvas",
-        "SkillSystem",
-      ]);
+      okCanvas = writeIfGood("src/components/game/GameCanvas.jsx", gc, ["buildCity", "export default GameCanvas", "SkillSystem"]);
     } catch (e) {
       console.error("[prebuild] GameCanvas failed:", e?.message || e);
     }
   } else {
-    console.log("[prebuild] GameCanvas present — re-inject cinematics + polish");
     try {
       const p = path.join(root, "src/components/game/GameCanvas.jsx");
       let gc = fs.readFileSync(p, "utf8");
       if (!gc.includes("cinematics.tryStart") && !gc.includes("cinematics?.tryStart")) {
-        try {
-          const clean = await fetchText(GAMECANVAS_URLS);
-          gc = clean;
-          console.log("[prebuild] refreshed canvas from mirror");
-        } catch (_) {}
+        try { gc = await fetchText(GAMECANVAS_URLS); } catch (_) {}
       }
       gc = injectCinematics(gc);
       gc = polishVisuals(gc);
       fs.writeFileSync(p, gc);
-      okCanvas = gc.includes("cinematics.tryStart") || gc.includes("CinematicUltimateManager");
-      console.log("[prebuild] canvas cinematics:", okCanvas, "len", gc.length);
+      okCanvas = true;
+      console.log("[prebuild] re-injected cinematics", gc.length);
     } catch (e) {
-      console.warn("[prebuild] polish existing failed", e?.message || e);
+      console.warn("[prebuild] polish failed", e?.message || e);
       okCanvas = false;
     }
   }
 
   if (!okApp || !okCanvas) {
-    console.error("[prebuild] FATAL: missing GameApp or GameCanvas");
+    console.error("[prebuild] FATAL");
     process.exit(1);
   }
   console.log("[prebuild] OK");
