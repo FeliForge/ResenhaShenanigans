@@ -42,9 +42,7 @@ function ensureSkillsTargetFix(src) {
 }
 
 function injectCinematics(src) {
-  if (src.includes("CinematicUltimateManager") && src.includes("tryStart")) return src;
-
-  if (!src.includes("CinematicUltimateManager")) {
+  if (!src.includes('from "@/lib/game/cinematics"')) {
     src = src.replace(
       'import { SkillSystem } from "@/lib/game/skills";',
       'import { SkillSystem } from "@/lib/game/skills";\nimport { CinematicUltimateManager, hasCinematicUlt } from "@/lib/game/cinematics";'
@@ -58,38 +56,76 @@ function injectCinematics(src) {
     );
   }
 
-  src = src.replace(
-    "    function doMove(category) {\n      if (game.dead || performance.now() < game.stunUntil) return;",
-    "    function doMove(category) {\n      if (game.dead || performance.now() < game.stunUntil || cinematics?.isPlaying) return;"
-  );
-
-  if (!src.includes("cinematics.tryStart") && !src.includes("cinematics?.tryStart")) {
-    const needle =
-      "      const origin = game.player.position.clone();\n      const dir = game.facing.clone().setY(0).normalize();";
-    const inject =
-      needle +
-      "\n      if (category === \"ultimate\" && hasCinematicUlt(baseCharId)) {\n" +
-      "        if (cinematics.tryStart(baseCharId, origin, dir)) {\n" +
-      "          game.meter = Math.max(0, game.meter - (character.moves.ultimate?.meterCost || 0));\n" +
-      "          return;\n" +
-      "        }\n" +
-      "      }";
-    if (src.includes(needle)) src = src.replace(needle, inject);
+  if (!src.includes("cinematics?.isPlaying") && !src.includes("cinematics.isPlaying")) {
+    src = src.replace(
+      "    function doMove(category) {\n      if (game.dead || performance.now() < game.stunUntil) return;",
+      "    function doMove(category) {\n      if (game.dead || performance.now() < game.stunUntil || cinematics?.isPlaying) return;"
+    );
   }
 
-  if (!src.includes("cinematics.update")) {
+  if (!src.includes("cinematics.tryStart") && !src.includes("cinematics?.tryStart")) {
+    const needles = [
+      "      skills.cast({ ...move, damage: dmg }, { config: cfg, origin, dir, color: character.colors.accent });",
+      "      skills.cast({ ...move, damage: dmg }, { config: cfg, origin, dir, color: character.colors.primary });",
+    ];
+    const block =
+      "      // Ultimate cinematográfico único por personaje\n" +
+      "      if (category === \"ultimate\" && hasCinematicUlt(baseCharId)) {\n" +
+      "        try {\n" +
+      "          if (cinematics.tryStart(baseCharId, origin, dir)) {\n" +
+      "            return;\n" +
+      "          }\n" +
+      "        } catch (err) {\n" +
+      "          console.warn(\"[cinematic] tryStart error\", err);\n" +
+      "        }\n" +
+      "      }\n" +
+      "      skills.cast({ ...move, damage: dmg }, { config: cfg, origin, dir, color: character.colors.accent });";
+    let replaced = false;
+    for (const n of needles) {
+      if (src.includes(n)) {
+        src = src.replace(n, block);
+        replaced = true;
+        break;
+      }
+    }
+    if (!replaced) {
+      const needle =
+        "      const origin = game.player.position.clone();\n      const dir = game.facing.clone().setY(0).normalize();";
+      if (src.includes(needle)) {
+        src = src.replace(
+          needle,
+          needle +
+            "\n      if (category === \"ultimate\" && hasCinematicUlt(baseCharId)) {\n" +
+            "        try {\n" +
+            "          if (cinematics.tryStart(baseCharId, origin, dir)) return;\n" +
+            "        } catch (err) { console.warn(\"[cinematic]\", err); }\n" +
+            "      }"
+        );
+      }
+    }
+  }
+
+  if (!src.includes("cinematics.update") && !src.includes("cinematics?.update")) {
     const tickNeedle = "      const now = performance.now();\n      const b = bindsRef.current;";
     const tickInject =
       "      const now = performance.now();\n" +
       "      if (cinematics?.isPlaying) {\n" +
       "        cinematics.update(dt);\n" +
+      "        animTex?.tick?.();\n" +
       "        renderer.render(scene, camera);\n" +
       "        return;\n" +
       "      }\n" +
       "      const b = bindsRef.current;";
-    if (src.includes(tickNeedle)) src = src.replace(tickNeedle, tickInject);
-    else if (src.includes("      // NPCs"))
-      src = src.replace("      // NPCs", "      if (cinematics) cinematics.update(dt);\n\n      // NPCs");
+    if (src.includes(tickNeedle)) {
+      src = src.replace(tickNeedle, tickInject);
+    } else if (src.includes("      // NPCs")) {
+      src = src.replace("      // NPCs", "      if (cinematics?.isPlaying) { cinematics.update(dt); }\n\n      // NPCs");
+    } else {
+      src = src.replace(
+        "      renderer.render(scene, camera);",
+        "      if (cinematics?.isPlaying) cinematics.update(dt);\n      renderer.render(scene, camera);"
+      );
+    }
   }
 
   if (!src.includes("cinematics?.dispose") && !src.includes("cinematics.dispose")) {
@@ -289,15 +325,25 @@ async function main() {
       console.error("[prebuild] GameCanvas failed:", e?.message || e);
     }
   } else {
-    console.log("[prebuild] GameCanvas already good — applying polish");
+    console.log("[prebuild] GameCanvas present — re-inject cinematics + polish");
     try {
       const p = path.join(root, "src/components/game/GameCanvas.jsx");
       let gc = fs.readFileSync(p, "utf8");
+      if (!gc.includes("cinematics.tryStart") && !gc.includes("cinematics?.tryStart")) {
+        try {
+          const clean = await fetchText(GAMECANVAS_URLS);
+          gc = clean;
+          console.log("[prebuild] refreshed canvas from mirror");
+        } catch (_) {}
+      }
       gc = injectCinematics(gc);
       gc = polishVisuals(gc);
       fs.writeFileSync(p, gc);
+      okCanvas = gc.includes("cinematics.tryStart") || gc.includes("CinematicUltimateManager");
+      console.log("[prebuild] canvas cinematics:", okCanvas, "len", gc.length);
     } catch (e) {
       console.warn("[prebuild] polish existing failed", e?.message || e);
+      okCanvas = false;
     }
   }
 
