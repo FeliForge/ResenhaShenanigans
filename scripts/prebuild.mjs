@@ -60,7 +60,7 @@ function injectCinematics(src) {
 
   src = src.replace(
     "    function doMove(category) {\n      if (game.dead || performance.now() < game.stunUntil) return;",
-      "    function doMove(category) {\n      if (game.dead || performance.now() < game.stunUntil || cinematics?.isPlaying) return;"
+    "    function doMove(category) {\n      if (game.dead || performance.now() < game.stunUntil || cinematics?.isPlaying) return;"
   );
 
   if (!src.includes("cinematics.tryStart") && !src.includes("cinematics?.tryStart")) {
@@ -100,6 +100,23 @@ function injectCinematics(src) {
     );
   }
 
+  return src;
+}
+
+function polishVisuals(src) {
+  src = src.replace("renderer.toneMappingExposure = 1.05;", "renderer.toneMappingExposure = 1.22;");
+  src = src.replace("scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0038);", "scene.fog = new THREE.FogExp2(0xb8c6d8, 0.0026);");
+  src = src.replace("scene.fog.density = 0.0026 + 0.0014 * nightFactor;", "scene.fog.density = 0.0019 + 0.0011 * nightFactor;");
+  src = src.replace("const SKY_DAY = new THREE.Color(0x9fb8d8);", "const SKY_DAY = new THREE.Color(0xa8c4e8);");
+  src = src.replace("const SKY_NIGHT = new THREE.Color(0x2a3a5a);", "const SKY_NIGHT = new THREE.Color(0x152038);");
+  src = src.replace("const FOG_DAY = new THREE.Color(0xb8c6d8);", "const FOG_DAY = new THREE.Color(0xc2d0e0);");
+  src = src.replace("dir.shadow.mapSize.set(2048, 2048);", "dir.shadow.mapSize.set(2048, 2048);\n    dir.intensity = Math.max(dir.intensity || 1, 1.4);");
+  if (!src.includes("cinematicTiming")) {
+    src = src.replace(
+      'import { CinematicUltimateManager, hasCinematicUlt } from "@/lib/game/cinematics";',
+      'import { CinematicUltimateManager, hasCinematicUlt } from "@/lib/game/cinematics";\nimport "@/lib/game/cinematicTiming";'
+    );
+  }
   return src;
 }
 
@@ -159,6 +176,7 @@ async function main() {
     try {
       let gc = await fetchText(GAMECANVAS_URLS);
       gc = injectCinematics(gc);
+      gc = polishVisuals(gc);
       okCanvas = writeIfGood("src/components/game/GameCanvas.jsx", gc, [
         "buildCity",
         "export default GameCanvas",
@@ -168,7 +186,16 @@ async function main() {
       console.error("[prebuild] GameCanvas failed:", e?.message || e);
     }
   } else {
-    console.log("[prebuild] GameCanvas already good");
+    console.log("[prebuild] GameCanvas already good — applying polish");
+    try {
+      const p = path.join(root, "src/components/game/GameCanvas.jsx");
+      let gc = fs.readFileSync(p, "utf8");
+      gc = injectCinematics(gc);
+      gc = polishVisuals(gc);
+      fs.writeFileSync(p, gc);
+    } catch (e) {
+      console.warn("[prebuild] polish existing failed", e?.message || e);
+    }
   }
 
   if (!okApp || !okCanvas) {
