@@ -1,9 +1,10 @@
 // @ts-nocheck
 import { motion } from "framer-motion";
-import { Coins, Copy, Flame, Loader2, Play, ScrollText, Swords, Trophy, UserPlus, Users, Settings, Music } from "lucide-react";
+import { Coins, Copy, Flame, Loader2, Play, ScrollText, Swords, Trophy, UserPlus, Users, Settings, Music, Radio } from "lucide-react";
 import DailyQuestsPanel from "@/components/game/DailyQuestsPanel";
 import ControlsPanel from "@/components/game/ControlsPanel";
 import LanguageSelector from "@/components/game/LanguageSelector";
+import BoomboxPanel from "@/components/game/BoomboxPanel";
 import { lazy, Suspense, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 
@@ -35,6 +36,7 @@ export default function StartMenu({
   const [showQuests, setShowQuests] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
+  const [showBoombox, setShowBoombox] = useState(false);
   const saved = savedCharacter;
 
   return (
@@ -123,8 +125,14 @@ export default function StartMenu({
               </button>
             )}
             <button
+              onClick={() => setShowBoombox(true)}
+              className="flex items-center justify-center gap-2 rounded-xl border border-[#ff9620]/35 bg-[#ff9620]/10 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#ff9620] transition hover:bg-[#ff9620]/20"
+            >
+              <Radio size={16} /> Boombox
+            </button>
+            <button
               onClick={() => setShowSettings(true)}
-              className="col-span-1 flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-white transition hover:border-[#ff9620]/50 hover:bg-white/10 sm:col-span-2"
+              className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-white transition hover:border-[#ff9620]/50 hover:bg-white/10"
             >
               <Settings size={16} /> {t("menu.settings") || "Ajustes"}
             </button>
@@ -173,6 +181,16 @@ export default function StartMenu({
           audioOn={audioOn}
           onToggleAudio={onToggleAudio}
           onClose={() => setShowSettings(false)}
+        />
+      )}
+      {showBoombox && (
+        <BoomboxPanel
+          roomCode={roomCode}
+          onUseInRoom={(url) => {
+            onMusicUrl?.(url);
+            setShowBoombox(false);
+          }}
+          onClose={() => setShowBoombox(false)}
         />
       )}
       {showSecret && (
