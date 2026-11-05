@@ -1,49 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState, type ComponentType } from "react";
+import { lazy, Suspense } from "react";
+
+// .client.tsx is excluded from the server bundle by TanStack Start / Vite.
+const GameApp = lazy(() => import("@/components/game/GameAppEntry.client"));
 
 function Home() {
-  const [App, setApp] = useState<ComponentType | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        // Build path at runtime so the server bundle does not pull game modules.
-        const id = ["@", "/components/game/GameApp"].join("");
-        const mod = await import(/* @vite-ignore */ id);
-        if (!cancelled) setApp(() => mod.default as ComponentType);
-      } catch (e: any) {
-        console.error("[Home] GameApp load failed", e);
-        if (!cancelled) setErr(String(e?.message || e));
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-full w-full items-center justify-center bg-[#0a0a14] text-white">
+          <p className="text-lg font-bold text-[#ff9620]">Cargando Resenha Shenanigans…</p>
+        </div>
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (err) {
-    return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[#0a0a14] px-4 text-white">
-        <p className="text-lg font-bold text-[#ff9620]">Error cargando el juego</p>
-        <p className="max-w-md text-center text-sm text-white/60">{err}</p>
-        <button className="rounded-lg bg-white/10 px-4 py-2 text-sm" onClick={() => location.reload()}>
-          Reintentar
-        </button>
-      </div>
-    );
-  }
-
-  if (!App) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-[#0a0a14] text-white">
-        <p className="text-lg font-bold text-[#ff9620]">Cargando Resenha Shenanigans…</p>
-      </div>
-    );
-  }
-
-  return <App />;
+    >
+      <GameApp />
+    </Suspense>
+  );
 }
 
 export const Route = createFileRoute("/")({
