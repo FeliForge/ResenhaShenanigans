@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "bun install || npm install",
-  "buildCommand": "node scripts/prebuild.mjs && vite build"
+  "installCommand": "bun install --frozen-lockfile",
+  "buildCommand": "vite build",
+  "devCommand": "vite dev"
 }

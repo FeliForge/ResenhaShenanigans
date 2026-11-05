@@ -4,15 +4,14 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/prebuild.mjs && vite dev",
-    "build": "node scripts/prebuild.mjs && vite build",
+    "dev": "vite dev",
+    "build": "vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "prebuild": "node scripts/prebuild.mjs"
+    "test:watch": "vitest"
   },
   "overrides": {
     "rolldown": "1.2.1"
