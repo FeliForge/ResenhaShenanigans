@@ -1,0 +1,155 @@
+// @ts-nocheck
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import * as THREE from "three";
+import { makeCharacterTexture, makeBubbleTexture, makeShadowTexture, makeCityGroundTexture } from "@/lib/gameTexture";
+import { buildCity } from "@/lib/game/buildCity";
+import { buildShop } from "@/lib/game/buildShop";
+import { VfxManager } from "@/lib/game/vfx";
+import { audio } from "@/lib/game/audio";
+import { CHARACTERS, getCharacter } from "@/data/characters";
+import { baseIdOf } from "@/lib/game/loadout";
+import { inputState } from "@/lib/game/input";
+import { MultiplayerManager } from "@/lib/game/mp";
+import { SkillSystem } from "@/lib/game/skills";
+import { CinematicUltimateManager, hasCinematicUlt } from "@/lib/game/cinematics";
+import { getMoveConfig, getComboConfig, getPassive } from "@/data/movesets";
+import { defeatStyleFor, RESPAWN_POINT, RESPAWN_DELAY_MS, INVULN_MS } from "@/lib/game/defeat";
+
+const MAP_HALF = 390;
+const GRAVITY = -26;
+const BILLBOARD_COUNT = 4;
+const DASH_SPEED = 24;
+const DASH_TIME = 0.18;
+const DASH_CD = 1100;
+const SKY_DAY = new THREE.Color(0x9fb8d8);
+const SKY_NIGHT = new THREE.Color(0x2a3a5a);
+const FOG_DAY = new THREE.Color(0xb8c6d8);
+const FOG_NIGHT = new THREE.Color(0x3a4a66);
+
+function makeNameTexture(name) {
+  const c = document.createElement("canvas");
+  c.width = 256; c.height = 64;
+  const x = c.getContext("2d");
+  x.font = "bold 28px sans-serif"; x.textAlign = "center";
+  const w = Math.min(240, x.measureText(name).width + 24);
+  x.fillStyle = "rgba(0,0,0,0.55)";
+  x.fillRect((256 - w) / 2, 16, w, 32);
+  x.fillStyle = "#fff";
+  x.fillText(name, 128, 41);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+const GameCanvas = forwardRef(function GameCanvas({
+  character, binds, onStats, roomCode, playerName, billboardUrl, dashStyle, emote,
+  onNearShop, onRequestShop, onDefeat, onRespawn, onFeed,
+}, ref) {
+  const mountRef = useRef(null);
+  const apiRef = useRef(null);
+  const onStatsRef = useRef(onStats); onStatsRef.current = onStats;
+  const onNearShopRef = useRef(onNearShop); onNearShopRef.current = onNearShop;
+  const onRequestShopRef = useRef(onRequestShop); onRequestShopRef.current = onRequestShop;
+  const onDefeatRef = useRef(onDefeat); onDefeatRef.current = onDefeat;
+  const onRespawnRef = useRef(onRespawn); onRespawnRef.current = onRespawn;
+  const onFeedRef = useRef(onFeed); onFeedRef.current = onFeed;
+  const bindsRef = useRef(binds); bindsRef.current = binds;
+
+  useImperativeHandle(ref, () => ({
+    triggerMove: (cat) => apiRef.current?.triggerMove(cat),
+    triggerDash: () => apiRef.current?.triggerDash(),
+    triggerJump: () => apiRef.current?.triggerJump(),
+    setMobileMove: (x, y) => apiRef.current?.setMobileMove(x, y),
+    showQuickChat: (p) => apiRef.current?.showQuickChat(p),
+    setMyBillboard: (url) => apiRef.current?.setMyBillboard(url),
+    showEmote: () => apiRef.current?.showEmote(),
+    setDashStyle: (s) => apiRef.current?.setDashStyle(s),
+  }));
+
+  useEffect(() => {
+    const mount = mountRef.current;
+    if (!mount || !character) return;
+
+    const scene = new THREE.Scene();
+    scene.background = SKY_DAY.clone();
+    scene.fog = new THREE.FogExp2(FOG_DAY.getHex(), 0.0038);
+
+    const camera = new THREE.PerspectiveCamera(55, mount.clientWidth / Math.max(1, mount.clientHeight), 0.1, 1200);
+    camera.position.set(0, 9, 13);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    mount.appendChild(renderer.domElement);
+
+    const hemi = new THREE.HemisphereLight(0x9fb8d8, 0x2a2a3a, 0.75);
+    scene.add(hemi);
+    const sun = new THREE.DirectionalLight(0xffe6c0, 1.25);
+    sun.position.set(70, 130, 50);
+    scene.add(sun);
+    const moon = new THREE.Mesh(
+      new THREE.SphereGeometry(6, 16, 12),
+      new THREE.MeshBasicMaterial({ color: 0xcfd8ff })
+    );
+    moon.position.set(-80, 60, -40);
+    scene.add(moon);
+
+    const groundTex = makeCityGroundTexture();
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(800, 800),
+      new THREE.MeshStandardMaterial({ map: groundTex, roughness: 0.95 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+
+    const city = buildCity(scene);
+    const shop = buildShop(scene);
+    if (shop?.colliders) city.colliders.push(...shop.colliders);
+
+    let playerTex;
+    try {
+      playerTex = character.customImage
+        ? (() => { const t = new THREE.TextureLoader().load(character.customImage); t.colorSpace = THREE.SRGBColorSpace; return t; })()
+        : makeCharacterTexture(character);
+    } catch { playerTex = makeCharacterTexture(character); }
+
+    const playerMat = new THREE.MeshBasicMaterial({ map: playerTex, transparent: true, side: THREE.DoubleSide, alphaTest: 0.1 });
+    const player = new THREE.Group();
+    player.position.set(0, 1.6, 0);
+    scene.add(player);
+    const sprite = new THREE.Mesh(new THREE.PlaneGeometry(2, 3.2), playerMat);
+    player.add(sprite);
+
+    const shadowTex = makeShadowTexture();
+    const shadowMat = new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false });
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.2), shadowMat);
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.02;
+    player.add(shadow);
+
+    // NPCs / dummies locales
+    const npcs = [];
+    const botCount = roomCode ? 2 : 4;
+    const others = CHARACTERS.filter((c) => c.id !== character.id).slice(0, botCount);
+    others.forEach((c, i) => {
+      const tex = makeCharacterTexture(c);
+      const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, alphaTest: 0.1 });
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 3.2), mat);
+      const ang = (i / Math.max(1, others.length)) * Math.PI * 2;
+      mesh.position.set(Math.cos(ang) * 14, 1.6, Math.sin(ang) * 14);
+      scene.add(mesh);
+      const barBg = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.16), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+      const bar = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.16), new THREE.MeshBasicMaterial({ color: 0x2ecc71 }));
+      barBg.position.y = 3.7; bar.position.y = 3.7; bar.position.z = 0.01;
+      mesh.add(barBg, bar);
+      const sh = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), shadowMat);
+      sh.rotation.x = -Math.PI / 2; sh.position.y = -1.57;
+      mesh.add(sh);
+      npcs.push({ mesh, bar, mat, health: 1000, maxHealth: 1000, respawnAt: 0, flashUntil: 0, flashColor: new THREE.Color(c.colors?.accent || "#fff") });
+    });
+
+    const vfx = new VfxManager(scene, camera);
+    if (dashStyle) vfx.setDashStyle?.(dashStyle);
+
+    const baseCharId = baseIdOf(character) || character.id;
+    const passive = getPassive(baseCharId);
