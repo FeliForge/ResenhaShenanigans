@@ -15,7 +15,7 @@ import RoomMusicPlayer from "@/components/game/RoomMusicPlayer";
 import { loadQuests, sendProgress, claimReward } from "@/lib/game/quests";
 import { loadShop, buyItem, equipItem } from "@/lib/game/shop";
 import { getShopItem } from "@/data/shop";
-import { loadBinds, saveBinds, inputState } from "@/lib/game/input";
+import { loadBinds, saveBinds, inputState, DEFAULT_BINDS } from "@/lib/game/input";
 import { audio } from "@/lib/game/audio";
 import { loadRoomMusic, saveRoomMusic } from "@/lib/game/roomMusic";
 import { loadMyLoadout, saveMyLoadout, toLoadout, characterFromLoadout } from "@/lib/game/loadout";
@@ -31,7 +31,7 @@ export default function GameApp() {
   const [defeat, setDefeat] = useState(null);
   const [feed, setFeed] = useState([]);
   const feedIdRef = useRef(0);
-  const [binds, setBinds] = useState(loadBinds());
+  const [binds, setBinds] = useState(DEFAULT_BINDS);
   const [audioOn, setAudioOn] = useState(true);
   const [matches, setMatches] = useState(null);
   const [isTouch, setIsTouch] = useState(false);
@@ -53,6 +53,10 @@ export default function GameApp() {
   const claimable = (quests || []).filter((q) => !q.claimed && (q.progress || 0) >= q.target).length;
   const dashItem = getShopItem(shop.dash);
   const emoteItem = getShopItem(shop.emote);
+
+  useEffect(() => {
+    setBinds(loadBinds());
+  }, []);
 
   useEffect(() => {
     setIsTouch("ontouchstart" in window || navigator.maxTouchPoints > 0);
