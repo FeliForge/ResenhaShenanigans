@@ -1,1 +1,2 @@
-// PLACEHOLDER_WILL_REPLACE
+// @ts-nocheck
+export const IMG_GOOFYBOXY = "/billboards/goofyboxy.jpg";
