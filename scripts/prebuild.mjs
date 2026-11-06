@@ -23,8 +23,7 @@ function isGood(text) {
 }
 
 function patchBillboards(text) {
-  if (text.includes("setCrossOrigin")) return text;
-
+  // Fixed world posters only — never overwrite with player custom billboards.
   const oldApply = `    function applyBillboard(slot, url) {
       const board = city.billboards[slot];
       if (!board || !url || billboardsApplied.get(slot) === url) return;
@@ -46,41 +45,28 @@ function patchBillboards(text) {
     }`;
 
   const newApply = `    function applyBillboard(slot, url) {
-      const board = city.billboards[slot];
-      if (!board || !url || billboardsApplied.get(slot) === url) return;
-      billboardsApplied.set(slot, url);
-      const loader = new THREE.TextureLoader();
-      if (!String(url).startsWith("data:")) loader.setCrossOrigin("anonymous");
-      loader.load(
-        url,
-        (tex) => {
-          tex.colorSpace = THREE.SRGBColorSpace;
-          tex.anisotropy = 4;
-          tex.needsUpdate = true;
-          const old = board.mat.map;
-          board.mat.map = tex;
-          board.mat.needsUpdate = true;
-          if (old && old !== tex) old.dispose();
-        },
-        undefined,
-        () => { billboardsApplied.delete(slot); }
-      );
+      // Fixed city posters are permanent; ignore player custom overwrites.
+      return;
     }
 
     let sendMyLoadout = null;
     function setMyBillboard(url) {
-      if (!url) return;
-      if (!mp?.mySeat) {
-        for (let i = 0; i < city.billboards.length; i++) applyBillboard(i, url);
-      } else {
-        const slot = (mp.mySeat - 1) % city.billboards.length;
-        applyBillboard(slot, url);
-      }
       sendMyLoadout?.();
     }`;
 
-  if (text.includes(oldApply)) text = text.replace(oldApply, newApply);
-  else console.warn("[prebuild] billboard patch pattern not found");
+  if (text.includes("Fixed city posters are permanent")) {
+    // already patched
+  } else if (text.includes(oldApply)) {
+    text = text.replace(oldApply, newApply);
+  } else if (text.includes("setCrossOrigin")) {
+    // previously CORS-patched — force no-op overwrite
+    text = text.replace(
+      /function applyBillboard\(slot, url\) \{[\s\S]*?\n    \}\n\n    let sendMyLoadout = null;\n    function setMyBillboard\(url\) \{[\s\S]*?\n    \}/,
+      `function applyBillboard(slot, url) {\n      // Fixed city posters are permanent; ignore player custom overwrites.\n      return;\n    }\n\n    let sendMyLoadout = null;\n    function setMyBillboard(url) {\n      sendMyLoadout?.();\n    }`
+    );
+  } else {
+    console.warn("[prebuild] billboard patch pattern not found");
+  }
   return text;
 }
 
@@ -232,8 +218,110 @@ function patchHub(text) {
   return text;
 }
 
+function patchCameraControls(text) {
+  if (text.includes("requestPointerLock") && text.includes("1.45")) return text;
+
+  const oldCam = `    const camState = { yaw: 0, pitch: 0.42, dist: 13, dragging: false, lastX: 0, lastY: 0 };
+    const onPointerDown = (e) => {
+      camState.dragging = true;
+      camState.lastX = e.clientX; camState.lastY = e.clientY;
+    };
+    const onPointerMove = (e) => {
+      if (!camState.dragging) return;
+      const dx = e.clientX - camState.lastX;
+      const dy = e.clientY - camState.lastY;
+      camState.lastX = e.clientX; camState.lastY = e.clientY;
+      camState.yaw -= dx * 0.005;
+      camState.pitch = THREE.MathUtils.clamp(camState.pitch + dy * 0.004, 0.15, 1.2);
+    };
+    const onPointerUp = () => { camState.dragging = false; };
+    renderer.domElement.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);`;
+
+  const newCam = `    const camState = { yaw: 0, pitch: 0.42, dist: 13, dragging: false, lastX: 0, lastY: 0, locked: false };
+    const onPointerDown = (e) => {
+      if (inputState.blocked) return;
+      if (document.pointerLockElement !== renderer.domElement) {
+        renderer.domElement.requestPointerLock?.();
+        return;
+      }
+      // Mouse button as bindable action (default M1 = Mouse0)
+      const code = "Mouse" + e.button;
+      const b = bindsRef.current;
+      const actionFor = (c) => Object.entries(b).find(([, v]) => v === c)?.[0];
+      const act = actionFor(code);
+      if (act && ["m1", "special1", "special2", "special3", "ultimate"].includes(act)) {
+        e.preventDefault();
+        doMove(act);
+      } else if (act === "dash") {
+        e.preventDefault();
+        doDash();
+      }
+    };
+    const onPointerMove = (e) => {
+      if (document.pointerLockElement === renderer.domElement) {
+        camState.yaw -= (e.movementX || 0) * 0.0028;
+        camState.pitch = THREE.MathUtils.clamp(camState.pitch + (e.movementY || 0) * 0.0022, -0.15, 1.45);
+        return;
+      }
+      if (!camState.dragging) return;
+      const dx = e.clientX - camState.lastX;
+      const dy = e.clientY - camState.lastY;
+      camState.lastX = e.clientX; camState.lastY = e.clientY;
+      camState.yaw -= dx * 0.005;
+      camState.pitch = THREE.MathUtils.clamp(camState.pitch + dy * 0.004, -0.15, 1.45);
+    };
+    const onPointerUp = () => { camState.dragging = false; };
+    const onPointerLockChange = () => {
+      camState.locked = document.pointerLockElement === renderer.domElement;
+    };
+    // Exit lock when a panel blocks input (shop / settings / hub)
+    let lastBlocked = false;
+    const blockWatch = setInterval(() => {
+      const blocked = !!inputState.blocked;
+      if (blocked && !lastBlocked) {
+        try { document.exitPointerLock?.(); } catch {}
+      }
+      lastBlocked = blocked;
+    }, 120);
+    renderer.domElement.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    document.addEventListener("pointerlockchange", onPointerLockChange);`;
+
+  if (text.includes(oldCam)) {
+    text = text.replace(oldCam, newCam);
+  } else if (!text.includes("requestPointerLock")) {
+    // fallback: just raise pitch clamp
+    text = text.replace(
+      /camState\.pitch = THREE\.MathUtils\.clamp\(camState\.pitch \+ dy \* 0\.004, 0\.15, 1\.2\)/g,
+      "camState.pitch = THREE.MathUtils.clamp(camState.pitch + dy * 0.004, -0.15, 1.45)"
+    );
+    console.warn("[prebuild] pointer-lock block not exact; applied pitch clamp only");
+  }
+
+  // cleanup interval + pointerlock listener
+  const oldCleanup = `      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      renderer.domElement.removeEventListener("pointerdown", onPointerDown);`;
+  const newCleanup = `      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      renderer.domElement.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("pointerlockchange", onPointerLockChange);
+      try { clearInterval(blockWatch); } catch {}
+      try { document.exitPointerLock?.(); } catch {}`;
+  if (text.includes(oldCleanup) && !text.includes("onPointerLockChange")) {
+    text = text.replace(oldCleanup, newCleanup);
+  } else if (text.includes(oldCleanup) && text.includes("requestPointerLock") && !text.includes("clearInterval(blockWatch)")) {
+    text = text.replace(oldCleanup, newCleanup);
+  }
+
+  return text;
+}
+
 function patchAll(text) {
-  return patchHub(patchSpawn(patchCompass(patchBillboards(text))));
+  return patchCameraControls(patchHub(patchSpawn(patchCompass(patchBillboards(text)))));
 }
 
 async function fetchText(url) {
@@ -271,7 +359,14 @@ async function main() {
 
     if (fs.existsSync(out)) {
       const cur = fs.readFileSync(out, "utf8");
-      if (isGood(cur) && cur.includes("setCrossOrigin") && cur.includes("getHeading") && cur.includes("player.position.set(0, 14, 0)") && cur.includes("buildHub")) {
+      if (
+        isGood(cur) &&
+        cur.includes("getHeading") &&
+        cur.includes("player.position.set(0, 14, 0)") &&
+        cur.includes("buildHub") &&
+        cur.includes("requestPointerLock") &&
+        cur.includes("Fixed city posters are permanent")
+      ) {
         console.log("[prebuild] GameCanvas already complete+patched", cur.length);
         return;
       }
