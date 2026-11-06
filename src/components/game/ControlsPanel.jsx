@@ -10,23 +10,35 @@ export default function ControlsPanel({ binds, audioOn, onSave, onToggleAudio, o
   const [local, setLocal] = useState(binds);
   const [armed, setArmed] = useState(null);
 
-  // Bloquear el input del juego mientras el panel está abierto.
   useEffect(() => {
     inputState.blocked = true;
+    try { document.exitPointerLock?.(); } catch {}
     return () => { inputState.blocked = false; };
   }, []);
 
   useEffect(() => {
     if (!armed) return;
-    const handler = (e) => {
+    const onKey = (e) => {
       e.preventDefault();
       const next = { ...local, [armed]: e.code };
       setLocal(next);
       onSave(next);
       setArmed(null);
     };
-    window.addEventListener("keydown", handler, { once: true });
-    return () => window.removeEventListener("keydown", handler);
+    const onMouse = (e) => {
+      e.preventDefault();
+      const code = "Mouse" + e.button;
+      const next = { ...local, [armed]: code };
+      setLocal(next);
+      onSave(next);
+      setArmed(null);
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onMouse);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onMouse);
+    };
   }, [armed, local, onSave]);
 
   return (
