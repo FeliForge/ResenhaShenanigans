@@ -1,2 +1,2 @@
 // @ts-nocheck
-export const IMG_GOOFYBOXY = "/billboards/goofyboxy.jpg";
+export const IMG_GOOFYBOXY = "data:image/jpeg;base64,PLACEHOLDER";
