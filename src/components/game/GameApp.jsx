@@ -12,6 +12,7 @@ import StartMenu from "@/components/game/StartMenu";
 import DefeatOverlay from "@/components/game/DefeatOverlay";
 import KillFeed from "@/components/game/KillFeed";
 import RoomMusicPlayer from "@/components/game/RoomMusicPlayer";
+import MusicPlayer from "@/components/game/MusicPlayer";
 import { loadQuests, sendProgress, claimReward } from "@/lib/game/quests";
 import { loadShop, buyItem, equipItem } from "@/lib/game/shop";
 import { getShopItem } from "@/data/shop";
@@ -168,6 +169,8 @@ export default function GameApp() {
 
   if (screen === "menu") {
     return (
+      <>
+      <MusicPlayer screen="menu" suspended={!audioOn} />
       <StartMenu
         matches={matches}
         roomCode={roomCode}
@@ -190,17 +193,24 @@ export default function GameApp() {
         audioOn={audioOn}
         onToggleAudio={toggleAudio}
       />
+      </>
     );
   }
 
   if (screen === "select") {
-    return <CharacterSelect onConfirm={startPlay} onBack={() => setScreen("menu")} />;
+    return (
+      <>
+        <MusicPlayer screen="select" suspended={!audioOn} />
+        <CharacterSelect onConfirm={startPlay} onBack={() => setScreen("menu")} />
+      </>
+    );
   }
 
   if (screen === "play" && character) {
     return (
       <div className="absolute inset-0 overflow-hidden bg-background">
         <RoomMusicPlayer url={musicUrl} enabled={audioOn} />
+        <MusicPlayer screen="play" suspended={!audioOn || !!musicUrl} />
         <GameCanvas
           ref={canvasRef}
           character={character}
