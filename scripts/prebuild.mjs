@@ -22,8 +22,9 @@ function isGood(text) {
   );
 }
 
-/** Patch applyBillboard for CORS/data URLs + apply to all boards when solo */
 function patchBillboards(text) {
+  if (text.includes("setCrossOrigin")) return text;
+
   const oldApply = `    function applyBillboard(slot, url) {
       const board = city.billboards[slot];
       if (!board || !url || billboardsApplied.get(slot) === url) return;
@@ -79,15 +80,13 @@ function patchBillboards(text) {
     }`;
 
   if (text.includes(oldApply)) text = text.replace(oldApply, newApply);
-  else if (!text.includes("setCrossOrigin")) console.warn("[prebuild] billboard patch pattern not found");
+  else console.warn("[prebuild] billboard patch pattern not found");
   return text;
 }
 
-/** Expose camera heading for the HUD compass */
 function patchCompass(text) {
   if (text.includes("getHeading")) return text;
 
-  // 1) Imperative handle
   const oldHandle = `  useImperativeHandle(ref, () => ({
     triggerMove: (cat) => apiRef.current?.triggerMove(cat),
     triggerDash: () => apiRef.current?.triggerDash(),
@@ -114,13 +113,11 @@ function patchCompass(text) {
   if (text.includes(oldHandle)) text = text.replace(oldHandle, newHandle);
   else console.warn("[prebuild] compass handle patch not found");
 
-  // 2) apiRef assignment — include getHeading from camState.yaw (degrees, 0 = +Z)
   const oldApi = `apiRef.current = { triggerMove: doMove, triggerDash: doDash, triggerJump, setMobileMove, showQuickChat: doQuickChat, setMyBillboard, showEmote: doEmote, setDashStyle: (s) => vfx.setDashStyle(s) };`;
   const newApi = `apiRef.current = { triggerMove: doMove, triggerDash: doDash, triggerJump, setMobileMove, showQuickChat: doQuickChat, setMyBillboard, showEmote: doEmote, setDashStyle: (s) => vfx.setDashStyle(s), getHeading: () => { const deg = ((-camState.yaw * 180 / Math.PI) % 360 + 360) % 360; return deg; } };`;
   if (text.includes(oldApi)) text = text.replace(oldApi, newApi);
   else console.warn("[prebuild] compass apiRef patch not found");
 
-  // 3) Include heading in onStats payload
   const oldStats = `        onStatsRef.current?.({
           health: game.health, meter: game.meter, cooldowns,
           hits: game.hits, meterPeak: game.meterPeak, counters: game.counters,
@@ -155,66 +152,67 @@ async function fetchText(url) {
 }
 
 async function main() {
-  // Already good and fully patched?
-  if (fs.existsSync(out)) {
-    const cur = fs.readFileSync(out, "utf8");
-    if (isGood(cur) && cur.includes("setCrossOrigin") && cur.includes("getHeading")) {
-      console.log("[prebuild] GameCanvas already complete+patched", cur.length);
-      return;
-    }
-    if (isGood(cur)) {
-      const patched = patchAll(cur);
-      fs.writeFileSync(out, patched);
-      console.log("[prebuild] patched existing GameCanvas", patched.length);
-      return;
-    }
-  }
-
-  // Try offline text parts s0-s7 if present
   try {
-    const parts = [];
-    let ok = true;
-    for (let i = 0; i < 8; i++) {
-      const p = path.join(dir, "gc_parts", `s${i}.txt`);
-      if (!fs.existsSync(p)) { ok = false; break; }
-      parts.push(fs.readFileSync(p, "utf8"));
-    }
-    if (ok) {
-      let full = parts.join("");
-      if (isGood(full)) {
-        full = patchAll(full);
-        fs.mkdirSync(path.dirname(out), { recursive: true });
-        fs.writeFileSync(out, full);
-        console.log("[prebuild] assembled from s0-s7", full.length);
+    if (fs.existsSync(out)) {
+      const cur = fs.readFileSync(out, "utf8");
+      if (isGood(cur) && cur.includes("setCrossOrigin") && cur.includes("getHeading")) {
+        console.log("[prebuild] GameCanvas already complete+patched", cur.length);
+        return;
+      }
+      if (isGood(cur)) {
+        const patched = patchAll(cur);
+        fs.writeFileSync(out, patched);
+        console.log("[prebuild] patched existing GameCanvas", patched.length);
         return;
       }
     }
-  } catch (e) {
-    console.warn("[prebuild] offline parts failed", e?.message || e);
-  }
 
-  // Network fetch from known-good commit
-  for (const url of URLS) {
     try {
-      console.log("[prebuild] fetching", url.slice(0, 70));
-      let text = await fetchText(url);
-      if (isGood(text)) {
-        text = patchAll(text);
-        fs.mkdirSync(path.dirname(out), { recursive: true });
-        fs.writeFileSync(out, text);
-        console.log("[prebuild] OK fetched+patched GameCanvas", text.length);
-        return;
+      const parts = [];
+      let ok = true;
+      for (let i = 0; i < 8; i++) {
+        const p = path.join(dir, "gc_parts", `s${i}.txt`);
+        if (!fs.existsSync(p)) { ok = false; break; }
+        parts.push(fs.readFileSync(p, "utf8"));
       }
-      console.warn("[prebuild] bad payload from", url.slice(0, 50), text?.length);
+      if (ok) {
+        let full = parts.join("");
+        if (isGood(full)) {
+          full = patchAll(full);
+          fs.mkdirSync(path.dirname(out), { recursive: true });
+          fs.writeFileSync(out, full);
+          console.log("[prebuild] assembled from s0-s7", full.length);
+          return;
+        }
+      }
     } catch (e) {
-      console.warn("[prebuild] fetch fail", e?.message || e);
+      console.warn("[prebuild] offline parts failed", e?.message || e);
     }
-  }
 
-  console.warn("[prebuild] FAILED — leaving valid stub in place (build still works)");
+    for (const url of URLS) {
+      try {
+        console.log("[prebuild] fetching", url.slice(0, 70));
+        let text = await fetchText(url);
+        if (isGood(text)) {
+          text = patchAll(text);
+          fs.mkdirSync(path.dirname(out), { recursive: true });
+          fs.writeFileSync(out, text);
+          console.log("[prebuild] OK fetched+patched GameCanvas", text.length);
+          return;
+        }
+        console.warn("[prebuild] bad payload from", url.slice(0, 50), text?.length);
+      } catch (e) {
+        console.warn("[prebuild] fetch fail", e?.message || e);
+      }
+    }
+
+    console.warn("[prebuild] FAILED — leaving valid stub in place (build still works)");
+  } catch (e) {
+    console.error("[prebuild] unexpected", e?.message || e);
+  }
 }
 
-main().catch((e) => {
+main().then(() => process.exit(0)).catch((e) => {
   console.error("[prebuild] error", e);
-  process.exit(0); // never fail the build
+  process.exit(0); // NEVER fail the build
 });
