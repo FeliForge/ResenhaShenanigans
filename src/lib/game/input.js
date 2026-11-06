@@ -16,18 +16,18 @@ export const ACTIONS = [
   { id: "quickchat", label: "Quick Chat" },
 ];
 
-// W y S invertidos por defecto. Dash en Shift.
+// W y S invertidos por defecto. Dash en Shift. M1 = clic izquierdo.
 export const DEFAULT_BINDS = {
   up: "KeyS", down: "KeyW", left: "KeyA", right: "KeyD",
   jump: "Space", dash: "ShiftLeft",
-  m1: "Digit1", special1: "Digit2", special2: "Digit3",
+  m1: "Mouse0", special1: "Digit2", special2: "Digit3",
   special3: "Digit4", ultimate: "Digit5", quickchat: "KeyT",
 };
 
-// Cuando un panel (ajustes/billboards) está abierto, el juego ignora el input.
+// Cuando un panel (ajustes/tienda) está abierto, el juego ignora el input.
 export const inputState = { blocked: false };
 
-const KEY = "cb_bindsv2";
+const KEY = "cb_bindsv3";
 
 export function loadBinds() {
   try {
@@ -49,6 +49,10 @@ export function codeToLabel(code) {
   if (!code) return "—";
   if (code === "Space") return "Espacio";
   if (code === "ShiftLeft" || code === "ShiftRight") return "Shift";
+  if (code === "Mouse0") return "Clic";
+  if (code === "Mouse1") return "Clic der.";
+  if (code === "Mouse2") return "Clic medio";
+  if (code.startsWith("Mouse")) return "Mouse" + code.slice(5);
   if (code.startsWith("Key")) return code.slice(3);
   if (code.startsWith("Digit")) return code.slice(5);
   if (code.startsWith("Arrow")) return code.slice(5);
