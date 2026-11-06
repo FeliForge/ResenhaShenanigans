@@ -49,7 +49,7 @@ export default function GameApp() {
   const [shopBusy, setShopBusy] = useState(null);
   const [nearShop, setNearShop] = useState(false);
   const countersRef = useRef(null);
-  const reportedRef = useRef(null);
+  const reportedRef = useRef({});
   const canvasRef = useRef(null);
   const claimable = (quests || []).filter((q) => !q.claimed && (q.progress || 0) >= q.target).length;
   const dashItem = getShopItem(shop.dash);
@@ -77,6 +77,27 @@ export default function GameApp() {
     audio.init();
     audio.setMuted(!audioOn);
   }, [audioOn]);
+
+  // Flush quest progress while playing
+  useEffect(() => {
+    if (screen !== "play") return;
+    reportedRef.current = {};
+    const id = setInterval(() => {
+      const c = countersRef.current;
+      if (!c) return;
+      const prev = reportedRef.current || {};
+      const deltas = {};
+      for (const k of Object.keys(c)) {
+        const v = Math.floor(c[k] || 0);
+        const p = prev[k] || 0;
+        if (v > p) deltas[k] = v - p;
+      }
+      if (Object.keys(deltas).length === 0) return;
+      reportedRef.current = { ...c };
+      flushQuests(deltas);
+    }, 4000);
+    return () => clearInterval(id);
+  }, [screen]);
 
   function createPrivateRoom() {
     const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -114,6 +135,18 @@ export default function GameApp() {
   }
 
   function exitToSelect() {
+    // final flush before leaving
+    const c = countersRef.current;
+    if (c) {
+      const prev = reportedRef.current || {};
+      const deltas = {};
+      for (const k of Object.keys(c)) {
+        const v = Math.floor(c[k] || 0);
+        const p = prev[k] || 0;
+        if (v > p) deltas[k] = v - p;
+      }
+      if (Object.keys(deltas).length) flushQuests(deltas);
+    }
     setScreen("select");
     setCharacter(null);
   }
