@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { countMatches, recordMatch } from "@/lib/game/records";
 import GameCanvas from "@/components/game/GameCanvas";
 import CharacterSelect from "@/components/game/CharacterSelect";
@@ -28,7 +28,7 @@ export default function GameApp() {
   const [character, setCharacter] = useState(null);
   const [roomCode, setRoomCode] = useState("");
   const [musicUrl, setMusicUrl] = useState("");
-  const [stats, setStats] = useState({ health: 1000, meter: 0, cooldowns: zeroCooldowns, hits: 0, meterPeak: 0, kills: 0, deaths: 0, combo: 0, invuln: 0, dead: false });
+  const [stats, setStats] = useState({ health: 1000, meter: 0, cooldowns: zeroCooldowns, hits: 0, meterPeak: 0, kills: 0, deaths: 0, combo: 0, invuln: 0, dead: false, heading: 0 });
   const [defeat, setDefeat] = useState(null);
   const [feed, setFeed] = useState([]);
   const feedIdRef = useRef(0);
@@ -54,6 +54,15 @@ export default function GameApp() {
   const claimable = (quests || []).filter((q) => !q.claimed && (q.progress || 0) >= q.target).length;
   const dashItem = getShopItem(shop.dash);
   const emoteItem = getShopItem(shop.emote);
+
+  const getHeading = useCallback(() => {
+    try {
+      const h = canvasRef.current?.getHeading?.();
+      return typeof h === "number" ? h : (stats.heading || 0);
+    } catch {
+      return stats.heading || 0;
+    }
+  }, [stats.heading]);
 
   useEffect(() => {
     setBinds(loadBinds());
@@ -126,7 +135,7 @@ export default function GameApp() {
     setCharacter(char);
     setDefeat(null);
     setFeed([]);
-    setStats({ health: char.stats?.health || 1000, meter: 0, cooldowns: { ...zeroCooldowns }, hits: 0, meterPeak: 0, kills: 0, deaths: 0, combo: 0, invuln: 0, dead: false });
+    setStats({ health: char.stats?.health || 1000, meter: 0, cooldowns: { ...zeroCooldowns }, hits: 0, meterPeak: 0, kills: 0, deaths: 0, combo: 0, invuln: 0, dead: false, heading: 0 });
     setScreen("play");
     try {
       saveMyLoadout(toLoadout(char, billboardUrl));
@@ -280,6 +289,7 @@ export default function GameApp() {
           onSaveBillboard={handleSaveBillboard}
           emote={emoteItem}
           onEmote={() => canvasRef.current?.showEmote()}
+          getHeading={getHeading}
         />
         {isTouch && (
           <MobileControls
