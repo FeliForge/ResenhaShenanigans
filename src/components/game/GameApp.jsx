@@ -61,7 +61,7 @@ export default function GameApp() {
 
   useEffect(() => {
     setIsTouch("ontouchstart" in window || navigator.maxTouchPoints > 0);
-    countMatches().then(setMatches).catch(() => {});
+    try { setMatches(countMatches()); } catch {}
     const lo = loadMyLoadout();
     if (lo) {
       try {
