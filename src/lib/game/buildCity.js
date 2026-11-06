@@ -246,5 +246,8 @@ export function buildCity(scene) {
   }
 
   const colliders = placed.map((p) => ({ x: p.x, z: p.z, w: p.w, d: p.d }));
+  // Fuente central: base circular (~r 8) aproximada con AABB + pedestal
+  colliders.push({ x: 0, z: 0, w: 15.5, d: 15.5 }); // base / pileta
+  colliders.push({ x: 0, z: 0, w: 3.6, d: 3.6 });   // pedestal central
   return { group, crates, neons, colliders, billboards, setNight, update, dispose };
 }
