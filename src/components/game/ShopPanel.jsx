@@ -1,8 +1,9 @@
 // @ts-nocheck
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowUp, Check, Coins, Dumbbell, Hand, Loader2, Music, RotateCw, Smile, X, Zap } from "lucide-react";
 import { DASH_EFFECTS, EMOTES } from "@/data/shop";
 import { useI18n } from "@/lib/i18n";
+import { inputState } from "@/lib/game/input";
 
 const ANIM_ICONS = { dance: Music, wave: Hand, spin: RotateCw, flex: Dumbbell, hop: ArrowUp };
 
@@ -16,6 +17,12 @@ export default function ShopPanel({ coins, owned, dash, emote, loading, busyId, 
   const items = tab === "dash" ? DASH_EFFECTS : EMOTES;
   const equipped = tab === "dash" ? dash : emote;
   const mine = owned || [];
+
+  useEffect(() => {
+    inputState.blocked = true;
+    try { document.exitPointerLock?.(); } catch {}
+    return () => { inputState.blocked = false; };
+  }, []);
 
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm">
