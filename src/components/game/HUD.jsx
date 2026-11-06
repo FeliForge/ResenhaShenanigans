@@ -1,11 +1,10 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
-import { ChevronLeft, Settings, Image, Smile, Zap, Shield, Skull } from "lucide-react";
+import { ChevronLeft, Settings, Smile, Zap, Shield, Skull } from "lucide-react";
 import { MOVE_KEYS } from "@/data/characters";
 import { codeToLabel } from "@/lib/game/input";
 import { useI18n } from "@/lib/i18n";
 import ControlsPanel from "@/components/game/ControlsPanel";
-import BillboardsPanel from "@/components/game/BillboardsPanel";
 
 const CLIP_CARD = "polygon(14% 0, 100% 0, 100% 86%, 86% 100%, 0 100%, 0 14%)";
 const CLIP_BAR = "polygon(0 0, 100% 0, 97% 100%, 0 100%)";
@@ -64,23 +63,19 @@ function Compass({ heading = 0, getHeading }) {
       aria-label={`Compass ${label} ${Math.round(rot)} degrees`}
     >
       <div className="absolute inset-0 rounded-full bg-black/70 shadow-[0_0_14px_rgba(0,229,255,0.35)] ring-1 ring-cyan-400/40 backdrop-blur" />
-      {/* rotating rose */}
       <div
         className="absolute inset-1 rounded-full"
         style={{ transform: `rotate(${-rot}deg)`, transition: "transform 80ms linear" }}
       >
-        {/* N marker (red) */}
         <div className="absolute left-1/2 top-0.5 -translate-x-1/2 text-[9px] font-black text-red-400">N</div>
         <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[8px] font-bold text-white/50">S</div>
         <div className="absolute left-0.5 top-1/2 -translate-y-1/2 text-[8px] font-bold text-white/50">W</div>
         <div className="absolute right-0.5 top-1/2 -translate-y-1/2 text-[8px] font-bold text-white/50">E</div>
-        {/* needle */}
         <div className="absolute left-1/2 top-1/2 h-[70%] w-0.5 -translate-x-1/2 -translate-y-1/2">
           <div className="h-1/2 w-full rounded-t bg-red-500" style={{ boxShadow: "0 0 6px rgba(239,68,68,0.8)" }} />
           <div className="h-1/2 w-full rounded-b bg-white/80" />
         </div>
       </div>
-      {/* fixed center dot + current dir */}
       <div className="absolute bottom-[-2px] left-1/2 z-10 -translate-x-1/2 translate-y-full rounded bg-black/80 px-1.5 py-0.5 text-[9px] font-bold tracking-wider text-cyan-300">
         {label} {Math.round(rot)}°
       </div>
@@ -89,10 +84,9 @@ function Compass({ heading = 0, getHeading }) {
   );
 }
 
-export default function HUD({ character, stats, binds, audioOn, isTouch, onMove, onDash, onBack, onSaveBinds, onToggleAudio, billboardUrl, onSaveBillboard, emote, onEmote, getHeading }) {
+export default function HUD({ character, stats, binds, audioOn, isTouch, onMove, onDash, onBack, onSaveBinds, onToggleAudio, emote, onEmote, getHeading }) {
   const { t, character: localChar, move: localMove } = useI18n();
   const [showControls, setShowControls] = useState(false);
-  const [showBillboards, setShowBillboards] = useState(false);
 
   const info = localChar(character) || character;
   const healthPct = Math.max(0, (stats.health / character.stats.health) * 100);
@@ -105,7 +99,6 @@ export default function HUD({ character, stats, binds, audioOn, isTouch, onMove,
 
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3 font-heading">
-      {/* Top-left: status */}
       <div className="flex items-start justify-between gap-2">
         <div className="pointer-events-auto flex flex-col gap-2">
           <button
@@ -120,7 +113,6 @@ export default function HUD({ character, stats, binds, audioOn, isTouch, onMove,
               <span className="truncate font-bold tracking-wide text-white">{info.displayName}</span>
               <span className="shrink-0 font-mono text-[10px] text-white/70">{Math.ceil(stats.health)} HP</span>
             </div>
-            {/* HP bar */}
             <div className="relative h-4 w-full bg-black/80" style={{ clipPath: CLIP_BAR }}>
               <div
                 className="absolute inset-y-0 left-0 transition-all"
@@ -128,7 +120,6 @@ export default function HUD({ character, stats, binds, audioOn, isTouch, onMove,
               />
               <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(90deg,transparent 0,transparent 22px,rgba(0,0,0,0.35) 22px,rgba(0,0,0,0.35) 24px)" }} />
             </div>
-            {/* Meter bar */}
             <div className="mt-1.5 flex items-center justify-between text-[10px]">
               <span className="font-bold tracking-widest text-violet-300">{t("hud.energy")}</span>
               <span className="font-mono text-white/70">{Math.floor(meterPct)}% · {t("hud.hits", { n: stats.hits ?? 0 })}</span>
@@ -139,8 +130,6 @@ export default function HUD({ character, stats, binds, audioOn, isTouch, onMove,
                 style={{ width: `${meterPct}%`, background: "linear-gradient(90deg,#6b21a8,#a855f7,#06b6d4)", boxShadow: meterFull ? "0 0 16px rgba(168,85,247,0.95)" : "0 0 8px rgba(107,33,168,0.5)" }}
               />
             </div>
-
-            {/* KOs / muertes / protección */}
             <div className="mt-1.5 flex items-center gap-2 text-[9px] font-bold uppercase tracking-wider">
               <span className="flex items-center gap-1 rounded bg-white/10 px-1.5 py-0.5 text-white/80">
                 <Skull size={10} className="text-[#ff9620]" /> {t("hud.kos")} {stats.kills ?? 0}
@@ -161,7 +150,6 @@ export default function HUD({ character, stats, binds, audioOn, isTouch, onMove,
           )}
         </div>
 
-        {/* Top-right: compass + hint + buttons */}
         <div className="pointer-events-auto flex flex-col items-end gap-2">
           <div className="mb-3 mr-1">
             <Compass heading={stats.heading ?? 0} getHeading={getHeading} />
@@ -182,9 +170,6 @@ export default function HUD({ character, stats, binds, audioOn, isTouch, onMove,
                 <Smile size={14} className="text-emerald-300" /> {t(`shop.item.${emote.id}`)}
               </button>
             )}
-            <button onClick={() => setShowBillboards(true)} className="rounded bg-black/70 p-2 text-white backdrop-blur hover:bg-black/90" aria-label={t("hud.billboards")}>
-              <Image size={16} />
-            </button>
             <button onClick={() => setShowControls(true)} className="rounded bg-black/70 p-2 text-white backdrop-blur hover:bg-black/90" aria-label={t("hud.controls")}>
               <Settings size={16} />
             </button>
@@ -192,7 +177,6 @@ export default function HUD({ character, stats, binds, audioOn, isTouch, onMove,
         </div>
       </div>
 
-      {/* Bottom: move cards + dash (hidden on touch — MobileControls covers them) */}
       {!isTouch && (
         <div className="pointer-events-auto flex flex-wrap items-end justify-start gap-2">
           {Object.entries(character.moves).map(([key, rawMove]) => {
@@ -244,9 +228,6 @@ export default function HUD({ character, stats, binds, audioOn, isTouch, onMove,
 
       {showControls && (
         <ControlsPanel binds={binds} audioOn={audioOn} onSave={onSaveBinds} onToggleAudio={onToggleAudio} onClose={() => setShowControls(false)} />
-      )}
-      {showBillboards && (
-        <BillboardsPanel url={billboardUrl} onSave={onSaveBillboard} onClose={() => setShowBillboards(false)} />
       )}
     </div>
   );
