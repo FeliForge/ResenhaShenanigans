@@ -18,7 +18,7 @@ function isGood(text) {
     text.includes("buildCity") &&
     text.includes("export default") &&
     !text.includes("__CONTINUE__") &&
-    !text.includes("PLACEHOLDER")
+    !text.includes("PLACEHOLDER - will replace")
   );
 }
 
@@ -78,10 +78,74 @@ function patchBillboards(text) {
       sendMyLoadout?.();
     }`;
 
-  if (text.includes(oldApply)) return text.replace(oldApply, newApply);
-  if (text.includes("setCrossOrigin")) return text; // already patched
-  console.warn("[prebuild] billboard patch pattern not found");
+  if (text.includes(oldApply)) text = text.replace(oldApply, newApply);
+  else if (!text.includes("setCrossOrigin")) console.warn("[prebuild] billboard patch pattern not found");
   return text;
+}
+
+/** Expose camera heading for the HUD compass */
+function patchCompass(text) {
+  if (text.includes("getHeading")) return text;
+
+  // 1) Imperative handle
+  const oldHandle = `  useImperativeHandle(ref, () => ({
+    triggerMove: (cat) => apiRef.current?.triggerMove(cat),
+    triggerDash: () => apiRef.current?.triggerDash(),
+    triggerJump: () => apiRef.current?.triggerJump(),
+    setMobileMove: (x, y) => apiRef.current?.setMobileMove(x, y),
+    showQuickChat: (p) => apiRef.current?.showQuickChat(p),
+    setMyBillboard: (url) => apiRef.current?.setMyBillboard(url),
+    showEmote: () => apiRef.current?.showEmote(),
+    setDashStyle: (s) => apiRef.current?.setDashStyle(s),
+  }));`;
+
+  const newHandle = `  useImperativeHandle(ref, () => ({
+    triggerMove: (cat) => apiRef.current?.triggerMove(cat),
+    triggerDash: () => apiRef.current?.triggerDash(),
+    triggerJump: () => apiRef.current?.triggerJump(),
+    setMobileMove: (x, y) => apiRef.current?.setMobileMove(x, y),
+    showQuickChat: (p) => apiRef.current?.showQuickChat(p),
+    setMyBillboard: (url) => apiRef.current?.setMyBillboard(url),
+    showEmote: () => apiRef.current?.showEmote(),
+    setDashStyle: (s) => apiRef.current?.setDashStyle(s),
+    getHeading: () => apiRef.current?.getHeading?.() ?? 0,
+  }));`;
+
+  if (text.includes(oldHandle)) text = text.replace(oldHandle, newHandle);
+  else console.warn("[prebuild] compass handle patch not found");
+
+  // 2) apiRef assignment — include getHeading from camState.yaw (degrees, 0 = +Z)
+  const oldApi = `apiRef.current = { triggerMove: doMove, triggerDash: doDash, triggerJump, setMobileMove, showQuickChat: doQuickChat, setMyBillboard, showEmote: doEmote, setDashStyle: (s) => vfx.setDashStyle(s) };`;
+  const newApi = `apiRef.current = { triggerMove: doMove, triggerDash: doDash, triggerJump, setMobileMove, showQuickChat: doQuickChat, setMyBillboard, showEmote: doEmote, setDashStyle: (s) => vfx.setDashStyle(s), getHeading: () => { const deg = ((-camState.yaw * 180 / Math.PI) % 360 + 360) % 360; return deg; } };`;
+  if (text.includes(oldApi)) text = text.replace(oldApi, newApi);
+  else console.warn("[prebuild] compass apiRef patch not found");
+
+  // 3) Include heading in onStats payload
+  const oldStats = `        onStatsRef.current?.({
+          health: game.health, meter: game.meter, cooldowns,
+          hits: game.hits, meterPeak: game.meterPeak, counters: game.counters,
+          kills: game.kills, deaths: game.deaths, dead: game.dead,
+          combo: game.comboShown || 0,
+          invuln: Math.max(0, game.invulnUntil - now),
+          respawnIn: game.dead ? Math.max(0, Math.ceil((game.respawnAt - now) / 1000)) : 0,
+        });`;
+  const newStats = `        onStatsRef.current?.({
+          health: game.health, meter: game.meter, cooldowns,
+          hits: game.hits, meterPeak: game.meterPeak, counters: game.counters,
+          kills: game.kills, deaths: game.deaths, dead: game.dead,
+          combo: game.comboShown || 0,
+          invuln: Math.max(0, game.invulnUntil - now),
+          respawnIn: game.dead ? Math.max(0, Math.ceil((game.respawnAt - now) / 1000)) : 0,
+          heading: ((-camState.yaw * 180 / Math.PI) % 360 + 360) % 360,
+        });`;
+  if (text.includes(oldStats)) text = text.replace(oldStats, newStats);
+  else console.warn("[prebuild] compass stats patch not found");
+
+  return text;
+}
+
+function patchAll(text) {
+  return patchCompass(patchBillboards(text));
 }
 
 async function fetchText(url) {
@@ -91,15 +155,15 @@ async function fetchText(url) {
 }
 
 async function main() {
-  // Already good and patched?
+  // Already good and fully patched?
   if (fs.existsSync(out)) {
     const cur = fs.readFileSync(out, "utf8");
-    if (isGood(cur) && cur.includes("setCrossOrigin")) {
+    if (isGood(cur) && cur.includes("setCrossOrigin") && cur.includes("getHeading")) {
       console.log("[prebuild] GameCanvas already complete+patched", cur.length);
       return;
     }
     if (isGood(cur)) {
-      const patched = patchBillboards(cur);
+      const patched = patchAll(cur);
       fs.writeFileSync(out, patched);
       console.log("[prebuild] patched existing GameCanvas", patched.length);
       return;
@@ -118,7 +182,7 @@ async function main() {
     if (ok) {
       let full = parts.join("");
       if (isGood(full)) {
-        full = patchBillboards(full);
+        full = patchAll(full);
         fs.mkdirSync(path.dirname(out), { recursive: true });
         fs.writeFileSync(out, full);
         console.log("[prebuild] assembled from s0-s7", full.length);
@@ -135,7 +199,7 @@ async function main() {
       console.log("[prebuild] fetching", url.slice(0, 70));
       let text = await fetchText(url);
       if (isGood(text)) {
-        text = patchBillboards(text);
+        text = patchAll(text);
         fs.mkdirSync(path.dirname(out), { recursive: true });
         fs.writeFileSync(out, text);
         console.log("[prebuild] OK fetched+patched GameCanvas", text.length);
@@ -147,7 +211,7 @@ async function main() {
     }
   }
 
-  console.warn("[prebuild] FAILED — leaving stub in place");
+  console.warn("[prebuild] FAILED — leaving valid stub in place (build still works)");
 }
 
 main().catch((e) => {
