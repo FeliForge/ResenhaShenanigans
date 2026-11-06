@@ -22,6 +22,7 @@ import {
   playlistVideoIds,
 } from "@/lib/game/playlists";
 import { extractYouTubeId, youtubeEmbedSrc } from "@/lib/game/roomMusic";
+import { inputState } from "@/lib/game/input";
 
 function trackEmbedSrc(track) {
   if (!track) return null;
@@ -44,6 +45,12 @@ export default function BoomboxPanel({ onClose, onUseInRoom, roomCode }) {
   const [mode, setMode] = useState("link"); // link | search
   const [playingIdx, setPlayingIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    inputState.blocked = true;
+    try { document.exitPointerLock?.(); } catch {}
+    return () => { inputState.blocked = false; };
+  }, []);
 
   const active = useMemo(
     () => playlists.find((p) => p.id === activeId) || playlists[0] || null,
@@ -79,7 +86,6 @@ export default function BoomboxPanel({ onClose, onUseInRoom, roomCode }) {
     const value = input.trim();
     if (!value) return;
     if (mode === "link" && !extractYouTubeId(value)) {
-      // permitir pegar texto; si no es link, tratar como search
       refresh(addTrack(active.id, { title: title || value, input: value }));
     } else {
       refresh(
@@ -115,7 +121,6 @@ export default function BoomboxPanel({ onClose, onUseInRoom, roomCode }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-3 sm:items-center">
       <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-[#ff9620]/30 bg-gradient-to-b from-[#1a1520] to-[#0d0a12] shadow-[0_20px_60px_rgba(0,0,0,0.7)]">
-        {/* Boombox shell */}
         <div className="relative px-4 pb-4 pt-3">
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2 text-[#ff9620]">
@@ -132,7 +137,6 @@ export default function BoomboxPanel({ onClose, onUseInRoom, roomCode }) {
             </button>
           </div>
 
-          {/* Speakers + screen */}
           <div className="mb-4 grid grid-cols-[1fr_1.4fr_1fr] items-center gap-2">
             <div className="aspect-square rounded-full border-4 border-[#2a2430] bg-[radial-gradient(circle_at_center,#333_0%,#111_55%,#000_100%)] shadow-inner" />
             <div className="rounded-xl border border-white/10 bg-black/60 p-2">
@@ -165,7 +169,6 @@ export default function BoomboxPanel({ onClose, onUseInRoom, roomCode }) {
             <div className="aspect-square rounded-full border-4 border-[#2a2430] bg-[radial-gradient(circle_at_center,#333_0%,#111_55%,#000_100%)] shadow-inner" />
           </div>
 
-          {/* Hidden / compact player */}
           {embed && (
             <div className="mb-3 overflow-hidden rounded-lg border border-white/10">
               <iframe
@@ -179,7 +182,6 @@ export default function BoomboxPanel({ onClose, onUseInRoom, roomCode }) {
             </div>
           )}
 
-          {/* Playlists row */}
           <div className="mb-2 flex items-center gap-2">
             <ListMusic size={14} className="text-[#ff9620]" />
             <span className="text-xs font-semibold uppercase tracking-wider text-white/60">Playlists</span>
@@ -228,7 +230,6 @@ export default function BoomboxPanel({ onClose, onUseInRoom, roomCode }) {
             )}
           </div>
 
-          {/* Add track */}
           {active && (
             <div className="mb-3 rounded-xl border border-white/10 bg-black/30 p-3">
               <div className="mb-2 flex gap-1">
@@ -278,7 +279,6 @@ export default function BoomboxPanel({ onClose, onUseInRoom, roomCode }) {
             </div>
           )}
 
-          {/* Track list */}
           <div className="max-h-40 space-y-1 overflow-y-auto">
             {tracks.length === 0 && (
               <p className="py-4 text-center text-xs text-white/35">
