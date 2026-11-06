@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronLeft, Settings, Image, Smile, Zap, Shield, Skull } from "lucide-react";
 import { MOVE_KEYS } from "@/data/characters";
 import { codeToLabel } from "@/lib/game/input";
@@ -11,7 +11,85 @@ const CLIP_CARD = "polygon(14% 0, 100% 0, 100% 86%, 86% 100%, 0 100%, 0 14%)";
 const CLIP_BAR = "polygon(0 0, 100% 0, 97% 100%, 0 100%)";
 const CLIP_BAR_R = "polygon(3% 0, 100% 0, 100% 100%, 0 100%)";
 
-export default function HUD({ character, stats, binds, audioOn, isTouch, onMove, onDash, onBack, onSaveBinds, onToggleAudio, billboardUrl, onSaveBillboard, emote, onEmote }) {
+const DIRS = [
+  { label: "N", deg: 0 },
+  { label: "NE", deg: 45 },
+  { label: "E", deg: 90 },
+  { label: "SE", deg: 135 },
+  { label: "S", deg: 180 },
+  { label: "SW", deg: 225 },
+  { label: "W", deg: 270 },
+  { label: "NW", deg: 315 },
+];
+
+function dirLabel(deg) {
+  const d = ((deg % 360) + 360) % 360;
+  let best = DIRS[0];
+  let bestDiff = 999;
+  for (const x of DIRS) {
+    const diff = Math.min(Math.abs(d - x.deg), 360 - Math.abs(d - x.deg));
+    if (diff < bestDiff) { bestDiff = diff; best = x; }
+  }
+  return best.label;
+}
+
+function Compass({ heading = 0, getHeading }) {
+  const [h, setH] = useState(heading);
+
+  useEffect(() => {
+    if (typeof heading === "number" && !Number.isNaN(heading)) setH(heading);
+  }, [heading]);
+
+  useEffect(() => {
+    if (typeof getHeading !== "function") return;
+    let raf;
+    const tick = () => {
+      try {
+        const v = getHeading();
+        if (typeof v === "number" && !Number.isNaN(v)) setH(v);
+      } catch {}
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [getHeading]);
+
+  const rot = ((h % 360) + 360) % 360;
+  const label = dirLabel(rot);
+
+  return (
+    <div
+      className="pointer-events-none relative flex h-16 w-16 items-center justify-center"
+      title={`${Math.round(rot)}° ${label}`}
+      aria-label={`Compass ${label} ${Math.round(rot)} degrees`}
+    >
+      <div className="absolute inset-0 rounded-full bg-black/70 shadow-[0_0_14px_rgba(0,229,255,0.35)] ring-1 ring-cyan-400/40 backdrop-blur" />
+      {/* rotating rose */}
+      <div
+        className="absolute inset-1 rounded-full"
+        style={{ transform: `rotate(${-rot}deg)`, transition: "transform 80ms linear" }}
+      >
+        {/* N marker (red) */}
+        <div className="absolute left-1/2 top-0.5 -translate-x-1/2 text-[9px] font-black text-red-400">N</div>
+        <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[8px] font-bold text-white/50">S</div>
+        <div className="absolute left-0.5 top-1/2 -translate-y-1/2 text-[8px] font-bold text-white/50">W</div>
+        <div className="absolute right-0.5 top-1/2 -translate-y-1/2 text-[8px] font-bold text-white/50">E</div>
+        {/* needle */}
+        <div className="absolute left-1/2 top-1/2 h-[70%] w-0.5 -translate-x-1/2 -translate-y-1/2">
+          <div className="h-1/2 w-full rounded-t bg-red-500" style={{ boxShadow: "0 0 6px rgba(239,68,68,0.8)" }} />
+          <div className="h-1/2 w-full rounded-b bg-white/80" />
+        </div>
+      </div>
+      {/* fixed center dot + current dir */}
+      <div className="absolute bottom-[-2px] left-1/2 z-10 -translate-x-1/2 translate-y-full rounded bg-black/80 px-1.5 py-0.5 text-[9px] font-bold tracking-wider text-cyan-300">
+        {label} {Math.round(rot)}°
+      </div>
+      <div className="absolute h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_6px_#67e8f9]" />
+    </div>
+  );
+}
+
+export default function HUD({ character, stats, binds, audioOn, isTouch, onMove, onDash, onBack, onSaveBinds, onToggleAudio, billboardUrl, onSaveBillboard, emote, onEmote, getHeading }) {
   const { t, character: localChar, move: localMove } = useI18n();
   const [showControls, setShowControls] = useState(false);
   const [showBillboards, setShowBillboards] = useState(false);
@@ -83,29 +161,34 @@ export default function HUD({ character, stats, binds, audioOn, isTouch, onMove,
           )}
         </div>
 
-        {/* Top-right: hint + buttons */}
-        <div className="pointer-events-auto flex items-center gap-2">
-          {!isTouch && (
-            <span className="rounded bg-black/70 px-3 py-1 text-[10px] font-semibold tracking-wide text-white/80 backdrop-blur">
-              {t("hud.hint")}
-            </span>
-          )}
-          {emote && (
-            <button
-              onClick={onEmote}
-              title={`${t(`shop.item.${emote.id}`) } (E)`}
-              className="flex items-center gap-1 rounded bg-black/70 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur hover:bg-black/90"
-              aria-label={t("hud.emoteAria")}
-            >
-              <Smile size={14} className="text-emerald-300" /> {t(`shop.item.${emote.id}`)}
+        {/* Top-right: compass + hint + buttons */}
+        <div className="pointer-events-auto flex flex-col items-end gap-2">
+          <div className="mb-3 mr-1">
+            <Compass heading={stats.heading ?? 0} getHeading={getHeading} />
+          </div>
+          <div className="flex items-center gap-2">
+            {!isTouch && (
+              <span className="rounded bg-black/70 px-3 py-1 text-[10px] font-semibold tracking-wide text-white/80 backdrop-blur">
+                {t("hud.hint")}
+              </span>
+            )}
+            {emote && (
+              <button
+                onClick={onEmote}
+                title={`${t(`shop.item.${emote.id}`) } (E)`}
+                className="flex items-center gap-1 rounded bg-black/70 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur hover:bg-black/90"
+                aria-label={t("hud.emoteAria")}
+              >
+                <Smile size={14} className="text-emerald-300" /> {t(`shop.item.${emote.id}`)}
+              </button>
+            )}
+            <button onClick={() => setShowBillboards(true)} className="rounded bg-black/70 p-2 text-white backdrop-blur hover:bg-black/90" aria-label={t("hud.billboards")}>
+              <Image size={16} />
             </button>
-          )}
-          <button onClick={() => setShowBillboards(true)} className="rounded bg-black/70 p-2 text-white backdrop-blur hover:bg-black/90" aria-label={t("hud.billboards")}>
-            <Image size={16} />
-          </button>
-          <button onClick={() => setShowControls(true)} className="rounded bg-black/70 p-2 text-white backdrop-blur hover:bg-black/90" aria-label={t("hud.controls")}>
-            <Settings size={16} />
-          </button>
+            <button onClick={() => setShowControls(true)} className="rounded bg-black/70 p-2 text-white backdrop-blur hover:bg-black/90" aria-label={t("hud.controls")}>
+              <Settings size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
