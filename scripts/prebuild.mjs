@@ -141,8 +141,31 @@ function patchCompass(text) {
   return text;
 }
 
+/** Spawn suspendido encima de la fuente (estilo Smash Bros) */
+function patchSpawn(text) {
+  // Inicial: caer desde arriba de la fuente
+  if (text.includes("player.position.set(0, 14, 0)")) return text;
+  if (text.includes("player.position.set(0, 1.6, 0)")) {
+    text = text.replace("player.position.set(0, 1.6, 0)", "player.position.set(0, 14, 0)");
+  } else {
+    console.warn("[prebuild] spawn init pattern not found");
+  }
+  // Asegurar onGround false al nacer alto
+  if (text.includes("onGround: true, meter: 0")) {
+    text = text.replace("onGround: true, meter: 0", "onGround: false, meter: 0");
+  }
+  // Al respawn también marcar en el aire
+  if (text.includes("game.player.position.set(RESPAWN_POINT.x, RESPAWN_POINT.y, RESPAWN_POINT.z);\n      game.velocity.set(0, 0, 0);")) {
+    text = text.replace(
+      "game.player.position.set(RESPAWN_POINT.x, RESPAWN_POINT.y, RESPAWN_POINT.z);\n      game.velocity.set(0, 0, 0);",
+      "game.player.position.set(RESPAWN_POINT.x, RESPAWN_POINT.y, RESPAWN_POINT.z);\n      game.velocity.set(0, 0, 0);\n      game.onGround = false;"
+    );
+  }
+  return text;
+}
+
 function patchAll(text) {
-  return patchCompass(patchBillboards(text));
+  return patchSpawn(patchCompass(patchBillboards(text)));
 }
 
 async function fetchText(url) {
@@ -155,7 +178,7 @@ async function main() {
   try {
     if (fs.existsSync(out)) {
       const cur = fs.readFileSync(out, "utf8");
-      if (isGood(cur) && cur.includes("setCrossOrigin") && cur.includes("getHeading")) {
+      if (isGood(cur) && cur.includes("setCrossOrigin") && cur.includes("getHeading") && cur.includes("player.position.set(0, 14, 0)")) {
         console.log("[prebuild] GameCanvas already complete+patched", cur.length);
         return;
       }
