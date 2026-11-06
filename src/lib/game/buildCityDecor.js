@@ -7,87 +7,51 @@ function isOnRoad(x, z) {
   return near(x) || near(z);
 }
 
-function makeBillboardTex(label, accent) {
-  const c = document.createElement("canvas");
-  c.width = 512; c.height = 256;
-  const x = c.getContext("2d");
-  x.fillStyle = "#0e1118"; x.fillRect(0, 0, 512, 256);
-  x.strokeStyle = accent || "#2a3040"; x.lineWidth = 10; x.strokeRect(6, 6, 500, 244);
-  x.fillStyle = accent || "#3a4252"; x.font = "bold 48px sans-serif"; x.textAlign = "center";
-  x.fillText(label, 256, 115);
-  x.fillStyle = "#7a8292"; x.font = "22px sans-serif"; x.fillText("Personalizable", 256, 168);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-}
-
-/** Add billboards (personal + fixed far), street lamps, neon poles. */
+/** Add 4 fixed billboards in empty zones + street lamps + neon poles. */
 export function addCityDecor(group, occ, PLAZA_R) {
   const billboards = [];
-  // BILLBOARDS personalizables — más lejos (~130u)
-  const personalSlots = [
-    { x:  130, z:  55 }, { x: -130, z:  55 },
-    { x:  55, z:  130 }, { x:  55, z: -130 },
-    { x: -55, z:  130 }, { x: -55, z: -130 },
-    { x:  130, z: -55 }, { x: -130, z: -55 },
+
+  // 4 billboards fijos en zonas vacías distintas del mapa (fuera de plaza y carreteras)
+  const slots = [
+    { x:  105, z:  72 },  // NE — GoofyBoxy
+    { x: -118, z:  48 },  // NW — VitalSmash
+    { x:   62, z: 128 },  // SE — TangoMayhem
+    { x:  -88, z: -115 }, // SW — TomatoSmash
   ];
-  const bbLabels = [
-    ["Arena", "#ff9620"], ["Shop", "#00e5ff"], ["News", "#d500f9"], ["Ads", "#88ccaa"],
-    ["Fight", "#ff3b2f"], ["Resenha", "#ffcc66"], ["Dash", "#5a9fff"], ["Combo", "#ff66aa"],
-  ];
-  personalSlots.forEach((pos, i) => {
+
+  FIXED_BILLBOARD_IMAGES.forEach((img, i) => {
+    const pos = slots[i] || { x: 120, z: 0 };
     let bx = pos.x, bz = pos.z;
     if (isOnRoad(bx, bz)) { bx += 14; bz += 10; }
-    const [label, accent] = bbLabels[i];
-    const tex = makeBillboardTex(label, accent);
-    const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
-    const h = 11;
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(13, 6.5), mat);
-    mesh.position.set(bx, h, bz);
-    mesh.lookAt(0, h, 0);
-    const post = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.28, 0.32, h - 0.4, 6),
-      new THREE.MeshStandardMaterial({ color: 0x333840, flatShading: true })
-    );
-    post.position.set(bx, (h - 0.4) / 2, bz);
-    const base = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.7, 0.9, 0.38, 6),
-      new THREE.MeshStandardMaterial({ color: 0x2a2e36, flatShading: true })
-    );
-    base.position.set(bx, 0.19, bz);
-    group.add(mesh, post, base);
-    occ.tryAdd(bx, bz, 7);
-    billboards.push({ mesh, mat, index: i });
-  });
+    // Empujar fuera de la plaza si cayera dentro
+    if (Math.abs(bx) < PLAZA_R && Math.abs(bz) < PLAZA_R) {
+      const s = Math.max(PLAZA_R + 12, Math.hypot(bx, bz) || 1);
+      const a = Math.atan2(bz, bx);
+      bx = Math.cos(a) * s;
+      bz = Math.sin(a) * s;
+    }
 
-  // BILLBOARDS FIJOS — aún más lejos (~185u)
-  const fixedSlots = [
-    { x:  185, z:  90 },
-    { x: -185, z:  90 },
-    { x:   90, z: 185 },
-    { x:  -90, z: -185 },
-  ];
-  FIXED_BILLBOARD_IMAGES.forEach((img, i) => {
-    const pos = fixedSlots[i] || { x: 200, z: 0 };
-    let bx = pos.x, bz = pos.z;
-    if (isOnRoad(bx, bz)) { bx += 16; bz += 12; }
     const mat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, color: 0x555555 });
-    const h = 13;
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), mat);
+    const h = 12;
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(15, 15), mat);
     mesh.position.set(bx, h, bz);
     mesh.lookAt(0, h, 0);
+
     const post = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.32, 0.38, h - 0.5, 6),
+      new THREE.CylinderGeometry(0.3, 0.36, h - 0.5, 6),
       new THREE.MeshStandardMaterial({ color: 0x2a3038, flatShading: true })
     );
     post.position.set(bx, (h - 0.5) / 2, bz);
+
     const base = new THREE.Mesh(
-      new THREE.BoxGeometry(2.4, 0.42, 2.4),
+      new THREE.BoxGeometry(2.3, 0.4, 2.3),
       new THREE.MeshStandardMaterial({ color: 0x1a1e24, flatShading: true })
     );
-    base.position.set(bx, 0.21, bz);
+    base.position.set(bx, 0.2, bz);
+
     group.add(mesh, post, base);
-    occ.tryAdd(bx, bz, 9);
+    occ.tryAdd(bx, bz, 8);
+
     const loader = new THREE.TextureLoader();
     loader.load(img.src, (tex) => {
       tex.colorSpace = THREE.SRGBColorSpace;
@@ -95,7 +59,11 @@ export function addCityDecor(group, occ, PLAZA_R) {
       mat.map = tex;
       mat.color.set(0xffffff);
       mat.needsUpdate = true;
-    }, undefined, () => { mat.color.set(0x334455); });
+    }, undefined, () => {
+      mat.color.set(0x334455);
+    });
+
+    billboards.push({ mesh, mat, index: i, fixed: true });
   });
 
   // Street lamps (outside plaza)
