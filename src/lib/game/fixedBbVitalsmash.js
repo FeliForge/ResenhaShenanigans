@@ -1,2 +1,2 @@
 // @ts-nocheck
-export const IMG_VITALSMASH = "PLACEHOLDER_WILL_FIX";
+export const IMG_VITALSMASH = "/billboards/vitalsmash.jpg";
