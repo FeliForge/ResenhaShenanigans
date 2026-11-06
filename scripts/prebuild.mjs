@@ -141,7 +141,6 @@ function patchCompass(text) {
   return text;
 }
 
-/** Spawn suspendido encima de la fuente (estilo Smash Bros) */
 function patchSpawn(text) {
   if (text.includes("player.position.set(0, 14, 0)")) return text;
   if (text.includes("player.position.set(0, 1.6, 0)")) {
@@ -161,7 +160,6 @@ function patchSpawn(text) {
   return text;
 }
 
-/** Hub de config/música/personaje */
 function patchHub(text) {
   if (text.includes("buildHub")) return text;
 
@@ -244,8 +242,33 @@ async function fetchText(url) {
   return await res.text();
 }
 
+/** Assemble billboard JPEGs from scripts/bb_data/*.b64 into public/billboards/ */
+function assembleBillboards() {
+  const dataDir = path.join(root, "scripts", "bb_data");
+  const outDir = path.join(root, "public", "billboards");
+  const ids = ["goofyboxy", "vitalsmash", "tangomayhem", "tomatosmash"];
+  if (!fs.existsSync(dataDir)) {
+    console.warn("[prebuild] no scripts/bb_data — skip billboard assemble");
+    return;
+  }
+  fs.mkdirSync(outDir, { recursive: true });
+  for (const id of ids) {
+    const b64Path = path.join(dataDir, id + ".b64");
+    if (!fs.existsSync(b64Path)) {
+      console.warn("[prebuild] missing b64 for", id);
+      continue;
+    }
+    const b64 = fs.readFileSync(b64Path, "utf8").trim();
+    const buf = Buffer.from(b64, "base64");
+    fs.writeFileSync(path.join(outDir, id + ".jpg"), buf);
+    console.log("[prebuild] billboard", id, buf.length, "bytes");
+  }
+}
+
 async function main() {
   try {
+    assembleBillboards();
+
     if (fs.existsSync(out)) {
       const cur = fs.readFileSync(out, "utf8");
       if (isGood(cur) && cur.includes("setCrossOrigin") && cur.includes("getHeading") && cur.includes("player.position.set(0, 14, 0)") && cur.includes("buildHub")) {
