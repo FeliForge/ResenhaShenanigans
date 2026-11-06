@@ -36,7 +36,7 @@ function makeSignTexture() {
 
 export function buildShop(scene) {
   const group = new THREE.Group();
-  const POS = new THREE.Vector3(-9, 0, -5);
+  const POS = new THREE.Vector3(82, 0, 48); // lejos de la plaza / fuente
   group.position.copy(POS);
   group.rotation.y = Math.atan2(-POS.x, -POS.z);
   scene.add(group);
