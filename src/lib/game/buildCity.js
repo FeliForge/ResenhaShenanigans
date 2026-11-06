@@ -342,6 +342,7 @@ export function buildCity(scene) {
       c.position.set(x, 0.4, z); group.add(c);
     } else {
       const m = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.1, 0.35), mailboxMat);
+
       m.position.set(x, 0.55, z); group.add(m);
     }
   }
@@ -372,7 +373,7 @@ export function buildCity(scene) {
     const bz = (i % 2 === 0 ? 1 : -1) * (40 + i * 12);
     const shelter = new THREE.Mesh(new THREE.BoxGeometry(5, 0.15, 2), new THREE.MeshStandardMaterial({ color: 0x445566 }));
     shelter.position.set(bx, 2.4, bz);
-    const glass = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2, 0.1), new THREE.MeshMaterial({ color: 0xaaccff, transparent: true, opacity: 0.35 }));
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2, 0.1), new THREE.MeshStandardMaterial({ color: 0xaaccff, transparent: true, opacity: 0.35 }));
     glass.position.set(bx, 1.2, bz + 0.8);
     group.add(shelter, glass);
   }
