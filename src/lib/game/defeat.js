@@ -4,7 +4,8 @@ import { getArchetype } from "@/data/movesets";
 
 export const RESPAWN_DELAY_MS = 3000;
 export const INVULN_MS = 2000;
-export const RESPAWN_POINT = { x: 0, y: 1.6, z: 0 };
+// Spawn suspendido encima de la fuente central (estilo Smash Bros)
+export const RESPAWN_POINT = { x: 0, y: 14, z: 0 };
 
 // Cada estilo cambia animación, partículas y tiempo de la secuencia.
 export const DEFEAT_STYLES = {
