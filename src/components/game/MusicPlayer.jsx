@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useEffect, useRef, useState } from "react";
+import { Component, useEffect, useRef, useState } from "react";
 import {
   ArrowDown, ArrowUp, ListMusic, Music, Pause, Play, Plus, Repeat, Repeat1,
   Settings as SettingsIcon, Shuffle, SkipBack, SkipForward, Trash2, Upload, Volume2, VolumeX, X,
@@ -37,7 +37,7 @@ function useEngine() {
  * @param {"menu"|"select"|"workshop"|"play"} screen  pantalla actual del juego
  * @param {boolean} suspended  true si suena música de sala (YouTube) o el sonido global está apagado
  */
-export default function MusicPlayer({ screen = "menu", suspended = false }) {
+function MusicPlayerInner({ screen = "menu", suspended = false }) {
   const { eng, state } = useEngine();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("songs");
@@ -308,5 +308,30 @@ function PlSelect({ value, playlists, onChange }) {
       <option value="">— ninguna —</option>
       {playlists.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
     </select>
+  );
+}
+
+// Si el reproductor falla por cualquier motivo, NUNCA debe tumbar el juego: se oculta y ya.
+class MusicBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { failed: false };
+  }
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(error) {
+    try { console.error("[MusicPlayer] desactivado por error:", error); } catch {}
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
+export default function MusicPlayer(props) {
+  return (
+    <MusicBoundary>
+      <MusicPlayerInner {...props} />
+    </MusicBoundary>
   );
 }
