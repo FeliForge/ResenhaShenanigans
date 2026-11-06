@@ -74,6 +74,18 @@ export default function GameApp() {
     setBinds(loadBinds());
   }, []);
 
+  // Al abrir tiendas/paneles: soltar mouse y bloquear input del juego
+  useEffect(() => {
+    const open = showShop || showSettings || showBoombox || showCharacterHub;
+    if (open) {
+      try { document.exitPointerLock?.(); } catch {}
+    }
+    if (showCharacterHub) {
+      inputState.blocked = true;
+      return () => { inputState.blocked = false; };
+    }
+  }, [showShop, showSettings, showBoombox, showCharacterHub]);
+
   useEffect(() => {
     setIsTouch("ontouchstart" in window || navigator.maxTouchPoints > 0);
     try { setMatches(countMatches()); } catch {}
