@@ -7,51 +7,39 @@ function isOnRoad(x, z) {
   return near(x) || near(z);
 }
 
-/** Add 4 fixed billboards in empty zones + street lamps + neon poles. */
+/** Add 4 fixed billboards (game posters) in empty map zones, street lamps, neon poles. */
 export function addCityDecor(group, occ, PLAZA_R) {
   const billboards = [];
 
-  // 4 billboards fijos en zonas vacías distintas del mapa (fuera de plaza y carreteras)
-  const slots = [
-    { x:  105, z:  72 },  // NE — GoofyBoxy
-    { x: -118, z:  48 },  // NW — VitalSmash
-    { x:   62, z: 128 },  // SE — TangoMayhem
-    { x:  -88, z: -115 }, // SW — TomatoSmash
+  // Exactly 4 fixed billboards in different empty zones (NE, NW, SE, SW)
+  const fixedSlots = [
+    { x:  105, z:  72 },  // NE
+    { x: -118, z:  48 },  // NW
+    { x:   62, z: 128 },  // SE
+    { x:  -88, z:-115 },  // SW
   ];
-
   FIXED_BILLBOARD_IMAGES.forEach((img, i) => {
-    const pos = slots[i] || { x: 120, z: 0 };
+    const pos = fixedSlots[i] || { x: 120, z: 0 };
     let bx = pos.x, bz = pos.z;
     if (isOnRoad(bx, bz)) { bx += 14; bz += 10; }
-    // Empujar fuera de la plaza si cayera dentro
-    if (Math.abs(bx) < PLAZA_R && Math.abs(bz) < PLAZA_R) {
-      const s = Math.max(PLAZA_R + 12, Math.hypot(bx, bz) || 1);
-      const a = Math.atan2(bz, bx);
-      bx = Math.cos(a) * s;
-      bz = Math.sin(a) * s;
-    }
-
     const mat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, color: 0x555555 });
-    const h = 12;
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(15, 15), mat);
+    const h = 13;
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), mat);
     mesh.position.set(bx, h, bz);
     mesh.lookAt(0, h, 0);
-
     const post = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.3, 0.36, h - 0.5, 6),
+      new THREE.CylinderGeometry(0.32, 0.38, h - 0.5, 6),
       new THREE.MeshStandardMaterial({ color: 0x2a3038, flatShading: true })
     );
     post.position.set(bx, (h - 0.5) / 2, bz);
-
     const base = new THREE.Mesh(
-      new THREE.BoxGeometry(2.3, 0.4, 2.3),
+      new THREE.BoxGeometry(2.4, 0.42, 2.4),
       new THREE.MeshStandardMaterial({ color: 0x1a1e24, flatShading: true })
     );
-    base.position.set(bx, 0.2, bz);
-
+    base.position.set(bx, 0.21, bz);
     group.add(mesh, post, base);
-    occ.tryAdd(bx, bz, 8);
-
+    occ.tryAdd(bx, bz, 9);
+    billboards.push({ mesh, mat, index: i, id: img.id });
     const loader = new THREE.TextureLoader();
     loader.load(img.src, (tex) => {
       tex.colorSpace = THREE.SRGBColorSpace;
@@ -59,11 +47,7 @@ export function addCityDecor(group, occ, PLAZA_R) {
       mat.map = tex;
       mat.color.set(0xffffff);
       mat.needsUpdate = true;
-    }, undefined, () => {
-      mat.color.set(0x334455);
-    });
-
-    billboards.push({ mesh, mat, index: i, fixed: true });
+    }, undefined, () => { mat.color.set(0x334455); });
   });
 
   // Street lamps (outside plaza)
@@ -95,15 +79,14 @@ export function addCityDecor(group, occ, PLAZA_R) {
     const ang = (i / 8) * Math.PI * 2 + 0.15;
     const nx = Math.cos(ang) * 50;
     const nz = Math.sin(ang) * 50;
-    if (!occ.tryAdd(nx, nz, 2.5)) continue;
-    const neonMat = new THREE.MeshBasicMaterial({
-      color: [0x00e5ff, 0xd500f9, 0xff9620, 0x88ff44, 0xff66aa, 0x5a9fff, 0xff3b2f, 0x88ccaa][i],
-      transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending, depthWrite: false,
-    });
-    const neon = new THREE.Mesh(new THREE.BoxGeometry(0.22, 9, 0.22), neonMat);
-    neon.position.set(nx, 5, nz);
-    group.add(neon);
+    if (!occ.tryAdd(nx, nz, 2)) continue;
+    const pole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.22, 5.5, 6),
+      new THREE.MeshStandardMaterial({ color: 0x1a1a22, flatShading: true, emissive: 0x112233, emissiveIntensity: 0.3 })
+    );
+    pole.position.set(nx, 2.75, nz);
+    group.add(pole);
   }
 
-  return { billboards };
+  return { billboards, bulbs };
 }
