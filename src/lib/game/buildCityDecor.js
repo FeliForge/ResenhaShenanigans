@@ -50,16 +50,21 @@ export function addCityDecor(group, occ, PLAZA_R) {
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(18, 18), mat);
     mesh.position.set(bx, h, bz);
     mesh.lookAt(0, h, 0);
+    // Keep the support directly behind the billboard plane so it never
+    // cuts through the artwork from the front-facing camera angle.
+    const supportOffset = new THREE.Vector3(bx, 0, bz).normalize().multiplyScalar(1.35);
+    const supportX = bx + supportOffset.x;
+    const supportZ = bz + supportOffset.z;
     const post = new THREE.Mesh(
       new THREE.CylinderGeometry(0.32, 0.38, h - 0.5, 6),
       new THREE.MeshStandardMaterial({ color: 0x2a3038, flatShading: true })
     );
-    post.position.set(bx, (h - 0.5) / 2, bz);
+    post.position.set(supportX, (h - 0.5) / 2, supportZ);
     const base = new THREE.Mesh(
       new THREE.BoxGeometry(2.4, 0.42, 2.4),
       new THREE.MeshStandardMaterial({ color: 0x1a1e24, flatShading: true })
     );
-    base.position.set(bx, 0.21, bz);
+    base.position.set(supportX, 0.21, supportZ);
     group.add(mesh, post, base);
     billboards.push({ mesh, mat, index: i, id: img.id });
     const loader = new THREE.TextureLoader();
@@ -82,6 +87,7 @@ export function addCityDecor(group, occ, PLAZA_R) {
   // Street lamps with warm + neon accent bulbs (outside plaza)
   const lampMat = new THREE.MeshStandardMaterial({ color: 0x1e2228, flatShading: true });
   const bulbs = [];
+  const streetLights = [];
   for (let gi = -6; gi <= 6; gi++) {
     for (let side = 0; side < 2; side++) {
       const road = gi * 56;
@@ -114,6 +120,23 @@ export function addCityDecor(group, occ, PLAZA_R) {
         accent.position.set(x, 6.2, z);
         group.add(pole, warm, accent);
         bulbs.push(warm);
+
+        // A small, capped set of real lights illuminates the nearby asphalt
+        // and sidewalks without adding hundreds of expensive dynamic lights.
+        if (
+          side === 0 &&
+          Math.abs(gi) <= 2 &&
+          Math.abs(a) <= 2 &&
+          a !== 0 &&
+          streetLights.length < 14
+        ) {
+          const light = new THREE.PointLight(0xffd58a, 2.25, 34, 2);
+          light.position.set(x, 6.15, z);
+          light.castShadow = false;
+          light.userData.baseIntensity = 2.25;
+          group.add(light);
+          streetLights.push(light);
+        }
       }
     }
   }
@@ -189,5 +212,5 @@ export function addCityDecor(group, occ, PLAZA_R) {
     group.add(board, post);
   }
 
-  return { billboards, bulbs };
+  return { billboards, bulbs, streetLights };
 }
