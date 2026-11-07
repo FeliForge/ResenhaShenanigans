@@ -58,13 +58,13 @@ function patchHub(text) {
   if (!text.includes('import { buildHub } from "@/lib/game/buildHub";')) {
     text = text.replace(
       'import { buildShop } from "@/lib/game/buildShop";',
-      'import { buildShop } from "@/lib/game/buildShop";\\nimport { buildHub } from "@/lib/game/buildHub";'
+      'import { buildShop } from "@/lib/game/buildShop";\nimport { buildHub } from "@/lib/game/buildHub";'
     );
   }
   if (!text.includes("const hub = buildHub(scene);")) {
     text = text.replace(
-      "const shop = buildShop(scene);\\n    city.colliders.push(...shop.colliders);",
-      "const shop = buildShop(scene);\\n    city.colliders.push(...shop.colliders);\\n    const hub = buildHub(scene);\\n    city.colliders.push(...hub.colliders);"
+      "const shop = buildShop(scene);\n    city.colliders.push(...shop.colliders);",
+      "const shop = buildShop(scene);\n    city.colliders.push(...shop.colliders);\n    const hub = buildHub(scene);\n    city.colliders.push(...hub.colliders);"
     );
   }
   if (text.includes("__INTERACTIVE_HUBS_V1__")) return text;
@@ -74,7 +74,7 @@ function patchHub(text) {
   );
   text = text.replace(
     "  onRequestShopRef.current = onRequestShop;",
-    "  onRequestShopRef.current = onRequestShop;\\n  const onNearHubRef = useRef(onNearHub);\\n  onNearHubRef.current = onNearHub;\\n  const onRequestHubRef = useRef(onRequestHub);\\n  onRequestHubRef.current = onRequestHub;"
+    "  onRequestShopRef.current = onRequestShop;\n  const onNearHubRef = useRef(onNearHub);\n  onNearHubRef.current = onNearHub;\n  const onRequestHubRef = useRef(onRequestHub);\n  onRequestHubRef.current = onRequestHub;"
   );
   text = text.replace(
     "      mobileMove: { x: 0, y: 0, active: false }, lastSeat: null,",
@@ -82,26 +82,26 @@ function patchHub(text) {
   );
   text = text.replace(
     '      if (e.code === "KeyE" && game.nearShop) { onRequestShopRef.current?.(); return; }',
-    '      if (e.code === "KeyE" && game.nearShop) { onRequestShopRef.current?.(); return; }\\n      if (e.code === "KeyE" && game.nearHub) { onRequestHubRef.current?.(game.nearHub); return; }'
+    '      if (e.code === "KeyE" && game.nearShop) { onRequestShopRef.current?.(); return; }\n      if (e.code === "KeyE" && game.nearHub) { onRequestHubRef.current?.(game.nearHub); return; }'
   );
   text = text.replace(
-    "      // Puesto de la tienda: avisa al HUD cuando el jugador está cerca.\\n      const nearShop = game.player.position.distanceTo(shop.position) < shop.radius;",
-    "      // Tienda y tres kioscos interactivos de la plaza.\\n      const nearShop = game.player.position.distanceTo(shop.position) < shop.radius;"
+    "      // Puesto de la tienda: avisa al HUD cuando el jugador está cerca.\n      const nearShop = game.player.position.distanceTo(shop.position) < shop.radius;",
+    "      // Tienda y tres kioscos interactivos de la plaza.\n      const nearShop = game.player.position.distanceTo(shop.position) < shop.radius;"
   );
-  const shopEnd = "        onNearShopRef.current?.(nearShop);\\n      }";
+  const shopEnd = "        onNearShopRef.current?.(nearShop);\n      }";
   text = text.replace(
     shopEnd,
-    shopEnd + "\\n      const nearestHub = hub.zones.find((zone) => game.player.position.distanceTo(zone.position) < 9);\\n      const nearHub = nearestHub?.kind || null;\\n      if (nearHub !== game.nearHub) { game.nearHub = nearHub; onNearHubRef.current?.(nearHub); }"
+    shopEnd + "\n      const nearestHub = hub.zones.find((zone) => game.player.position.distanceTo(zone.position) < 9);\n      const nearHub = nearestHub?.kind || null;\n      if (nearHub !== game.nearHub) { game.nearHub = nearHub; onNearHubRef.current?.(nearHub); }"
   );
   text = text.replace(
-    "    // Puesto de la tienda dentro de la plaza.\\n    const shop = buildShop(scene);",
-    "    // Puesto de la tienda y kioscos interactivos dentro de la plaza.\\n    const shop = buildShop(scene);"
+    "    // Puesto de la tienda dentro de la plaza.\n    const shop = buildShop(scene);",
+    "    // Puesto de la tienda y kioscos interactivos dentro de la plaza.\n    const shop = buildShop(scene);"
   );
   if (!text.includes("onRequestHubRef.current?.(game.nearHub)")) throw new Error("Hub keyboard action insertion failed");
   if (!text.includes("onNearHubRef.current?.(nearHub)")) throw new Error("Hub proximity insertion failed");
   return text.replace(
     "const GameCanvas = forwardRef(function GameCanvas",
-    "/* __INTERACTIVE_HUBS_V1__ */\\nconst GameCanvas = forwardRef(function GameCanvas"
+    "/* __INTERACTIVE_HUBS_V1__ */\nconst GameCanvas = forwardRef(function GameCanvas"
   );
 }
 
@@ -315,7 +315,7 @@ async function main() {
         isGood(cur) &&
         cur.includes("getHeading") &&
         cur.includes("player.position.set(0, 14, 0)") &&
-        cur.includes("buildHub") &&\\n        cur.includes("__INTERACTIVE_HUBS_V1__") &&
+        cur.includes("buildHub") &&\n        cur.includes("__INTERACTIVE_HUBS_V1__") &&
         cur.includes("__MP_POINTER_LOCK__") &&
         cur.includes("movementX") &&
         cur.includes("Fixed city posters are permanent") &&
