@@ -122,7 +122,6 @@ function patchShibuyaNight(text) {
 function patchRichMp(text) {
   if (text.includes("buildNetLoadout") && text.includes("kind === \"chat\"")) return text;
 
-  // Import protocol helpers
   if (!text.includes("buildNetLoadout")) {
     text = text.replace(
       'import { MultiplayerManager } from "@/lib/game/mp";',
@@ -130,7 +129,6 @@ function patchRichMp(text) {
     );
   }
 
-  // Rich loadout packet
   const oldLoadout = `sendMyLoadout = () => mp?.sendLoadout({
           baseId: baseIdOf(character),
           charId: character.id,
@@ -151,7 +149,6 @@ function patchRichMp(text) {
         };`;
   if (text.includes(oldLoadout)) text = text.replace(oldLoadout, newLoadout);
 
-  // Quick chat → network
   if (text.includes("function doQuickChat(phrase)") && !text.includes("kind: \"chat\"")) {
     text = text.replace(
       `function doQuickChat(phrase) {
@@ -186,7 +183,6 @@ function patchRichMp(text) {
     );
   }
 
-  // Richer combat event (attack sprite + category + facing)
   const oldHit = `mp.sendEvent({
           kind: big ? "ultimate" : "hit",
           x: at.x, y: 1.6, z: at.z,
@@ -199,7 +195,7 @@ function patchRichMp(text) {
           kind: big ? "ultimate" : "hit",
           x: at.x, y: 1.6, z: at.z,
           color: character.colors.accent,
-          damage: Math.round(big ? dmg / 3 : dmg),
+          damage: Math.round((big ? dmg / 3 : dmg) * (skills.mods?.damage || 1)),
           slow: cfg.slow ? 1 - cfg.slow.mult : 0,
           stun: cfg.stun || 0,
           category: category || (big ? "ultimate" : "m1"),
@@ -208,7 +204,6 @@ function patchRichMp(text) {
         });`;
   if (text.includes(oldHit)) text = text.replace(oldHit, newHit);
 
-  // Handle chat + remote attack sprites in onEvent (insert after emote handler)
   if (!text.includes('msg.kind === "chat"')) {
     text = text.replace(
       `if (msg.kind === "emote") {
@@ -240,7 +235,6 @@ function patchRichMp(text) {
     );
   }
 
-  // Remote attack sprite when receiving hit/ultimate
   if (!text.includes("msg.attackSprite") && text.includes("const ult = msg.kind === \"ultimate\"")) {
     text = text.replace(
       `const color = new THREE.Color(msg.color || "#ffffff");
@@ -261,7 +255,6 @@ function patchRichMp(text) {
     );
   }
 
-  // Expire remote chat bubbles in the remote update loop
   if (!text.includes("r.bubbleUntil") && text.includes("if (r.emoteUntil > now)")) {
     text = text.replace(
       `if (r.emoteUntil > now) {`,
@@ -278,11 +271,104 @@ function patchRichMp(text) {
   return text;
 }
 
+/** Combat integrity: damage caps, lastAttacker TTL, remote players as skill targets. */
+function patchCombatIntegrity(text) {
+  if (text.includes("__MP_COMBAT_INTEGRITY__")) return text;
+
+  // lastAttacker with timestamp + TTL on death
+  if (text.includes("if (attackerSeat) game.lastAttacker = attackerSeat;")) {
+    text = text.replace(
+      "if (attackerSeat) game.lastAttacker = attackerSeat;",
+      "if (attackerSeat) { game.lastAttacker = attackerSeat; game.lastAttackerAt = now; }"
+    );
+  }
+  if (text.includes("killer: game.lastAttacker || null,")) {
+    text = text.replace(
+      "killer: game.lastAttacker || null,",
+      "killer: (game.lastAttackerAt && performance.now() - game.lastAttackerAt < 4000) ? (game.lastAttacker || null) : null,"
+    );
+  }
+
+  // Clamp incoming network damage by category (anti-cheat floor)
+  if (
+    text.includes("applyDamage(msg.damage || (ult ? 320 : 60), msg.from);") &&
+    !text.includes("__MP_COMBAT_INTEGRITY__")
+  ) {
+    text = text.replace(
+      "if (p.distanceTo(game.player.position) < (ult ? 4 : 2.3)) {\n            if (msg.slow) skills.addBuff({ stat: \"speed\", mult: Math.max(0.4, 1 - msg.slow), duration: 1200 });\n            if (msg.stun) game.stunUntil = performance.now() + msg.stun;\n            applyDamage(msg.damage || (ult ? 320 : 60), msg.from);\n          }",
+      `// __MP_COMBAT_INTEGRITY__
+          const hitR = ult ? 5.5 : (msg.category === "special3" || msg.category === "special2" ? 3.6 : 2.8);
+          if (p.distanceTo(game.player.position) < hitR) {
+            if (msg.slow) skills.addBuff({ stat: "speed", mult: Math.max(0.4, 1 - msg.slow), duration: 1200 });
+            if (msg.stun) game.stunUntil = performance.now() + Math.min(msg.stun, 2500);
+            const cap = ult ? 380 : (msg.category === "special3" ? 220 : msg.category === "special2" ? 160 : 110);
+            const raw = Number(msg.damage);
+            const dmgIn = Number.isFinite(raw) ? Math.min(Math.max(0, raw), cap) : (ult ? 200 : 55);
+            applyDamage(dmgIn, msg.from);
+          }`
+    );
+  }
+
+  // Include remote players as skill targets so projectiles/areas/melee hit them locally
+  // and network a hit event when a remote proxy is hurt.
+  if (text.includes("skills.setTargets(npcTargets);") && !text.includes("refreshSkillTargets")) {
+    text = text.replace(
+      "skills.setTargets(npcTargets);",
+      `skills.setTargets(npcTargets);
+    function refreshSkillTargets() {
+      const remoteT = [];
+      if (typeof remoteSprites !== "undefined" && remoteSprites) {
+        for (const [seat, r] of remoteSprites) {
+          if (!r || r.deadAt) continue;
+          remoteT.push({
+            id: "remote-" + seat,
+            seat,
+            pos: r.pos,
+            radius: 1.15,
+            get alive() { return !r.deadAt; },
+            hurt(dmg, from, knock) {
+              if (r.deadAt) return;
+              // Visual only on attacker client; victim applies authoritative damage from net event
+              vfx.addImpact(r.pos.clone().setY(1.2), tmpColor.set(character.colors.accent), 0.9);
+              if (mp) {
+                mp.sendEvent({
+                  kind: "hit",
+                  x: r.pos.x, y: 1.6, z: r.pos.z,
+                  color: character.colors.accent,
+                  damage: Math.round(dmg),
+                  slow: 0, stun: 0,
+                  category: game.castMove?.category || "m1",
+                  dirX: game.facing?.x || 0, dirZ: game.facing?.z || 1,
+                });
+              }
+            },
+          });
+        }
+      }
+      skills.setTargets([...npcTargets, ...remoteT]);
+    }
+    refreshSkillTargets();`
+    );
+  }
+
+  // Refresh remote targets each frame before skills.update
+  if (text.includes("skills.update(dt);") && text.includes("refreshSkillTargets")) {
+    text = text.replace(
+      "skills.update(dt);",
+      "try { refreshSkillTargets(); } catch {}\n      skills.update(dt);"
+    );
+  }
+
+  return text;
+}
+
 function patchAll(text) {
-  return patchRichMp(
-    patchShibuyaNight(
-      patchAttackSprites(
-        patchCameraControls(patchHub(patchSpawn(patchCompass(patchBillboards(text)))))
+  return patchCombatIntegrity(
+    patchRichMp(
+      patchShibuyaNight(
+        patchAttackSprites(
+          patchCameraControls(patchHub(patchSpawn(patchCompass(patchBillboards(text)))))
+        )
       )
     )
   );
@@ -332,7 +418,8 @@ async function main() {
         cur.includes("vfx.addAttackSprite") &&
         cur.includes("0x1a1028") &&
         cur.includes("buildNetLoadout") &&
-        cur.includes('kind === "chat"')
+        cur.includes('kind === "chat"') &&
+        cur.includes("__MP_COMBAT_INTEGRITY__")
       ) {
         console.log("[prebuild] GameCanvas already complete+patched", cur.length);
         return;
