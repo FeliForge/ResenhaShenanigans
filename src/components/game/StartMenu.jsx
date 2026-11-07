@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { motion } from "framer-motion";
-import { Coins, Copy, Flame, Loader2, Music, Play, Radio, ScrollText, Swords, Trophy, UserPlus, Users, Settings } from "lucide-react";
+import { Coins, Copy, Flame, Loader2, Music, Play, Radio, ScrollText, Swords, Trophy, UserPlus, Users, Settings, Wrench, Store } from "lucide-react";
+import ShopPanel from "@/components/game/ShopPanel";
 import DailyQuestsPanel from "@/components/game/DailyQuestsPanel";
 import ControlsPanel from "@/components/game/ControlsPanel";
 import LanguageSelector from "@/components/game/LanguageSelector";
@@ -39,11 +40,20 @@ export default function StartMenu({
   audioOn,
   onSaveBinds,
   onToggleAudio,
+  onOpenWorkshop,
+  shop,
+  shopLoading,
+  shopBusy,
+  onBuyShopItem,
+  onEquipShopItem,
+  onImportMoves,
+  savedMoves,
 }) {
   const { t, character: localChar } = useI18n();
   const [showQuests, setShowQuests] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showBoombox, setShowBoombox] = useState(false);
+  const [showStore, setShowStore] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
   const [secretHits, setSecretHits] = useState(0);
 
@@ -152,6 +162,18 @@ export default function StartMenu({
 
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
+              onClick={onOpenWorkshop}
+              className="flex items-center justify-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-300/[0.08] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-cyan-100 transition hover:-translate-y-0.5 hover:border-cyan-200/60 hover:bg-cyan-300/15"
+            >
+              <Wrench size={16} /> Custom Moveset
+            </button>
+            <button
+              onClick={() => setShowStore(true)}
+              className="flex items-center justify-center gap-2 rounded-xl border border-amber-300/30 bg-amber-300/[0.08] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-amber-100 transition hover:-translate-y-0.5 hover:border-amber-200/60 hover:bg-amber-300/15"
+            >
+              <Store size={16} /> Tienda
+            </button>
+            <button
               onClick={onCreateRoom}
               className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.045] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-white/85 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-orange-300/50 hover:bg-orange-400/10 hover:text-white"
             >
@@ -227,6 +249,22 @@ export default function StartMenu({
           </button>
         </motion.div>
       </div>
+
+      {showStore && (
+        <ShopPanel
+          coins={coins}
+          owned={shop?.owned || []}
+          dash={shop?.dash || ""}
+          emote={shop?.emote || ""}
+          loading={shopLoading}
+          busyId={shopBusy}
+          moves={savedMoves || {}}
+          onBuy={onBuyShopItem}
+          onEquip={onEquipShopItem}
+          onImport={onImportMoves}
+          onClose={() => setShowStore(false)}
+        />
+      )}
 
       {showQuests && (
         <DailyQuestsPanel
