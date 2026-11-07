@@ -19,6 +19,7 @@ import BoomboxPanel from "@/components/game/BoomboxPanel";
 import { loadQuests, sendProgress, claimReward } from "@/lib/game/quests";
 import { loadShop, buyItem, equipItem } from "@/lib/game/shop";
 import { getShopItem } from "@/data/shop";
+import { CHARACTERS } from "@/data/characters";
 import { loadBinds, saveBinds, inputState, DEFAULT_BINDS } from "@/lib/game/input";
 import { audio } from "@/lib/game/audio";
 import { loadRoomMusic, saveRoomMusic } from "@/lib/game/roomMusic";
