@@ -315,7 +315,8 @@ async function main() {
         isGood(cur) &&
         cur.includes("getHeading") &&
         cur.includes("player.position.set(0, 14, 0)") &&
-        cur.includes("buildHub") &&\n        cur.includes("__INTERACTIVE_HUBS_V1__") &&
+        cur.includes("buildHub") &&
+        cur.includes("__INTERACTIVE_HUBS_V1__") &&
         cur.includes("__MP_POINTER_LOCK__") &&
         cur.includes("movementX") &&
         cur.includes("Fixed city posters are permanent") &&
