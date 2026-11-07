@@ -239,6 +239,7 @@ export default function GameApp() {
         musicUrl={musicUrl}
         onMusicUrl={handleMusicUrl}
         onPlay={() => setScreen("select")}
+        onOpenWorkshop={() => setScreen("workshop")}
         onOpenQuests={() => setShowQuests(true)}
         claimable={claimable}
         savedCharacter={savedCharacter}
