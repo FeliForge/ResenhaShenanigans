@@ -93,7 +93,6 @@ function patchAttackSprites(text) {
   return text;
 }
 
-/** Darker purple-cyan Shibuya night sky / fog. */
 function patchShibuyaNight(text) {
   if (text.includes("0x1a1028") && text.includes("Shibuya night")) return text;
   text = text.replace(
@@ -108,12 +107,10 @@ function patchShibuyaNight(text) {
     /const SUN_NIGHT = new THREE\.Color\(0x9aaad0\);/,
     "const SUN_NIGHT = new THREE.Color(0x8890c8);"
   );
-  // Slightly denser night fog for atmosphere
   text = text.replace(
     /scene\.fog\.density = 0\.0026 \+ 0\.0014 \* nightFactor;/,
     "scene.fog.density = 0.0028 + 0.0022 * nightFactor;"
   );
-  // Longer nights feel (cycle stretch a bit toward night)
   text = text.replace(
     /const cycle = \(elapsed \/ 140\) % 1;/,
     "const cycle = (elapsed / 160) % 1;"
@@ -121,10 +118,172 @@ function patchShibuyaNight(text) {
   return text;
 }
 
+/** Rich multiplayer: skin/moveset loadout, chat, emote, attack sprites on remotes. */
+function patchRichMp(text) {
+  if (text.includes("buildNetLoadout") && text.includes("kind === \"chat\"")) return text;
+
+  // Import protocol helpers
+  if (!text.includes("buildNetLoadout")) {
+    text = text.replace(
+      'import { MultiplayerManager } from "@/lib/game/mp";',
+      'import { MultiplayerManager } from "@/lib/game/mp";\nimport { buildNetLoadout } from "@/lib/game/mpProtocol";'
+    );
+  }
+
+  // Rich loadout packet
+  const oldLoadout = `sendMyLoadout = () => mp?.sendLoadout({
+          baseId: baseIdOf(character),
+          charId: character.id,
+          name: playerName || "Tú",
+          colors: [character.colors.primary, character.colors.secondary, character.colors.accent],
+          customImage: character.customImage || "",
+          billboard: billboardRef.current || "",
+        });`;
+  const newLoadout = `sendMyLoadout = () => {
+          const packet = buildNetLoadout({
+            character,
+            playerName: playerName || "Tú",
+            billboardUrl: billboardRef.current || "",
+            dashStyle: dashStyleRef.current,
+            emote: emoteRef.current,
+          });
+          if (packet) mp?.sendLoadout(packet);
+        };`;
+  if (text.includes(oldLoadout)) text = text.replace(oldLoadout, newLoadout);
+
+  // Quick chat → network
+  if (text.includes("function doQuickChat(phrase)") && !text.includes("kind: \"chat\"")) {
+    text = text.replace(
+      `function doQuickChat(phrase) {
+      if (game.bubble) { scene.remove(game.bubble); game.bubble.material.map?.dispose(); game.bubble.material.dispose(); }
+      const tex = makeBubbleTexture(phrase.text);
+      const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
+      const bubble = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.7), mat);
+      bubble.position.copy(game.player.position); bubble.position.y = 4.4;
+      scene.add(bubble);
+      game.bubble = bubble; game.bubbleUntil = performance.now() + 2600;
+      audio.playBlip();
+    }`,
+      `function doQuickChat(phrase) {
+      if (game.bubble) { scene.remove(game.bubble); game.bubble.material.map?.dispose(); game.bubble.material.dispose(); }
+      const tex = makeBubbleTexture(phrase.text);
+      const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
+      const bubble = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.7), mat);
+      bubble.position.copy(game.player.position); bubble.position.y = 4.4;
+      scene.add(bubble);
+      game.bubble = bubble; game.bubbleUntil = performance.now() + 2600;
+      audio.playBlip();
+      if (mp) {
+        mp.sendEvent({
+          kind: "chat",
+          text: phrase.text,
+          x: game.player.position.x,
+          y: game.player.position.y,
+          z: game.player.position.z,
+        });
+      }
+    }`
+    );
+  }
+
+  // Richer combat event (attack sprite + category + facing)
+  const oldHit = `mp.sendEvent({
+          kind: big ? "ultimate" : "hit",
+          x: at.x, y: 1.6, z: at.z,
+          color: character.colors.accent,
+          damage: Math.round(big ? dmg / 3 : dmg),
+          slow: cfg.slow ? 1 - cfg.slow.mult : 0,
+          stun: cfg.stun || 0,
+        });`;
+  const newHit = `mp.sendEvent({
+          kind: big ? "ultimate" : "hit",
+          x: at.x, y: 1.6, z: at.z,
+          color: character.colors.accent,
+          damage: Math.round(big ? dmg / 3 : dmg),
+          slow: cfg.slow ? 1 - cfg.slow.mult : 0,
+          stun: cfg.stun || 0,
+          category: category || (big ? "ultimate" : "m1"),
+          attackSprite: move.attackSprite || null,
+          dirX: dir.x, dirZ: dir.z,
+        });`;
+  if (text.includes(oldHit)) text = text.replace(oldHit, newHit);
+
+  // Handle chat + remote attack sprites in onEvent (insert after emote handler)
+  if (!text.includes('msg.kind === "chat"')) {
+    text = text.replace(
+      `if (msg.kind === "emote") {
+            vfx.addEmoteBurst(p.clone().setY(0.1), new THREE.Color(msg.color || "#ffffff"));
+            const r = remoteSprites.get(msg.from);
+            if (r) { r.emoteAnim = msg.anim; r.emoteStart = performance.now(); r.emoteUntil = performance.now() + 2000; }
+            return;
+          }`,
+      `if (msg.kind === "emote") {
+            vfx.addEmoteBurst(p.clone().setY(0.1), new THREE.Color(msg.color || "#ffffff"));
+            const r = remoteSprites.get(msg.from);
+            if (r) { r.emoteAnim = msg.anim; r.emoteStart = performance.now(); r.emoteUntil = performance.now() + 2000; }
+            return;
+          }
+          if (msg.kind === "chat") {
+            const r = remoteSprites.get(msg.from);
+            const anchor = r ? r.pos : p;
+            if (r?.bubble) { scene.remove(r.bubble); r.bubble.material.map?.dispose(); r.bubble.material.dispose(); }
+            const tex = makeBubbleTexture(msg.text || "...");
+            const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
+            const bubble = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.7), mat);
+            bubble.position.set(anchor.x, (anchor.y || 1.6) + 2.8, anchor.z);
+            scene.add(bubble);
+            if (r) { r.bubble = bubble; r.bubbleUntil = performance.now() + 2600; }
+            else { setTimeout(() => { scene.remove(bubble); mat.map?.dispose(); mat.dispose(); }, 2600); }
+            audio.playBlip();
+            return;
+          }`
+    );
+  }
+
+  // Remote attack sprite when receiving hit/ultimate
+  if (!text.includes("msg.attackSprite") && text.includes("const ult = msg.kind === \"ultimate\"")) {
+    text = text.replace(
+      `const color = new THREE.Color(msg.color || "#ffffff");
+          const ult = msg.kind === "ultimate";
+          if (ult) vfx.addUltimateBurst(p, color);
+          else vfx.addImpact(p, color, 1.2);`,
+      `const color = new THREE.Color(msg.color || "#ffffff");
+          const ult = msg.kind === "ultimate";
+          if (ult) vfx.addUltimateBurst(p, color);
+          else vfx.addImpact(p, color, 1.2);
+          try {
+            const dir = new THREE.Vector3(msg.dirX || 0, 0, msg.dirZ || 1).normalize();
+            vfx.addAttackSprite(p, dir, {
+              category: msg.category || (ult ? "ultimate" : "m1"),
+              attackSprite: msg.attackSprite || null,
+            }, msg.color || "#ffffff");
+          } catch {}`
+    );
+  }
+
+  // Expire remote chat bubbles in the remote update loop
+  if (!text.includes("r.bubbleUntil") && text.includes("if (r.emoteUntil > now)")) {
+    text = text.replace(
+      `if (r.emoteUntil > now) {`,
+      `if (r.bubble && r.bubbleUntil && now > r.bubbleUntil) {
+            scene.remove(r.bubble); r.bubble.material.map?.dispose(); r.bubble.material.dispose(); r.bubble = null;
+          } else if (r.bubble) {
+            r.bubble.position.set(r.pos.x, r.pos.y + 2.8, r.pos.z);
+            r.bubble.lookAt(camera.position.x, r.bubble.position.y, camera.position.z);
+          }
+          if (r.emoteUntil > now) {`
+    );
+  }
+
+  return text;
+}
+
 function patchAll(text) {
-  return patchShibuyaNight(
-    patchAttackSprites(
-      patchCameraControls(patchHub(patchSpawn(patchCompass(patchBillboards(text)))))
+  return patchRichMp(
+    patchShibuyaNight(
+      patchAttackSprites(
+        patchCameraControls(patchHub(patchSpawn(patchCompass(patchBillboards(text)))))
+      )
     )
   );
 }
@@ -171,7 +330,9 @@ async function main() {
         cur.includes("requestPointerLock") &&
         cur.includes("Fixed city posters are permanent") &&
         cur.includes("vfx.addAttackSprite") &&
-        cur.includes("0x1a1028")
+        cur.includes("0x1a1028") &&
+        cur.includes("buildNetLoadout") &&
+        cur.includes('kind === "chat"')
       ) {
         console.log("[prebuild] GameCanvas already complete+patched", cur.length);
         return;
