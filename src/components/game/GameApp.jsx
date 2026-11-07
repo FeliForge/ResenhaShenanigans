@@ -257,7 +257,20 @@ export default function GameApp() {
     );
   }
 
-  if (screen === "workshop") {\n    return (\n      <CharacterWorkshop\n        onConfirm={(char) => {\n          try { saveMyLoadout(toLoadout(char, billboardUrl)); } catch {}\n          setSavedCharacter(char);\n          setScreen("menu");\n        }}\n        onCancel={() => setScreen("menu")}\n      />\n    );\n  }\n\n  if (screen === "select") {
+  if (screen === "workshop") {
+    return (
+      <CharacterWorkshop
+        onConfirm={(char) => {
+          try { saveMyLoadout(toLoadout(char, billboardUrl)); } catch {}
+          setSavedCharacter(char);
+          setScreen("menu");
+        }}
+        onCancel={() => setScreen("menu")}
+      />
+    );
+  }
+
+  if (screen === "select") {
     return (
       <>
         <MusicPlayer screen="select" suspended={!audioOn} />
@@ -355,7 +368,9 @@ export default function GameApp() {
             onEquip={async (id) => {
               try { setShop(await equipItem(id)); } catch {}
             }}
-            moves={character?.moves || {}}\n            onImport={(moves) => setCharacter((current) => current ? { ...current, moves } : current)}\n            onClose={() => setShowShop(false)}
+            moves={character?.moves || {}}
+            onImport={(moves) => setCharacter((current) => current ? { ...current, moves } : current)}
+            onClose={() => setShowShop(false)}
           />
         )}
         {showSettings && (
