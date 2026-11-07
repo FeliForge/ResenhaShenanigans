@@ -4,11 +4,6 @@ import { BadgeCheck, UserRound, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-function getAuthRedirectUrl() {
-  // Always return to the origin currently serving the app; never hard-code localhost.
-  return "https://resenhashenanigans.vercel.app/";
-}
-
 export default function AccountPanel({ onClose }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -17,8 +12,8 @@ export default function AccountPanel({ onClose }) {
   const [username, setUsername] = useState("");
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState("login");
-  // The exclusive badge is tied to this exact, email-confirmed account.
-  const isOwnerVerified = String(user?.email || "").toLowerCase() === "felipejerezgatti@gmail.com" && Boolean(user?.email_confirmed_at);
+  // The exclusive badge is tied to this exact account.
+  const isOwnerVerified = String(user?.email || "").toLowerCase() === "felipejerezgatti@gmail.com";
 
   async function loadProfile(currentUser) {
     if (!currentUser) { setProfile(null); return; }
@@ -41,12 +36,10 @@ export default function AccountPanel({ onClose }) {
         try { await loadProfile(data.user); } catch (e) { toast.error(e.message || "No se pudo cargar el perfil"); }
       }
     }).catch(() => {});
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY") setMode("recovery");
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       const next = session?.user || null;
       setUser(next);
       if (next) {
-        // Defer Supabase queries to avoid running them inside the auth callback.
         setTimeout(() => { if (active) loadProfile(next).catch((e) => toast.error(e.message || "No se pudo cargar el perfil")); }, 0);
       } else {
         setProfile(null);
@@ -56,51 +49,6 @@ export default function AccountPanel({ onClose }) {
     return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
 
-  async function sendRecoveryEmail() {
-    const address = email.trim().toLowerCase();
-    if (!address) { toast.error("Escribe primero tu correo electrónico."); return; }
-    setBusy(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(address, {
-        redirectTo: getAuthRedirectUrl(),
-      });
-      if (error) throw error;
-      toast.success("Si la cuenta existe, recibirás un enlace para cambiar la contraseña. Revisa spam.");
-    } catch (e) {
-      toast.error(e.message || "No se pudo enviar el correo de recuperación.");
-    } finally { setBusy(false); }
-  }
-
-  async function updateRecoveredPassword() {
-    if (password.length < 8) { toast.error("La nueva contraseña debe tener al menos 8 caracteres."); return; }
-    setBusy(true);
-    try {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
-      setPassword("");
-      setMode("login");
-      toast.success("Contraseña actualizada. Ya puedes iniciar sesión.");
-    } catch (e) { toast.error(e.message || "No se pudo cambiar la contraseña."); }
-    finally { setBusy(false); }
-  }
-
-  async function resendConfirmation() {
-    const address = email.trim().toLowerCase();
-    if (!address) { toast.error("Escribe primero el correo de tu cuenta."); return; }
-    setBusy(true);
-    try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: address,
-        options: { emailRedirectTo: getAuthRedirectUrl() },
-      });
-      if (error) throw error;
-      toast.success("Solicitud enviada. Si la cuenta aún no está confirmada, revisa tu correo y spam.");
-    } catch (e) {
-      toast.error(e.message || "No se pudo reenviar la confirmación. Puede que la cuenta ya esté confirmada o que el servicio de correo la esté bloqueando.");
-    } finally { setBusy(false); }
-  }
-
   async function authenticate(signUp) {
     if (!email.trim() || password.length < 8) {
       toast.error("Introduce un correo válido y una contraseña de al menos 8 caracteres.");
@@ -109,21 +57,13 @@ export default function AccountPanel({ onClose }) {
     setBusy(true);
     try {
       const result = signUp
-        ? await supabase.auth.signUp({
-            email: email.trim(),
-            password,
-            options: { emailRedirectTo: getAuthRedirectUrl() },
-          })
+        ? await supabase.auth.signUp({ email: email.trim(), password })
         : await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (result.error) throw result.error;
-      if (signUp && !result.data.session) {
-        toast.success("Te enviamos un correo. Confirma tu cuenta y volverás al juego automáticamente.");
-      } else {
-        toast.success(signUp ? "Cuenta creada." : "Sesión iniciada.");
-      }
+      toast.success(signUp ? "Cuenta creada." : "Sesión iniciada.");
     } catch (e) {
       const message = e.message || "No se pudo completar el acceso.";
-      toast.error(message.includes("Invalid login credentials") ? "Correo o contraseña incorrectos. Si todavía no confirmaste el correo, reenvía la confirmación; si olvidaste la contraseña, solicita un enlace de recuperación." : message);
+      toast.error(message.includes("Invalid login credentials") ? "Correo o contraseña incorrectos." : message);
     } finally {
       setBusy(false);
     }
@@ -181,15 +121,7 @@ export default function AccountPanel({ onClose }) {
             </div>
             <input value={email} onChange={e => setEmail(e.target.value)} type="email" autoComplete="email" placeholder="Correo electrónico" className="rounded-lg border border-white/15 bg-black/30 px-3 py-2.5 text-sm outline-none focus:border-cyan-300/60" />
             <input value={password} onChange={e => setPassword(e.target.value)} type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} placeholder="Contraseña (mín. 8 caracteres)" className="rounded-lg border border-white/15 bg-black/30 px-3 py-2.5 text-sm outline-none focus:border-cyan-300/60" />
-            <button disabled={busy} onClick={() => authenticate(mode === "signup")} className="rounded-lg bg-gradient-to-r from-cyan-300 to-blue-400 px-4 py-3 text-sm font-black text-slate-950 disabled:opacity-50">{busy ? "Procesando..." : mode === "signup" ? "Crear cuenta y verificar correo" : "Entrar"}</button>
-            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
-              {mode === "login" && <>
-                <button type="button" disabled={busy} onClick={sendRecoveryEmail} className="text-cyan-200 underline decoration-cyan-200/40 underline-offset-4 disabled:opacity-40">Olvidé mi contraseña</button>
-                <button type="button" disabled={busy} onClick={resendConfirmation} className="text-cyan-200 underline decoration-cyan-200/40 underline-offset-4 disabled:opacity-40">Reenviar verificación</button>
-              </>}
-            </div>
-            {mode === "signup" && <p className="text-[11px] leading-relaxed text-white/45">El enlace de verificación volverá al juego publicado. Revisa spam. El envío a cualquier Gmail requiere SMTP externo en Supabase.</p>}
-            {mode === "recovery" && <p className="text-[11px] leading-relaxed text-white/45">Abre el enlace de recuperación recibido por correo y define aquí una contraseña nueva.</p>}
+            <button disabled={busy} onClick={() => authenticate(mode === "signup")} className="rounded-lg bg-gradient-to-r from-cyan-300 to-blue-400 px-4 py-3 text-sm font-black text-slate-950 disabled:opacity-50">{busy ? "Procesando..." : mode === "signup" ? "Crear cuenta" : "Entrar"}</button>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
