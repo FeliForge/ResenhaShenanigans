@@ -9,6 +9,7 @@ import MobileControls from "@/components/game/MobileControls";
 import ShopPanel from "@/components/game/ShopPanel";
 import IntroSplash from "@/components/game/IntroSplash";
 import StartMenu from "@/components/game/StartMenu";
+import CharacterWorkshop from "@/components/game/CharacterWorkshop";
 import DefeatOverlay from "@/components/game/DefeatOverlay";
 import KillFeed from "@/components/game/KillFeed";
 import RoomMusicPlayer from "@/components/game/RoomMusicPlayer";
@@ -255,7 +256,7 @@ export default function GameApp() {
     );
   }
 
-  if (screen === "select") {
+  if (screen === "workshop") {\n    return (\n      <CharacterWorkshop\n        onConfirm={(char) => {\n          try { saveMyLoadout(toLoadout(char, billboardUrl)); } catch {}\n          setSavedCharacter(char);\n          setScreen("menu");\n        }}\n        onCancel={() => setScreen("menu")}\n      />\n    );\n  }\n\n  if (screen === "select") {
     return (
       <>
         <MusicPlayer screen="select" suspended={!audioOn} />
@@ -353,7 +354,7 @@ export default function GameApp() {
             onEquip={async (id) => {
               try { setShop(await equipItem(id)); } catch {}
             }}
-            onClose={() => setShowShop(false)}
+            moves={character?.moves || {}}\n            onImport={(moves) => setCharacter((current) => current ? { ...current, moves } : current)}\n            onClose={() => setShowShop(false)}
           />
         )}
         {showSettings && (
