@@ -104,7 +104,10 @@ export class MultiplayerManager {
       this.byPeer.set(fromPeer, rec);
       this.reindex();
     } else if (data.type === "event") {
-      try { this.onEvent?.(data, fromPeer); } catch {}
+      // Inject the sender's seat so GameCanvas can use msg.from as seat number.
+      const seat = this.seatFor(fromPeer) || this.mySeat;
+      const withSeat = { ...data, from: seat };
+      try { this.onEvent?.(withSeat, fromPeer); } catch {}
     }
   }
 
@@ -122,7 +125,8 @@ export class MultiplayerManager {
 
   sendEvent(e) {
     try {
-      this.room.send({ type: "event", ...e });
+      // Always tag events with our current seat so receivers can attribute them.
+      this.room.send({ type: "event", from: this.mySeat, ...e });
     } catch {}
   }
 
