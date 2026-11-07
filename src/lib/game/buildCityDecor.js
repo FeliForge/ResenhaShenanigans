@@ -133,9 +133,9 @@ export function addCityDecor(group, occ, PLAZA_R) {
           Math.abs(gi) <= 3 &&
           Math.abs(a) <= 3 &&
           a !== 0 &&
-          streetLights.length < 24
+          streetLights.length < 8
         ) {
-          const light = new THREE.PointLight(0xffd58a, 0, 52, 1.5);
+          const light = new THREE.PointLight(0xffd58a, 0, 38, 1.5);
           light.position.set(x, 6.1, z);
           light.castShadow = false;
           light.userData.baseIntensity = 30;
