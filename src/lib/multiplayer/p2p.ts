@@ -1,22 +1,11 @@
 // @ts-nocheck
 /**
- * Full-mesh WebRTC rooms: one RTCPeerConnection per remote peer, signaled
- * through /api/rtc (see signaling.server.ts), game data flowing directly
- * browser-to-browser afterwards. Client-authoritative by construction — see
- * the multiplayer-p2p skill for when NOT to use this.
- *
- * Negotiation follows the "perfect negotiation" pattern: on a glare (both
- * sides offering at once) the polite peer — the lexicographically smaller id —
- * rolls back and accepts, so pairs converge without wedging.
+ * Full-mesh WebRTC rooms signaled via Supabase Realtime (broadcast + presence).
+ * No custom DB tables and no service-role API — only VITE_SUPABASE_* client keys.
  */
 
 export type SignalKind = "offer" | "answer" | "ice";
 
-/**
- * Wire contract between this client and the signaling relay the app provides
- * at /api/rtc (see the multiplayer-p2p skill for a reference implementation).
- * The client only needs these shapes — the relay's storage is the app's choice.
- */
 export interface PeerRow {
   id: string;
   name: string;
@@ -36,9 +25,7 @@ export interface PeerInfo {
   id: string;
   name: string;
   connectionState: RTCPeerConnectionState;
-  /** Selected local ICE candidate type: host | srflx | prflx | relay. */
   candidateType: string | null;
-  /** Data-channel ping RTT (ms), measured every 2s once connected. */
   rttMs: number | null;
 }
 
@@ -46,12 +33,9 @@ export interface P2PRoomOptions {
   room: string;
   selfId: string;
   name?: string;
-  /** Defaults to VITE_STUN_URLS (comma-separated) or Google public STUN. */
   iceServers?: RTCIceServer[];
   onPeersChanged?: (peers: PeerInfo[]) => void;
-  /** Fires for both the unreliable "state" and reliable "reliable" channels. */
   onMessage?: (from: string, data: unknown, channel: "state" | "reliable") => void;
-  /** Fires once, on the first successful signaling poll (registration). */
   onConnected?: () => void;
 }
 
@@ -61,37 +45,29 @@ interface PeerSlot {
   reliable?: RTCDataChannel;
   makingOffer: boolean;
   ignoreOffer: boolean;
-  /** ICE candidates that arrived before the remote description (buffered). */
   pendingCandidates: RTCIceCandidateInit[];
-  /** Last time this pair made observable progress toward connected. */
   lastProgressAt: number;
-  /** Watchdog recreations (dialer) / stall windows (receiver) so far. */
   recoveryAttempts: number;
-  /** Gave up after MAX_RECOVERY_ATTEMPTS — excluded from fast-poll pressure. */
   terminal?: boolean;
-  /** One-shot: pc was already recreated to absorb a failing remote offer. */
   recreatedForOffer?: boolean;
   info: PeerInfo;
   pingSentAt?: number;
 }
 
-const FAST_POLL_MS = 400;
-const IDLE_POLL_MS = 2000;
 const PING_INTERVAL_MS = 2000;
-const STALL_MS = 10_000;
+const STALL_MS = 12_000;
 const MAX_RECOVERY_ATTEMPTS = 3;
-const SIGNAL_RETRY_DELAYS_MS = [250, 750];
 
 export function defaultIceServers(): RTCIceServer[] {
   const urls = (import.meta.env["VITE_STUN_URLS"] as string | undefined)
     ?.split(",")
     .map((u) => u.trim())
     .filter(Boolean);
-  // Two independent providers: ICE queries all of them in parallel during
-  // gathering, so either one being unreachable costs nothing.
   return [
     {
-      urls: urls?.length ? urls : ["stun:stun.l.google.com:19302", "stun:stun.cloudflare.com:3478"],
+      urls: urls?.length
+        ? urls
+        : ["stun:stun.l.google.com:19302", "stun:stun.cloudflare.com:3478"],
     },
   ];
 }
@@ -99,32 +75,65 @@ export function defaultIceServers(): RTCIceServer[] {
 export class P2PRoom {
   private readonly opts: P2PRoomOptions;
   private readonly peers = new Map<string, PeerSlot>();
-  /** Per-remote-peer signal delivery chains (order-preserving). */
-  private readonly signalQueues = new Map<string, Promise<void>>();
-  private cursor = 0;
-  private pollTimer: ReturnType<typeof setTimeout> | null = null;
+  private channel: any = null;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private closed = false;
-  private everPolled = false;
-  private lastPeersFingerprint = "";
+  private joined = false;
 
   constructor(opts: P2PRoomOptions) {
     this.opts = opts;
   }
 
-  /**
-   * The first poll IS the join: it registers this peer and returns the
-   * roster. A failed first poll (cold DB, offline tab) must not strand the
-   * room: the loop and timers start regardless and the next poll retries.
-   */
   async join(): Promise<void> {
-    try {
-      await this.pollOnce();
-    } catch {
-      // First poll can fail transiently; the scheduled loop below retries.
-    }
-    if (this.closed) return;
-    this.schedulePoll(this.anyPairConnecting() ? FAST_POLL_MS : IDLE_POLL_MS);
+    if (this.closed || this.joined) return;
+    this.joined = true;
+
+    const { supabase } = await import("@/integrations/supabase/client");
+    const topic = `arena:${this.opts.room}`;
+
+    this.channel = supabase.channel(topic, {
+      config: {
+        presence: { key: this.opts.selfId },
+        broadcast: { self: false },
+      },
+    });
+
+    this.channel
+      .on("presence", { event: "sync" }, () => {
+        if (this.closed) return;
+        const state = this.channel.presenceState() as Record<
+          string,
+          Array<{ name?: string }>
+        >;
+        const roster: { id: string; name: string }[] = [];
+        for (const id of Object.keys(state)) {
+          if (id === this.opts.selfId) continue;
+          const meta = state[id]?.[0];
+          roster.push({ id, name: meta?.name || "luchador" });
+        }
+        this.reconcileRoster(roster);
+      })
+      .on("broadcast", { event: "signal" }, ({ payload }: any) => {
+        if (this.closed || !payload) return;
+        // Only handle signals addressed to us
+        if (payload.to && payload.to !== this.opts.selfId) return;
+        if (payload.from === this.opts.selfId) return;
+        void this.onSignal(payload.from, payload.kind, payload.payload);
+      });
+
+    const status = await this.channel.subscribe(async (s: string) => {
+      if (s === "SUBSCRIBED") {
+        await this.channel.track({
+          name: this.opts.name || "luchador",
+          joinedAt: Date.now(),
+        });
+        this.opts.onConnected?.();
+      }
+    });
+
+    // subscribe() resolves when attached in supabase-js v2
+    void status;
+
     this.pingTimer = setInterval(() => {
       this.pingAll();
       this.watchdog();
@@ -133,92 +142,43 @@ export class P2PRoom {
 
   close(): void {
     this.closed = true;
-    if (this.pollTimer) clearTimeout(this.pollTimer);
     if (this.pingTimer) clearInterval(this.pingTimer);
     for (const slot of this.peers.values()) slot.pc.close();
     this.peers.clear();
-    // Leaving the roster is the teardown broadcast: everyone's next poll
-    // drops this peer and closes their side of the pair.
-    void fetch("/api/public/rtc", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ op: "leave", room: this.opts.room, peer: this.opts.selfId }),
-      keepalive: true,
-    }).catch(() => {});
-  }
-
-  /** Send on the unreliable game-state channel (drops stale packets). */
-  broadcast(data: unknown): void {
-    const wire = JSON.stringify({ t: "d", d: data });
-    for (const slot of this.peers.values()) {
-      if (slot.state?.readyState === "open") slot.state.send(wire);
+    if (this.channel) {
+      try {
+        void this.channel.untrack();
+        void this.channel.unsubscribe();
+      } catch {}
+      this.channel = null;
     }
   }
 
-  /** Send reliably (ordered) to one peer, or to all when peerId is omitted. */
+  broadcast(data: unknown): void {
+    const wire = JSON.stringify({ t: "d", d: data });
+    for (const slot of this.peers.values()) {
+      if (slot.state?.readyState === "open") {
+        try {
+          slot.state.send(wire);
+        } catch {}
+      }
+    }
+  }
+
   send(data: unknown, peerId?: string): void {
     const wire = JSON.stringify({ t: "d", d: data });
     const targets = peerId ? [this.peers.get(peerId)] : [...this.peers.values()];
     for (const slot of targets) {
-      if (slot?.reliable?.readyState === "open") slot.reliable.send(wire);
+      if (slot?.reliable?.readyState === "open") {
+        try {
+          slot.reliable.send(wire);
+        } catch {}
+      }
     }
   }
 
   peerList(): PeerInfo[] {
     return [...this.peers.values()].map((s) => ({ ...s.info }));
-  }
-
-  // ── signaling loop ─────────────────────────────────────────────────────────
-
-  private schedulePoll(delay: number): void {
-    if (this.closed) return;
-    if (this.pollTimer) clearTimeout(this.pollTimer);
-    this.pollTimer = setTimeout(() => void this.poll(), delay);
-  }
-
-  private anyPairConnecting(): boolean {
-    for (const s of this.peers.values()) {
-      // Terminal pairs (NAT-blocked after all recovery attempts) must not pin
-      // the session at the 400ms fast-poll rate.
-      if (s.terminal) continue;
-      if (s.info.connectionState !== "connected") return true;
-    }
-    return false;
-  }
-
-  private async pollOnce(): Promise<void> {
-    const params = new URLSearchParams({
-      room: this.opts.room,
-      peer: this.opts.selfId,
-      name: this.opts.name ?? "",
-      since: String(this.cursor),
-    });
-    const res = await fetch(`/api/public/rtc?${params}`);
-    if (this.closed) return;
-    if (!res.ok) throw new Error(`signaling poll failed: ${res.status}`);
-    const body = (await res.json()) as RtcPollResponse;
-    if (this.closed) return;
-    if (!this.everPolled) {
-      this.everPolled = true;
-      this.opts.onConnected?.();
-    }
-    this.reconcileRoster(body.peers);
-    const roster = new Set(body.peers.map((p) => p.id));
-    for (const sig of body.signals) {
-      this.cursor = Math.max(this.cursor, sig.id);
-      await this.onSignal(sig.from, sig.kind, sig.payload, roster);
-      if (this.closed) return;
-    }
-  }
-
-  private async poll(): Promise<void> {
-    if (this.closed) return;
-    try {
-      await this.pollOnce();
-    } catch {
-      // Transient poll failures are expected (tab sleep, deploy roll); retry.
-    }
-    this.schedulePoll(this.anyPairConnecting() ? FAST_POLL_MS : IDLE_POLL_MS);
   }
 
   private reconcileRoster(peers: { id: string; name: string }[]): void {
@@ -229,7 +189,7 @@ export class P2PRoom {
       if (existing) {
         existing.info.name = p.name;
       } else {
-        // Exactly one side dials each pair; the other waits for the offer.
+        // Lexicographically larger id dials (creates offer)
         this.connectTo(p.id, p.name, this.opts.selfId > p.id);
       }
     }
@@ -241,8 +201,6 @@ export class P2PRoom {
     }
     this.emitPeers();
   }
-
-  // ── per-pair connection ────────────────────────────────────────────────────
 
   private connectTo(peerId: string, name: string, initiator: boolean): PeerSlot | null {
     if (this.closed) return null;
@@ -281,12 +239,9 @@ export class P2PRoom {
       }
       this.emitPeers();
       if (pc.connectionState === "failed") {
-        // Refires negotiationneeded → a fresh offer through signaling, so a
-        // lost offer or dead path cannot wedge the pair (glare-safe).
-        pc.restartIce();
-      }
-      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
-        this.schedulePoll(FAST_POLL_MS);
+        try {
+          pc.restartIce();
+        } catch {}
       }
     };
     pc.onnegotiationneeded = async () => {
@@ -295,7 +250,7 @@ export class P2PRoom {
         await pc.setLocalDescription();
         await this.sendSignal(peerId, "offer", pc.localDescription!.toJSON());
       } catch {
-        // A failed offer is retried on the next negotiationneeded.
+        // retried on next negotiationneeded
       } finally {
         slot.makingOffer = false;
       }
@@ -303,10 +258,9 @@ export class P2PRoom {
     pc.ondatachannel = (e) => this.attachChannel(slot, e.channel);
 
     if (initiator) {
-      // Creating the channels triggers negotiationneeded → the offer.
       this.attachChannel(
         slot,
-        pc.createDataChannel("state", { ordered: false, maxRetransmits: 0 }),
+        pc.createDataChannel("state", { ordered: false, maxRetransmits: 0 })
       );
       this.attachChannel(slot, pc.createDataChannel("reliable", { ordered: true }));
     }
@@ -318,6 +272,7 @@ export class P2PRoom {
     else slot.reliable = channel;
     channel.onopen = () => {
       slot.lastProgressAt = Date.now();
+      this.emitPeers();
     };
     channel.onmessage = (e) => {
       let msg: { t: string; d?: unknown };
@@ -328,7 +283,9 @@ export class P2PRoom {
       }
       if (msg.t === "ping") {
         if (slot.state?.readyState === "open") {
-          slot.state.send(JSON.stringify({ t: "pong" }));
+          try {
+            slot.state.send(JSON.stringify({ t: "pong" }));
+          } catch {}
         }
       } else if (msg.t === "pong") {
         if (slot.pingSentAt) {
@@ -340,13 +297,12 @@ export class P2PRoom {
         this.opts.onMessage?.(
           slot.info.id,
           msg.d,
-          channel.label === "state" ? "state" : "reliable",
+          channel.label === "state" ? "state" : "reliable"
         );
       }
     };
   }
 
-  /** Apply buffered ICE candidates once a remote description is in place. */
   private async flushPendingCandidates(slot: PeerSlot): Promise<void> {
     while (slot.pendingCandidates.length > 0) {
       const candidate = slot.pendingCandidates.shift()!;
@@ -359,18 +315,10 @@ export class P2PRoom {
     }
   }
 
-  private async onSignal(
-    from: string,
-    kind: SignalKind,
-    payload: unknown,
-    roster: Set<string>,
-  ): Promise<void> {
+  private async onSignal(from: string, kind: SignalKind, payload: unknown): Promise<void> {
     if (this.closed) return;
     let slot = this.peers.get(from);
     if (!slot) {
-      // New peers dial us in the same poll that adds them to the roster.
-      // Signals outlive membership, so drop senders the roster doesn't vouch for.
-      if (!roster.has(from)) return;
       const created = this.connectTo(from, "", false);
       if (!created) return;
       slot = created;
@@ -385,11 +333,8 @@ export class P2PRoom {
         slot.ignoreOffer = !polite && collision;
         if (slot.ignoreOffer) return;
         try {
-          await slot.pc.setRemoteDescription(description); // implicit rollback when polite
+          await slot.pc.setRemoteDescription(description);
         } catch (err) {
-          // A pc resumed from suspend can be unable to take any new remote
-          // offer (stale DTLS fingerprint). Rebuild the pair once and apply
-          // the same offer to the fresh pc before giving up.
           if (kind !== "offer" || slot.recreatedForOffer) throw err;
           const attempts = slot.recoveryAttempts;
           const name = slot.info.name;
@@ -413,99 +358,58 @@ export class P2PRoom {
       } else if (kind === "ice") {
         const candidate = payload as RTCIceCandidateInit;
         if (!slot.pc.remoteDescription) {
-          // Candidate raced ahead of its SDP — hold it until the description
-          // lands (flushed after every successful setRemoteDescription).
           slot.pendingCandidates.push(candidate);
           return;
         }
         try {
           await slot.pc.addIceCandidate(candidate);
         } catch (err) {
-          // The enclosing catch would swallow a rethrow; log the real signal.
           if (!slot.ignoreOffer) console.warn("[p2p] addIceCandidate failed:", err);
         }
       }
-    } catch {
-      // Negotiation errors resolve on the next offer cycle; state is visible
-      // to the app via connectionState.
+    } catch (e) {
+      console.warn("[p2p] onSignal error", kind, from, e);
     }
   }
 
-  /**
-   * Signals are serialized per remote peer (a candidate must never overtake
-   * its SDP into the DB) and retried on failure with short backoff.
-   */
-  private sendSignal(to: string, kind: SignalKind, payload: unknown): Promise<void> {
-    const prev = this.signalQueues.get(to) ?? Promise.resolve();
-    const next = prev.then(() => this.postSignal(to, kind, payload));
-    this.signalQueues.set(
-      to,
-      next.catch(() => {}),
-    );
-    return next;
-  }
-
-  private async postSignal(to: string, kind: SignalKind, payload: unknown): Promise<void> {
-    for (let attempt = 0; ; attempt++) {
-      if (this.closed) return;
-      try {
-        const res = await fetch("/api/public/rtc", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            op: "signal",
-            room: this.opts.room,
-            from: this.opts.selfId,
-            to,
-            kind,
-            payload,
-          }),
-        });
-        if (res.ok) return;
-        throw new Error(`signal POST failed: ${res.status}`);
-      } catch (err) {
-        if (attempt >= SIGNAL_RETRY_DELAYS_MS.length) {
-          // Delivery gave up; the pair converges on the next offer cycle (or
-          // the watchdog rebuilds it). Logged once so failures are visible.
-          console.warn(`[p2p] signal ${kind} to ${to} failed after retries`, err);
-          return;
-        }
-        await new Promise((r) => setTimeout(r, SIGNAL_RETRY_DELAYS_MS[attempt]));
-      }
+  private async sendSignal(to: string, kind: SignalKind, payload: unknown): Promise<void> {
+    if (this.closed || !this.channel) return;
+    try {
+      await this.channel.send({
+        type: "broadcast",
+        event: "signal",
+        payload: {
+          from: this.opts.selfId,
+          to,
+          kind,
+          payload,
+        },
+      });
+    } catch (err) {
+      console.warn(`[p2p] signal ${kind} to ${to} failed`, err);
     }
   }
-
-  // ── diagnostics + recovery ─────────────────────────────────────────────────
 
   private pingAll(): void {
     const wire = JSON.stringify({ t: "ping" });
     for (const slot of this.peers.values()) {
       if (slot.state?.readyState !== "open") continue;
       const stale =
-        slot.pingSentAt !== undefined && performance.now() - slot.pingSentAt > 2 * PING_INTERVAL_MS;
+        slot.pingSentAt !== undefined &&
+        performance.now() - slot.pingSentAt > 2 * PING_INTERVAL_MS;
       if (slot.pingSentAt === undefined || stale) {
-        // A lost pong must not freeze rttMs forever: expire and re-ping.
         slot.pingSentAt = performance.now();
-        slot.state.send(wire);
+        try {
+          slot.state.send(wire);
+        } catch {}
       }
     }
   }
 
-  /**
-   * Stuck-pair recovery, piggybacked on the ping interval. A pair that has
-   * made no progress for STALL_MS gets rebuilt by the dialer with a FRESH
-   * RTCPeerConnection (new DTLS identity — fixes the suspend/resume
-   * fingerprint wedge). After MAX_RECOVERY_ATTEMPTS the pair is terminal:
-   * visible to the app as its last connectionState, ignored by fast-poll.
-   */
   private watchdog(): void {
     if (this.closed) return;
     const now = Date.now();
     for (const [peerId, slot] of this.peers) {
-      // pc.close() and some suspend/resume wedges never fire
-      // connectionstatechange — read the LIVE state so a silently-dead pc
-      // still trips the stall timer instead of hiding behind a cached
-      // "connected". Only live progress states refresh the stall clock.
       const live = slot.pc.connectionState;
       if (live !== slot.info.connectionState) {
         slot.info.connectionState = live;
@@ -520,52 +424,38 @@ export class P2PRoom {
         continue;
       }
       slot.recoveryAttempts += 1;
-      slot.lastProgressAt = now; // re-arm the stall window
+      slot.lastProgressAt = now;
       if (this.opts.selfId > peerId) {
-        // We are the dialer: rebuild the pair from scratch.
         const { name } = slot.info;
         const attempts = slot.recoveryAttempts;
         slot.pc.close();
         this.peers.delete(peerId);
         const fresh = this.connectTo(peerId, name, true);
         if (fresh) fresh.recoveryAttempts = attempts;
-        this.schedulePoll(FAST_POLL_MS);
+      } else {
+        try {
+          slot.pc.restartIce();
+        } catch {}
       }
-      // Receiver side: count the stall window and wait for the dialer's
-      // fresh offer (onSignal absorbs it, recreating our pc if needed).
     }
   }
 
   private async readCandidateType(slot: PeerSlot): Promise<void> {
-    // relay = TURN (none configured by default); srflx/host = direct path.
     try {
       const stats = await slot.pc.getStats();
-      let selected: RTCIceCandidatePairStats | undefined;
-      stats.forEach((s) => {
-        if (s.type === "candidate-pair" && (s as RTCIceCandidatePairStats).nominated) {
-          selected = s as RTCIceCandidatePairStats;
+      for (const r of stats.values()) {
+        if (r.type === "local-candidate" && (r as any).candidateType) {
+          slot.info.candidateType = (r as any).candidateType;
+          this.emitPeers();
+          return;
         }
-      });
-      const localId = selected?.localCandidateId;
-      if (localId) {
-        const local = stats.get(localId) as { candidateType?: string } | undefined;
-        slot.info.candidateType = local?.candidateType ?? null;
-        this.emitPeers();
       }
-    } catch {
-      // getStats is best-effort diagnostics only.
-    }
+    } catch {}
   }
 
   private emitPeers(): void {
-    // Only notify when something observable actually changed — React state
-    // setters otherwise re-render consumers on every poll/ping.
-    const list = this.peerList();
-    const fingerprint = JSON.stringify(
-      list.map((p) => [p.id, p.name, p.connectionState, p.candidateType, p.rttMs]),
-    );
-    if (fingerprint === this.lastPeersFingerprint) return;
-    this.lastPeersFingerprint = fingerprint;
-    this.opts.onPeersChanged?.(list);
+    try {
+      this.opts.onPeersChanged?.(this.peerList());
+    } catch {}
   }
 }
