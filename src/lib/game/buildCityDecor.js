@@ -88,6 +88,12 @@ export function addCityDecor(group, occ, PLAZA_R) {
   const lampMat = new THREE.MeshStandardMaterial({ color: 0x1e2228, flatShading: true });
   const bulbs = [];
   const streetLights = [];
+  const bulbMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffe9a8,
+    emissive: 0xffbd55,
+    emissiveIntensity: 0,
+    roughness: 0.35,
+  });
   for (let gi = -6; gi <= 6; gi++) {
     for (let side = 0; side < 2; side++) {
       const road = gi * 56;
@@ -103,7 +109,7 @@ export function addCityDecor(group, occ, PLAZA_R) {
         pole.castShadow = true;
         const warm = new THREE.Mesh(
           new THREE.SphereGeometry(0.34, 6, 6),
-          new THREE.MeshBasicMaterial({ color: 0xffe9a8 })
+          bulbMaterial
         );
         warm.position.set(x, 6.75, z);
         const neonC = NEON_COLORS[(Math.abs(gi) + a + side) % NEON_COLORS.length];
@@ -124,16 +130,15 @@ export function addCityDecor(group, occ, PLAZA_R) {
         // A small, capped set of real lights illuminates the nearby asphalt
         // and sidewalks without adding hundreds of expensive dynamic lights.
         if (
-          side === 0 &&
-          Math.abs(gi) <= 2 &&
-          Math.abs(a) <= 2 &&
+          Math.abs(gi) <= 3 &&
+          Math.abs(a) <= 3 &&
           a !== 0 &&
-          streetLights.length < 14
+          streetLights.length < 24
         ) {
-          const light = new THREE.PointLight(0xffd58a, 2.25, 34, 2);
-          light.position.set(x, 6.15, z);
+          const light = new THREE.PointLight(0xffd58a, 0, 52, 1.5);
+          light.position.set(x, 6.1, z);
           light.castShadow = false;
-          light.userData.baseIntensity = 2.25;
+          light.userData.baseIntensity = 30;
           group.add(light);
           streetLights.push(light);
         }
@@ -212,5 +217,5 @@ export function addCityDecor(group, occ, PLAZA_R) {
     group.add(board, post);
   }
 
-  return { billboards, bulbs, streetLights };
+  return { billboards, bulbs, streetLights, bulbMaterial };
 }
