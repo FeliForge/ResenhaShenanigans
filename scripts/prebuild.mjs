@@ -93,8 +93,40 @@ function patchAttackSprites(text) {
   return text;
 }
 
+/** Darker purple-cyan Shibuya night sky / fog. */
+function patchShibuyaNight(text) {
+  if (text.includes("0x1a1028") && text.includes("Shibuya night")) return text;
+  text = text.replace(
+    /const SKY_NIGHT = new THREE\.Color\(0x2a3a5a\);/,
+    "const SKY_NIGHT = new THREE.Color(0x1a1028); // Shibuya night"
+  );
+  text = text.replace(
+    /const FOG_NIGHT = new THREE\.Color\(0x3a4a66\);/,
+    "const FOG_NIGHT = new THREE.Color(0x2a1840);"
+  );
+  text = text.replace(
+    /const SUN_NIGHT = new THREE\.Color\(0x9aaad0\);/,
+    "const SUN_NIGHT = new THREE.Color(0x8890c8);"
+  );
+  // Slightly denser night fog for atmosphere
+  text = text.replace(
+    /scene\.fog\.density = 0\.0026 \+ 0\.0014 \* nightFactor;/,
+    "scene.fog.density = 0.0028 + 0.0022 * nightFactor;"
+  );
+  // Longer nights feel (cycle stretch a bit toward night)
+  text = text.replace(
+    /const cycle = \(elapsed \/ 140\) % 1;/,
+    "const cycle = (elapsed / 160) % 1;"
+  );
+  return text;
+}
+
 function patchAll(text) {
-  return patchAttackSprites(patchCameraControls(patchHub(patchSpawn(patchCompass(patchBillboards(text))))));
+  return patchShibuyaNight(
+    patchAttackSprites(
+      patchCameraControls(patchHub(patchSpawn(patchCompass(patchBillboards(text)))))
+    )
+  );
 }
 
 async function fetchText(url) {
@@ -138,7 +170,8 @@ async function main() {
         cur.includes("buildHub") &&
         cur.includes("requestPointerLock") &&
         cur.includes("Fixed city posters are permanent") &&
-        cur.includes("vfx.addAttackSprite")
+        cur.includes("vfx.addAttackSprite") &&
+        cur.includes("0x1a1028")
       ) {
         console.log("[prebuild] GameCanvas already complete+patched", cur.length);
         return;
@@ -174,7 +207,9 @@ async function main() {
   }
 }
 
-main().then(() => process.exit(0)).catch((e) => {
-  console.error("[prebuild] error", e);
-  process.exit(0);
-});
+main()
+  .then(() => process.exit(0))
+  .catch((e) => {
+    console.error("[prebuild] error", e);
+    process.exit(0);
+  });
