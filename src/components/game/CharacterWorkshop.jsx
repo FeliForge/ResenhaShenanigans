@@ -11,6 +11,7 @@ import {
   Crosshair,
 } from "lucide-react";
 import { toast } from "sonner";
+import MovesetCloudPanel from "@/components/game/MovesetCloudPanel";
 import { CHARACTERS, MOVE_KEYS } from "@/data/characters";
 import { imageFileToDataUrl } from "@/lib/game/files";
 import { makeCharacterTexture } from "@/lib/gameTexture";
@@ -143,6 +144,23 @@ export default function CharacterWorkshop({ onConfirm, onCancel }) {
       };
     }
     return moves;
+  }
+
+  function importCloudMoves(cloudMoves) {
+    if (!cloudMoves || typeof cloudMoves !== "object") { toast.error("Moveset inválido"); return; }
+    const nextPicks = { ...picks };
+    const nextSprites = { ...sprites };
+    const nextFx = { ...customFx };
+    for (const cat of CATS) {
+      const incoming = cloudMoves[cat];
+      if (!incoming) continue;
+      const idx = MOVES_BY_CAT[cat].findIndex((m) => m.id === incoming.id);
+      if (idx >= 0) nextPicks[cat] = idx;
+      if (typeof incoming.attackSprite === "string" && incoming.attackSprite.startsWith("data:image/")) nextFx[cat] = incoming.attackSprite;
+      else if (incoming.attackSprite) nextSprites[cat] = incoming.attackSprite;
+    }
+    setPicks(nextPicks); setSprites(nextSprites); setCustomFx(nextFx);
+    toast.success("Moveset importado al taller");
   }
 
   function confirm() {
@@ -382,6 +400,7 @@ export default function CharacterWorkshop({ onConfirm, onCancel }) {
                 );
               })}
             </div>
+            <MovesetCloudPanel moves={buildMoves()} onImport={importCloudMoves} />
           )}
 
           {tab === "sprites" && (
