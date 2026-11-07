@@ -122,7 +122,7 @@ export default function CharacterWorkshop({ onConfirm, onCancel }) {
     event.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) { toast.error("Selecciona una imagen PNG, JPG o WebP"); return; }
-    if (file.size > 2 * 1024 * 1024) { toast.error("La imagen debe pesar 2 MB o menos"); return; }
+    if (file.size > 512 * 1024) { toast.error("La imagen debe pesar 512 KB o menos"); return; }
     setFxUploading(cat);
     try {
       const dataUrl = await imageFileToDataUrl(file);
@@ -424,7 +424,7 @@ export default function CharacterWorkshop({ onConfirm, onCancel }) {
                     <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-xs font-bold text-cyan-100 transition hover:bg-cyan-300/20">
                       <Upload size={14} />
                       {fxUploading === cat ? "Cargando..." : customFx[cat] ? "Cambiar imagen FX" : "Subir mi imagen FX"}
-                      <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" disabled={fxUploading !== null} onChange={(e) => onFxFile(cat, e)} />
+                      <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={fxUploading !== null} onChange={(e) => onFxFile(cat, e)} />
                     </label>
                     {customFx[cat] && <button type="button" onClick={() => setCustomFx((prev) => { const next = { ...prev }; delete next[cat]; return next; })} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-white/65 hover:bg-white/10">Usar preset</button>}
                     {customFx[cat] && <span className="text-[10px] font-semibold text-emerald-300">Imagen personalizada</span>}
