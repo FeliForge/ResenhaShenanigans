@@ -41,23 +41,61 @@ export class MultiplayerManager {
     this.loadouts = new Map();
     this.onEvent = null;
     this.onMusic = null;
+    this.onStatus = null; // optional (status, detail) => void
     this.roomMusic = "";
     this.byPeer = new Map();
     this.peerIds = [];
+    this.lastLoadout = null;
+    this.status = "connecting";
     const room = `arena-${safeId(roomCode, "lobby")}`;
+    this.roomName = room;
     this.room = new P2PRoom({
       room,
       selfId: this.selfId,
       name: "luchador",
+      onConnected: () => {
+        this.status = "signaling";
+        try {
+          this.onStatus?.("signaling", "Conectado al relay");
+        } catch {}
+      },
       onPeersChanged: (peers) => {
         this.peerIds = (peers || []).map((p) => p.id);
         this.reindex();
-        // Pedir música actual al unirse
-        try { this.room.broadcast({ type: "music_request" }); } catch {}
+        const connected = (peers || []).filter((p) => p.connectionState === "connected").length;
+        this.status = connected > 0 ? "connected" : this.peerIds.length ? "negotiating" : "waiting";
+        try {
+          this.onStatus?.(this.status, `${this.peerIds.length} peers · ${connected} P2P`);
+        } catch {}
+        // Pedir música y reenviar loadout cuando cambia el roster
+        try {
+          this.room.broadcast({ type: "music_request" });
+        } catch {}
+        if (this.lastLoadout) {
+          try {
+            this.room.send({ type: "loadout", ...this.lastLoadout });
+          } catch {}
+        }
       },
       onMessage: (from, data) => this.handle(from, data),
     });
-    this.room.join().catch(() => {});
+    this._joinWithRetry();
+  }
+
+  async _joinWithRetry() {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        await this.room.join();
+        return;
+      } catch (e) {
+        console.warn("[mp] join attempt failed", attempt, e);
+        this.status = "error";
+        try {
+          this.onStatus?.("error", String(e?.message || e));
+        } catch {}
+        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+      }
+    }
   }
 
   reindex() {
@@ -84,12 +122,16 @@ export class MultiplayerManager {
     const rec = this.byPeer.get(fromPeer) || {};
     if (data.type === "music") {
       this.roomMusic = data.url || "";
-      try { this.onMusic?.(this.roomMusic); } catch {}
+      try {
+        this.onMusic?.(this.roomMusic);
+      } catch {}
       return;
     }
     if (data.type === "music_request") {
       if (this.roomMusic) {
-        try { this.room.broadcast({ type: "music", url: this.roomMusic }); } catch {}
+        try {
+          this.room.broadcast({ type: "music", url: this.roomMusic });
+        } catch {}
       }
       return;
     }
@@ -104,10 +146,11 @@ export class MultiplayerManager {
       this.byPeer.set(fromPeer, rec);
       this.reindex();
     } else if (data.type === "event") {
-      // Inject the sender's seat so GameCanvas can use msg.from as seat number.
-      const seat = this.seatFor(fromPeer) || this.mySeat;
+      const seat = this.seatFor(fromPeer) || data.from || this.mySeat;
       const withSeat = { ...data, from: seat };
-      try { this.onEvent?.(withSeat, fromPeer); } catch {}
+      try {
+        this.onEvent?.(withSeat, fromPeer);
+      } catch {}
     }
   }
 
@@ -118,6 +161,7 @@ export class MultiplayerManager {
   }
 
   sendLoadout(l) {
+    this.lastLoadout = l;
     try {
       this.room.send({ type: "loadout", ...l });
     } catch {}
@@ -125,7 +169,6 @@ export class MultiplayerManager {
 
   sendEvent(e) {
     try {
-      // Always tag events with our current seat so receivers can attribute them.
       this.room.send({ type: "event", from: this.mySeat, ...e });
     } catch {}
   }
