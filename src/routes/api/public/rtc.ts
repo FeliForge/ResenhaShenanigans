@@ -35,6 +35,13 @@ async function db() {
   return supabaseAdmin;
 }
 
+function errMessage(error: unknown): string {
+  if (!error) return "unknown";
+  if (typeof error === "string") return error;
+  const e = error as { message?: string; code?: string; details?: string; hint?: string };
+  return [e.message, e.code, e.details, e.hint].filter(Boolean).join(" | ") || String(error);
+}
+
 async function handleGet(url: URL) {
   const parsed = z
     .object({
@@ -49,20 +56,57 @@ async function handleGet(url: URL) {
       name: url.searchParams.get("name") ?? "",
       since: url.searchParams.get("since") ?? 0,
     });
-  if (!parsed.success) return json({ error: "invalid query" }, 400);
+  if (!parsed.success) return json({ error: "invalid query", detail: parsed.error.message }, 400);
   const { room, peer, name, since } = parsed.data;
-  const sb = await db();
 
-  if (since === 0 || Math.random() < 0.02) {
-    await Promise.all([
-      sb.from("webrtc_signals").delete().lt("created_at", ago(SIGNAL_TTL)),
-      sb.from("webrtc_peers").delete().lt("last_seen", ago(PEER_TTL)),
-    ]);
+  let sb;
+  try {
+    sb = await db();
+  } catch (error) {
+    console.error("[rtc] supabase admin init failed:", errMessage(error));
+    return json(
+      {
+        error: "supabase_not_configured",
+        detail:
+          "Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY on the server. Set them in Vercel → Environment Variables.",
+      },
+      503
+    );
   }
-  const up = await sb
-    .from("webrtc_peers")
-    .upsert({ room, peer_id: peer, name, last_seen: new Date().toISOString() });
-  if (up.error) throw up.error;
+
+  // Best-effort prune; never fail the request if cleanup errors.
+  if (since === 0 || Math.random() < 0.05) {
+    try {
+      await Promise.all([
+        sb.from("webrtc_signals").delete().lt("created_at", ago(SIGNAL_TTL)),
+        sb.from("webrtc_peers").delete().lt("last_seen", ago(PEER_TTL)),
+      ]);
+    } catch (error) {
+      console.warn("[rtc] prune warning:", errMessage(error));
+    }
+  }
+
+  // Upsert peer presence. Prefer composite conflict target; fall back to plain upsert.
+  const nowIso = new Date().toISOString();
+  let up = await sb.from("webrtc_peers").upsert(
+    { room, peer_id: peer, name, last_seen: nowIso },
+    { onConflict: "room,peer_id" }
+  );
+  if (up.error) {
+    // Fallback without onConflict (older schemas / missing unique index)
+    up = await sb.from("webrtc_peers").upsert({ room, peer_id: peer, name, last_seen: nowIso });
+  }
+  if (up.error) {
+    console.error("[rtc] peer upsert failed:", errMessage(up.error));
+    return json(
+      {
+        error: "peer_upsert_failed",
+        detail: errMessage(up.error),
+        hint: "Ensure table public.webrtc_peers exists with unique (room, peer_id).",
+      },
+      500
+    );
+  }
 
   const [sig, peers] = await Promise.all([
     sb
@@ -81,11 +125,33 @@ async function handleGet(url: URL) {
       .order("peer_id")
       .limit(32),
   ]);
-  if (sig.error) throw sig.error;
-  if (peers.error) throw peers.error;
+
+  if (sig.error) {
+    console.error("[rtc] signals select failed:", errMessage(sig.error));
+    return json(
+      {
+        error: "signals_query_failed",
+        detail: errMessage(sig.error),
+        hint: "Ensure table public.webrtc_signals exists.",
+      },
+      500
+    );
+  }
+  if (peers.error) {
+    console.error("[rtc] peers select failed:", errMessage(peers.error));
+    return json(
+      {
+        error: "peers_query_failed",
+        detail: errMessage(peers.error),
+        hint: "Ensure table public.webrtc_peers exists.",
+      },
+      500
+    );
+  }
+
   return json({
-    peers: peers.data.map((r) => ({ id: r.peer_id, name: r.name })),
-    signals: sig.data.map((r) => ({
+    peers: (peers.data || []).map((r) => ({ id: r.peer_id, name: r.name })),
+    signals: (sig.data || []).map((r) => ({
       id: Number(r.id),
       from: r.from_peer,
       kind: r.kind,
@@ -102,9 +168,24 @@ async function handlePost(request: Request) {
     return json({ error: "invalid JSON" }, 400);
   }
   const parsed = postSchema.safeParse(body);
-  if (!parsed.success) return json({ error: "invalid request" }, 400);
+  if (!parsed.success) return json({ error: "invalid request", detail: parsed.error.message }, 400);
   const msg = parsed.data;
-  const sb = await db();
+
+  let sb;
+  try {
+    sb = await db();
+  } catch (error) {
+    console.error("[rtc] supabase admin init failed:", errMessage(error));
+    return json(
+      {
+        error: "supabase_not_configured",
+        detail:
+          "Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY on the server. Set them in Vercel → Environment Variables.",
+      },
+      503
+    );
+  }
+
   if (msg.op === "signal") {
     const { error } = await sb.from("webrtc_signals").insert({
       room: msg.room,
@@ -113,9 +194,19 @@ async function handlePost(request: Request) {
       kind: msg.kind,
       payload: msg.payload as never,
     });
-    if (error) throw error;
+    if (error) {
+      console.error("[rtc] signal insert failed:", errMessage(error));
+      return json({ error: "signal_insert_failed", detail: errMessage(error) }, 500);
+    }
   } else {
-    await sb.from("webrtc_peers").delete().eq("room", msg.room).eq("peer_id", msg.peer);
+    const { error } = await sb
+      .from("webrtc_peers")
+      .delete()
+      .eq("room", msg.room)
+      .eq("peer_id", msg.peer);
+    if (error) {
+      console.warn("[rtc] leave delete warning:", errMessage(error));
+    }
   }
   return json({ ok: true });
 }
@@ -123,10 +214,11 @@ async function handlePost(request: Request) {
 async function handle({ request }: { request: Request }) {
   try {
     if (request.method === "GET") return await handleGet(new URL(request.url));
-    return await handlePost(request);
+    if (request.method === "POST") return await handlePost(request);
+    return json({ error: "method_not_allowed" }, 405);
   } catch (error) {
-    console.error("[rtc] signaling error:", error);
-    return json({ error: "signaling failed" }, 500);
+    console.error("[rtc] signaling error:", errMessage(error));
+    return json({ error: "signaling failed", detail: errMessage(error) }, 500);
   }
 }
 
