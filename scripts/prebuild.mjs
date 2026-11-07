@@ -104,6 +104,19 @@ function patchShibuyaNight(text) {
     "const FOG_NIGHT = new THREE.Color(0x2a1840);"
   );
   text = text.replace(
+    /const SUN_NIGHT = new THREE\.Color\(0x8890c8\);/,
+    "const SUN_NIGHT = new THREE.Color(0x8890c8);"
+  );
+  // keep previous night patches tolerant
+  text = text.replace(
+    /const SKY_NIGHT = new THREE\.Color\(0x2a3a5a\);/,
+    "const SKY_NIGHT = new THREE.Color(0x1a1028); // Shibuya night"
+  );
+  text = text.replace(
+    /const FOG_NIGHT = new THREE\.Color\(0x3a4a66\);/,
+    "const FOG_NIGHT = new THREE.Color(0x2a1840);"
+  );
+  text = text.replace(
     /const SUN_NIGHT = new THREE\.Color\(0x9aaad0\);/,
     "const SUN_NIGHT = new THREE.Color(0x8890c8);"
   );
@@ -273,7 +286,13 @@ function patchRichMp(text) {
 
 /** Combat integrity: damage caps, lastAttacker TTL, remote players as skill targets. */
 function patchCombatIntegrity(text) {
-  if (text.includes("__MP_COMBAT_INTEGRITY__")) return text;
+  // Always strip old broken init call if present
+  text = text.replace(
+    /\n    refreshSkillTargets\(\);\n/,
+    "\n"
+  );
+
+  if (text.includes("__MP_COMBAT_INTEGRITY_V2__")) return text;
 
   // lastAttacker with timestamp + TTL on death
   if (text.includes("if (attackerSeat) game.lastAttacker = attackerSeat;")) {
@@ -289,14 +308,11 @@ function patchCombatIntegrity(text) {
     );
   }
 
-  // Clamp incoming network damage by category (anti-cheat floor)
-  if (
-    text.includes("applyDamage(msg.damage || (ult ? 320 : 60), msg.from);") &&
-    !text.includes("__MP_COMBAT_INTEGRITY__")
-  ) {
+  // Clamp incoming network damage by category
+  if (text.includes("applyDamage(msg.damage || (ult ? 320 : 60), msg.from);") && !text.includes("__MP_COMBAT_INTEGRITY_V2__")) {
     text = text.replace(
       "if (p.distanceTo(game.player.position) < (ult ? 4 : 2.3)) {\n            if (msg.slow) skills.addBuff({ stat: \"speed\", mult: Math.max(0.4, 1 - msg.slow), duration: 1200 });\n            if (msg.stun) game.stunUntil = performance.now() + msg.stun;\n            applyDamage(msg.damage || (ult ? 320 : 60), msg.from);\n          }",
-      `// __MP_COMBAT_INTEGRITY__
+      `// __MP_COMBAT_INTEGRITY_V2__
           const hitR = ult ? 5.5 : (msg.category === "special3" || msg.category === "special2" ? 3.6 : 2.8);
           if (p.distanceTo(game.player.position) < hitR) {
             if (msg.slow) skills.addBuff({ stat: "speed", mult: Math.max(0.4, 1 - msg.slow), duration: 1200 });
@@ -309,50 +325,49 @@ function patchCombatIntegrity(text) {
     );
   }
 
-  // Include remote players as skill targets so projectiles/areas/melee hit them locally
-  // and network a hit event when a remote proxy is hurt.
-  if (text.includes("skills.setTargets(npcTargets);") && !text.includes("refreshSkillTargets")) {
+  // Define refresh without calling it at init (remoteSprites is declared later → TDZ)
+  if (text.includes("skills.setTargets(npcTargets);") && !text.includes("function refreshSkillTargets")) {
     text = text.replace(
       "skills.setTargets(npcTargets);",
       `skills.setTargets(npcTargets);
     function refreshSkillTargets() {
+      // remoteSprites is const later in this scope; only run from tick after init
+      let map = null;
+      try { map = remoteSprites; } catch { return; }
+      if (!map) return;
       const remoteT = [];
-      if (typeof remoteSprites !== "undefined" && remoteSprites) {
-        for (const [seat, r] of remoteSprites) {
-          if (!r || r.deadAt) continue;
-          remoteT.push({
-            id: "remote-" + seat,
-            seat,
-            pos: r.pos,
-            radius: 1.15,
-            get alive() { return !r.deadAt; },
-            hurt(dmg, from, knock) {
-              if (r.deadAt) return;
-              // Visual only on attacker client; victim applies authoritative damage from net event
-              vfx.addImpact(r.pos.clone().setY(1.2), tmpColor.set(character.colors.accent), 0.9);
-              if (mp) {
-                mp.sendEvent({
-                  kind: "hit",
-                  x: r.pos.x, y: 1.6, z: r.pos.z,
-                  color: character.colors.accent,
-                  damage: Math.round(dmg),
-                  slow: 0, stun: 0,
-                  category: game.castMove?.category || "m1",
-                  dirX: game.facing?.x || 0, dirZ: game.facing?.z || 1,
-                });
-              }
-            },
-          });
-        }
+      for (const [seat, r] of map) {
+        if (!r || r.deadAt) continue;
+        remoteT.push({
+          id: "remote-" + seat,
+          seat,
+          pos: r.pos,
+          radius: 1.15,
+          get alive() { return !r.deadAt; },
+          hurt(dmg) {
+            if (r.deadAt) return;
+            try { vfx.addImpact(r.pos.clone().setY(1.2), tmpColor.set(character.colors.accent), 0.9); } catch {}
+            if (mp) {
+              mp.sendEvent({
+                kind: "hit",
+                x: r.pos.x, y: 1.6, z: r.pos.z,
+                color: character.colors.accent,
+                damage: Math.round(dmg),
+                slow: 0, stun: 0,
+                category: game.castMove?.category || "m1",
+                dirX: game.facing?.x || 0, dirZ: game.facing?.z || 1,
+              });
+            }
+          },
+        });
       }
       skills.setTargets([...npcTargets, ...remoteT]);
-    }
-    refreshSkillTargets();`
+    }`
     );
   }
 
-  // Refresh remote targets each frame before skills.update
-  if (text.includes("skills.update(dt);") && text.includes("refreshSkillTargets")) {
+  // Refresh from game loop only
+  if (text.includes("skills.update(dt);") && text.includes("function refreshSkillTargets") && !text.includes("try { refreshSkillTargets(); } catch {}")) {
     text = text.replace(
       "skills.update(dt);",
       "try { refreshSkillTargets(); } catch {}\n      skills.update(dt);"
@@ -408,6 +423,7 @@ async function main() {
 
     if (fs.existsSync(out)) {
       const cur = fs.readFileSync(out, "utf8");
+      // Force re-patch if old broken V1 combat patch or missing V2 marker
       if (
         isGood(cur) &&
         cur.includes("getHeading") &&
@@ -419,9 +435,10 @@ async function main() {
         cur.includes("0x1a1028") &&
         cur.includes("buildNetLoadout") &&
         cur.includes('kind === "chat"') &&
-        cur.includes("__MP_COMBAT_INTEGRITY__")
+        cur.includes("__MP_COMBAT_INTEGRITY_V2__") &&
+        !cur.includes("refreshSkillTargets();")
       ) {
-        console.log("[prebuild] GameCanvas already complete+patched", cur.length);
+        console.log("[prebuild] GameCanvas already complete+patched v2", cur.length);
         return;
       }
       if (isGood(cur)) {
