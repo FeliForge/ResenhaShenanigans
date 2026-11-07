@@ -399,8 +399,8 @@ export default function CharacterWorkshop({ onConfirm, onCancel }) {
                   </div>
                 );
               })}
+              <MovesetCloudPanel moves={buildMoves()} onImport={importCloudMoves} />
             </div>
-            <MovesetCloudPanel moves={buildMoves()} onImport={importCloudMoves} />
           )}
 
           {tab === "sprites" && (
