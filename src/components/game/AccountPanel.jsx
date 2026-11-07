@@ -55,6 +55,38 @@ export default function AccountPanel({ onClose }) {
     return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
 
+  async function sendRecoveryEmail() {
+    const address = email.trim().toLowerCase();
+    if (!address) { toast.error("Escribe primero tu correo electrónico."); return; }
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(address, {
+        redirectTo: getAuthRedirectUrl(),
+      });
+      if (error) throw error;
+      toast.success("Si la cuenta existe, recibirás un enlace para cambiar la contraseña. Revisa spam.");
+    } catch (e) {
+      toast.error(e.message || "No se pudo enviar el correo de recuperación.");
+    } finally { setBusy(false); }
+  }
+
+  async function resendConfirmation() {
+    const address = email.trim().toLowerCase();
+    if (!address) { toast.error("Escribe primero el correo de tu cuenta."); return; }
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: address,
+        options: { emailRedirectTo: getAuthRedirectUrl() },
+      });
+      if (error) throw error;
+      toast.success("Solicitud enviada. Si la cuenta aún no está confirmada, revisa tu correo y spam.");
+    } catch (e) {
+      toast.error(e.message || "No se pudo reenviar la confirmación. Puede que la cuenta ya esté confirmada o que el servicio de correo la esté bloqueando.");
+    } finally { setBusy(false); }
+  }
+
   async function authenticate(signUp) {
     if (!email.trim() || password.length < 8) {
       toast.error("Introduce un correo válido y una contraseña de al menos 8 caracteres.");
@@ -76,7 +108,8 @@ export default function AccountPanel({ onClose }) {
         toast.success(signUp ? "Cuenta creada." : "Sesión iniciada.");
       }
     } catch (e) {
-      toast.error(e.message || "No se pudo completar el acceso.");
+      const message = e.message || "No se pudo completar el acceso.";
+      toast.error(message.includes("Invalid login credentials") ? "Correo o contraseña incorrectos. Si todavía no confirmaste el correo, reenvía la confirmación; si olvidaste la contraseña, solicita un enlace de recuperación." : message);
     } finally {
       setBusy(false);
     }
@@ -135,7 +168,13 @@ export default function AccountPanel({ onClose }) {
             <input value={email} onChange={e => setEmail(e.target.value)} type="email" autoComplete="email" placeholder="Correo electrónico" className="rounded-lg border border-white/15 bg-black/30 px-3 py-2.5 text-sm outline-none focus:border-cyan-300/60" />
             <input value={password} onChange={e => setPassword(e.target.value)} type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} placeholder="Contraseña (mín. 8 caracteres)" className="rounded-lg border border-white/15 bg-black/30 px-3 py-2.5 text-sm outline-none focus:border-cyan-300/60" />
             <button disabled={busy} onClick={() => authenticate(mode === "signup")} className="rounded-lg bg-gradient-to-r from-cyan-300 to-blue-400 px-4 py-3 text-sm font-black text-slate-950 disabled:opacity-50">{busy ? "Procesando..." : mode === "signup" ? "Crear cuenta y verificar correo" : "Entrar"}</button>
-            {mode === "signup" && <p className="text-[11px] leading-relaxed text-white/45">El enlace de verificación volverá al sitio publicado, no a localhost. Revisa también la carpeta de spam.</p>}
+            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
+              {mode === "login" && <>
+                <button type="button" disabled={busy} onClick={sendRecoveryEmail} className="text-cyan-200 underline decoration-cyan-200/40 underline-offset-4 disabled:opacity-40">Olvidé mi contraseña</button>
+                <button type="button" disabled={busy} onClick={resendConfirmation} className="text-cyan-200 underline decoration-cyan-200/40 underline-offset-4 disabled:opacity-40">Reenviar verificación</button>
+              </>}
+            </div>
+            {mode === "signup" && <p className="text-[11px] leading-relaxed text-white/45">El enlace vuelve al dominio desde el que abriste el juego. Revisa spam. Si Supabase no envía correos, debe configurarse SMTP externo.</p>}
           </div>
         ) : (
           <div className="flex flex-col gap-3">
