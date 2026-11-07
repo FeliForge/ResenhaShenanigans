@@ -17,6 +17,8 @@ export default function AccountPanel({ onClose }) {
   const [username, setUsername] = useState("");
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState("login");
+  // The exclusive badge is tied to this exact, email-confirmed account.
+  const isOwnerVerified = String(user?.email || "").toLowerCase() === "felipejerezgatti@gmail.com" && Boolean(user?.email_confirmed_at);
 
   async function loadProfile(currentUser) {
     if (!currentUser) { setProfile(null); return; }
@@ -140,7 +142,7 @@ export default function AccountPanel({ onClose }) {
             <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
               <p className="text-xs text-white/45">Conectado como</p>
               <p className="mt-1 break-all text-sm font-semibold">{user.email}</p>
-              {profile?.is_verified && <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-sky-400/10 px-2 py-1 text-xs font-bold text-sky-300"><BadgeCheck size={14} fill="currentColor" className="text-sky-300" /><span className="text-sky-200">Verificado</span></span>}
+              {isOwnerVerified && <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-sky-400/10 px-2 py-1 text-xs font-bold text-sky-300"><BadgeCheck size={14} fill="currentColor" className="text-sky-300" /><span className="text-sky-200">Verificado</span></span>}
             </div>
             <label className="text-xs font-bold text-white/70">Nombre de usuario único</label>
             <div className="flex items-center rounded-lg border border-white/15 bg-black/30 px-3">
