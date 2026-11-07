@@ -56,10 +56,10 @@ export default function StartMenu({
   const saved = savedCharacter ? localChar(savedCharacter) : null;
 
   return (
-    <div className="dark absolute inset-0 overflow-y-auto bg-[#0a0a14] text-white">
+    <div className="dark absolute inset-0 overflow-y-auto bg-[#070912] text-white">
       {/* ambiente de forja */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-40 -top-24 h-[520px] w-[520px] rounded-full bg-[#ff9620]/20 blur-[150px]" />
+        <div className="absolute -left-40 -top-24 h-[520px] w-[520px] rounded-full bg-[#ff9620]/25 blur-[145px]" />\n        <div className="absolute left-1/2 top-1/3 h-[440px] w-[700px] -translate-x-1/2 rounded-full bg-cyan-500/[0.08] blur-[150px]" />
         <div className="absolute -right-32 bottom-0 h-[460px] w-[460px] rounded-full bg-[#ff3b2f]/25 blur-[150px]" />
         {EMBERS.map((e, i) => (
           <span
@@ -71,7 +71,7 @@ export default function StartMenu({
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_35%,transparent_0%,#0a0a14_78%)]" />
       </div>
 
-      <div className="relative mx-auto flex min-h-full w-full max-w-3xl flex-col items-center justify-center gap-7 px-5 py-14 text-center">
+      <div className="relative mx-auto flex min-h-full w-full max-w-4xl flex-col items-center justify-center gap-8 px-5 py-10 text-center">
         <motion.div
           className="flex flex-col items-center gap-4"
           initial={{ opacity: 0, y: -14 }}
@@ -82,7 +82,7 @@ export default function StartMenu({
             <Flame size={12} /> {t("menu.studio")}
           </span>
 
-          <h1 className="font-heading text-[2.6rem] font-black uppercase leading-[0.92] tracking-tight sm:text-6xl">
+          <h1 className="font-heading text-[2.8rem] font-black uppercase leading-[0.9] tracking-[-0.055em] sm:text-7xl">
             <span className="bg-gradient-to-b from-white via-white to-[#ff9620] bg-clip-text text-transparent drop-shadow-[0_12px_45px_rgba(255,138,30,0.35)]">
               Resenha
             </span>
@@ -109,7 +109,7 @@ export default function StartMenu({
         </motion.div>
 
         <motion.div
-          className="w-full max-w-md rounded-2xl border border-white/10 bg-[#151523]/80 p-4 shadow-[0_30px_90px_-25px_rgba(0,0,0,0.95)] backdrop-blur-sm"
+          className="relative w-full max-w-xl overflow-hidden rounded-[1.65rem] border border-white/15 bg-gradient-to-b from-[#1b2030]/95 to-[#10121d]/95 p-5 shadow-[0_28px_100px_-30px_rgba(0,0,0,1)] ring-1 ring-orange-300/10 backdrop-blur-xl sm:p-6"
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.15 }}
@@ -152,7 +152,7 @@ export default function StartMenu({
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
               onClick={onCreateRoom}
-              className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-white transition hover:border-[#ff9620]/50 hover:bg-white/10"
+              className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.045] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-white/85 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-orange-300/50 hover:bg-orange-400/10 hover:text-white"
             >
               <UserPlus size={16} /> {t("menu.createRoom")}
             </button>
@@ -168,7 +168,7 @@ export default function StartMenu({
             {saved && (
               <button
                 onClick={onContinue}
-                className="col-span-1 flex items-center justify-center gap-2 rounded-xl border border-[#ff9620]/40 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-white transition hover:bg-[#ff9620]/10 sm:col-span-2"
+                className="col-span-1 flex items-center justify-center gap-2 rounded-xl border border-orange-300/45 bg-orange-400/[0.07] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:-translate-y-0.5 hover:bg-orange-400/15 sm:col-span-2"
               >
                 <Play size={16} /> {t("menu.continue", { name: saved.displayName })}
               </button>
