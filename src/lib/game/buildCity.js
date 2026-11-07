@@ -351,7 +351,7 @@ export function buildCity(scene) {
         0.72 +
         0.28 * Math.sin(now * 0.0045 + n.phase) +
         (Math.random() < 0.015 ? -0.35 : 0);
-      n.mat.opacity = n.base * (0.28 + 0.72 * nightF) * flick;
+      n.mat.opacity = n.base * (0.28 + 0.72 * night) * flick;
     }
     for (const c of crates) {
       if (c.respawnAt > 0 && now > c.respawnAt) {
