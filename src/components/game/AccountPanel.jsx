@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 function getAuthRedirectUrl() {
   // Always return to the origin currently serving the app; never hard-code localhost.
-  return new URL("/", window.location.origin).toString();
+  return "https://resenhashenanigans.vercel.app/";
 }
 
 export default function AccountPanel({ onClose }) {
@@ -41,7 +41,8 @@ export default function AccountPanel({ onClose }) {
         try { await loadProfile(data.user); } catch (e) { toast.error(e.message || "No se pudo cargar el perfil"); }
       }
     }).catch(() => {});
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") setMode("recovery");
       const next = session?.user || null;
       setUser(next);
       if (next) {
@@ -68,6 +69,19 @@ export default function AccountPanel({ onClose }) {
     } catch (e) {
       toast.error(e.message || "No se pudo enviar el correo de recuperación.");
     } finally { setBusy(false); }
+  }
+
+  async function updateRecoveredPassword() {
+    if (password.length < 8) { toast.error("La nueva contraseña debe tener al menos 8 caracteres."); return; }
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      setPassword("");
+      setMode("login");
+      toast.success("Contraseña actualizada. Ya puedes iniciar sesión.");
+    } catch (e) { toast.error(e.message || "No se pudo cambiar la contraseña."); }
+    finally { setBusy(false); }
   }
 
   async function resendConfirmation() {
@@ -174,7 +188,8 @@ export default function AccountPanel({ onClose }) {
                 <button type="button" disabled={busy} onClick={resendConfirmation} className="text-cyan-200 underline decoration-cyan-200/40 underline-offset-4 disabled:opacity-40">Reenviar verificación</button>
               </>}
             </div>
-            {mode === "signup" && <p className="text-[11px] leading-relaxed text-white/45">El enlace vuelve al dominio desde el que abriste el juego. Revisa spam. Si Supabase no envía correos, debe configurarse SMTP externo.</p>}
+            {mode === "signup" && <p className="text-[11px] leading-relaxed text-white/45">El enlace de verificación volverá al juego publicado. Revisa spam. El envío a cualquier Gmail requiere SMTP externo en Supabase.</p>}
+            {mode === "recovery" && <p className="text-[11px] leading-relaxed text-white/45">Abre el enlace de recuperación recibido por correo y define aquí una contraseña nueva.</p>}
           </div>
         ) : (
           <div className="flex flex-col gap-3">
