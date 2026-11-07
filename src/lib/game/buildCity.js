@@ -88,6 +88,7 @@ export function buildCity(scene) {
   const boxGeo = new THREE.BoxGeometry(1, 1, 1);
   const dummy = new THREE.Object3D();
   const placed = [];
+  const treeColliders = []; // narrow trunk-only hitboxes; foliage stays non-solid
 
   const COLS = 15,
     COUNT = 185;
@@ -142,6 +143,7 @@ export function buildCity(scene) {
         if (!occ.tryAdd(tx, tz, 3)) continue;
         tree.position.set(tx, 0, tz);
         group.add(tree);
+        treeColliders.push({ x: tx, z: tz, w: 1.15, d: 1.15 });
       }
       continue;
     }
@@ -379,6 +381,7 @@ export function buildCity(scene) {
   }
 
   const colliders = placed.map((p) => ({ x: p.x, z: p.z, w: p.w, d: p.d }));
+  colliders.push(...treeColliders);
   colliders.push({ x: 0, z: 0, w: 15.5, d: 15.5 });
   colliders.push({ x: 0, z: 0, w: 3.6, d: 3.6 });
   return { group, crates, neons, colliders, billboards, setNight, update, dispose };
