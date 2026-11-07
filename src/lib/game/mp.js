@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { P2PRoom } from "@/lib/multiplayer";
+import { normalizeNetLoadout } from "@/lib/game/mpProtocol";
 
 function hashSeat(id) {
   let h = 2166136261;
@@ -41,7 +42,8 @@ export class MultiplayerManager {
     this.loadouts = new Map();
     this.onEvent = null;
     this.onMusic = null;
-    this.onStatus = null; // optional (status, detail) => void
+    this.onStatus = null;
+    this.onLoadout = null; // (seat, loadout) when a peer identity updates
     this.roomMusic = "";
     this.byPeer = new Map();
     this.peerIds = [];
@@ -56,8 +58,9 @@ export class MultiplayerManager {
       onConnected: () => {
         this.status = "signaling";
         try {
-          this.onStatus?.("signaling", "Conectado al relay");
+          this.onStatus?.("signaling", "Realtime listo");
         } catch {}
+        this._announce();
       },
       onPeersChanged: (peers) => {
         this.peerIds = (peers || []).map((p) => p.id);
@@ -67,19 +70,25 @@ export class MultiplayerManager {
         try {
           this.onStatus?.(this.status, `${this.peerIds.length} peers · ${connected} P2P`);
         } catch {}
-        // Pedir música y reenviar loadout cuando cambia el roster
         try {
           this.room.broadcast({ type: "music_request" });
         } catch {}
-        if (this.lastLoadout) {
-          try {
-            this.room.send({ type: "loadout", ...this.lastLoadout });
-          } catch {}
-        }
+        this._announce();
       },
       onMessage: (from, data) => this.handle(from, data),
     });
     this._joinWithRetry();
+  }
+
+  _announce() {
+    if (this.lastLoadout) {
+      try {
+        this.room.send({ type: "loadout", ...this.lastLoadout });
+      } catch {}
+      try {
+        this.room.send({ type: "hello", loadout: this.lastLoadout });
+      } catch {}
+    }
   }
 
   async _joinWithRetry() {
@@ -120,6 +129,7 @@ export class MultiplayerManager {
     if (!data || typeof data !== "object") return;
     if (!this.peerIds.includes(fromPeer)) this.peerIds.push(fromPeer);
     const rec = this.byPeer.get(fromPeer) || {};
+
     if (data.type === "music") {
       this.roomMusic = data.url || "";
       try {
@@ -135,16 +145,44 @@ export class MultiplayerManager {
       }
       return;
     }
+    if (data.type === "hello") {
+      // Peer is introducing itself — store loadout and reply with ours
+      if (data.loadout) {
+        const lo = normalizeNetLoadout(data.loadout);
+        rec.loadout = lo;
+        this.byPeer.set(fromPeer, rec);
+        this.reindex();
+        const seat = this.seatFor(fromPeer);
+        if (seat) {
+          try {
+            this.onLoadout?.(seat, lo);
+          } catch {}
+        }
+      }
+      if (this.lastLoadout) {
+        try {
+          this.room.send({ type: "loadout", ...this.lastLoadout }, fromPeer);
+        } catch {}
+      }
+      return;
+    }
     if (data.type === "state") {
       const { type, ...state } = data;
       rec.state = state;
       this.byPeer.set(fromPeer, rec);
       this.reindex();
     } else if (data.type === "loadout") {
-      const { type, ...loadout } = data;
-      rec.loadout = loadout;
+      const { type, ...raw } = data;
+      const lo = normalizeNetLoadout(raw);
+      rec.loadout = lo;
       this.byPeer.set(fromPeer, rec);
       this.reindex();
+      const seat = this.seatFor(fromPeer);
+      if (seat) {
+        try {
+          this.onLoadout?.(seat, lo);
+        } catch {}
+      }
     } else if (data.type === "event") {
       const seat = this.seatFor(fromPeer) || data.from || this.mySeat;
       const withSeat = { ...data, from: seat };
@@ -161,9 +199,12 @@ export class MultiplayerManager {
   }
 
   sendLoadout(l) {
-    this.lastLoadout = l;
+    this.lastLoadout = normalizeNetLoadout(l) || l;
     try {
-      this.room.send({ type: "loadout", ...l });
+      this.room.send({ type: "loadout", ...this.lastLoadout });
+    } catch {}
+    try {
+      this.room.send({ type: "hello", loadout: this.lastLoadout });
     } catch {}
   }
 
