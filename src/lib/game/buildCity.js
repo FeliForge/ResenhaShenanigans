@@ -290,7 +290,7 @@ export function buildCity(scene) {
     crates.push({ mesh: m, health: 50, respawnAt: 0 });
   }
 
-  const { billboards } = addCityDecor(group, occ, PLAZA_R);
+  const { billboards, streetLights } = addCityDecor(group, occ, PLAZA_R);
 
   // Colored atmosphere lights — Shibuya night energy
   const p1 = new THREE.PointLight(0x00e5ff, 0.55, 140);
@@ -319,9 +319,15 @@ export function buildCity(scene) {
     p2.intensity = 0.18 + 0.38 * nightF;
     p3.intensity = 0.14 + 0.32 * nightF;
     p4.intensity = 0.1 + 0.28 * nightF;
+    for (const light of streetLights) {
+      light.intensity = 0.08 + (light.userData.baseIntensity || 2.25) * nightF;
+    }
   }
 
   function update(now, nightF) {
+    for (const light of streetLights) {
+      light.intensity = 0.08 + (light.userData.baseIntensity || 2.25) * nightF;
+    }
     for (const n of neons) {
       const flick =
         0.72 +
