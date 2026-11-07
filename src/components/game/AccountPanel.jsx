@@ -90,7 +90,7 @@ export default function AccountPanel({ onClose }) {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .update({ username: clean, updated_at: new Date().toISOString() })
+        .update({ username: clean })
         .eq("user_id", user.id)
         .select("user_id, username, is_verified")
         .single();
