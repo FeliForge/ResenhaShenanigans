@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { CHARACTERS, getCharacter } from "@/data/characters";
+import { DEFAULT_ATTACK_SPRITES } from "@/lib/game/attackSprites";
 
-// Loadout = personaje equipado (skin, colores, PNG propio) + billboard.
+// Loadout = personaje equipado (skin, colores, PNG propio) + billboard + sprites.
 // Se guarda solo en este navegador.
 
 const STORAGE_KEY = "resenha_loadout";
@@ -33,14 +34,18 @@ export function toLoadout(character, billboardUrl) {
     colors: character.colors,
     custom_image: character.customImage || "",
   };
-  if (baseId === "custom") {
+  if (baseId === "custom" || character.id?.includes("-skin-")) {
     const sources = {};
+    const attackSprites = {};
     for (const cat of MOVE_CATS) {
       const moveId = character.moves?.[cat]?.id;
       const src = CHARACTERS.find((c) => c.moves?.[cat]?.id === moveId);
       if (src) sources[cat] = src.id;
+      const spr = character.moves?.[cat]?.attackSprite;
+      if (spr) attackSprites[cat] = spr;
     }
     payload.move_sources = sources;
+    if (Object.keys(attackSprites).length) payload.attack_sprites = attackSprites;
   }
   if (billboardUrl !== undefined) payload.billboard_url = billboardUrl || "";
   return payload;
@@ -50,13 +55,21 @@ export function characterFromLoadout(lo) {
   if (!lo?.base_id) return null;
   const base = lo.base_id === "custom" ? CUSTOM_BASE : getCharacter(lo.base_id);
   if (!base) return null;
-  let moves = base.moves;
+  let moves = { ...base.moves };
   if (lo.move_sources) {
     moves = {};
     for (const cat of MOVE_CATS) {
       const src = getCharacter(lo.move_sources[cat]);
-      moves[cat] = src?.moves?.[cat] || CHARACTERS[0].moves[cat];
+      moves[cat] = { ...(src?.moves?.[cat] || CHARACTERS[0].moves[cat]) };
     }
+  } else {
+    moves = {};
+    for (const cat of MOVE_CATS) moves[cat] = { ...base.moves[cat] };
+  }
+  // Attach attack sprites from loadout or defaults
+  for (const cat of MOVE_CATS) {
+    const spr = lo.attack_sprites?.[cat] || moves[cat]?.attackSprite || DEFAULT_ATTACK_SPRITES[cat];
+    if (spr) moves[cat] = { ...moves[cat], attackSprite: spr };
   }
   return {
     ...base,
