@@ -16,24 +16,38 @@ const NEON_COLORS = [0xff2d95, 0x00e5ff, 0xd500f9, 0xff6b00, 0x39ff14, 0xffea00,
 export function addCityDecor(group, occ, PLAZA_R) {
   const billboards = [];
 
-  // Exactly 4 fixed billboards in different empty zones (NE, NW, SE, SW)
+  // Far-out curb slots (road midlines) so planes are not buried inside towers
+  // Order: goofyboxy, vitalsmash, tangomayhem, tomatosmash
   const fixedSlots = [
-    { x: 105, z: 72 },
-    { x: -118, z: 48 },
-    { x: 62, z: 128 },
-    { x: -88, z: -115 },
+    { x: 154, z: 28 },
+    { x: -154, z: 28 },
+    { x: 28, z: 154 },
+    { x: -28, z: -154 },
   ];
   FIXED_BILLBOARD_IMAGES.forEach((img, i) => {
-    const pos = fixedSlots[i] || { x: 120, z: 0 };
-    let bx = pos.x,
-      bz = pos.z;
-    if (isOnRoad(bx, bz)) {
-      bx += 14;
-      bz += 10;
+    const pos = fixedSlots[i] || { x: 160, z: 0 };
+    let bx = pos.x;
+    let bz = pos.z;
+    // Nudge off pure road center if needed, but stay in open band
+    if (!isOnRoad(bx, bz)) {
+      bx += 8;
     }
+    // If occupancy fails, spiral outward until free
+    let placed = false;
+    for (let ring = 0; ring < 8 && !placed; ring++) {
+      const ox = bx + (ring % 2 === 0 ? ring * 12 : -ring * 12);
+      const oz = bz + (ring % 2 === 0 ? -ring * 8 : ring * 8);
+      if (occ.tryAdd(ox, oz, 10)) {
+        bx = ox;
+        bz = oz;
+        placed = true;
+      }
+    }
+    if (!placed) occ.tryAdd(bx, bz, 10);
+
     const mat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, color: 0x555555 });
-    const h = 13;
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), mat);
+    const h = 16;
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(18, 18), mat);
     mesh.position.set(bx, h, bz);
     mesh.lookAt(0, h, 0);
     const post = new THREE.Mesh(
@@ -47,7 +61,6 @@ export function addCityDecor(group, occ, PLAZA_R) {
     );
     base.position.set(bx, 0.21, bz);
     group.add(mesh, post, base);
-    occ.tryAdd(bx, bz, 9);
     billboards.push({ mesh, mat, index: i, id: img.id });
     const loader = new THREE.TextureLoader();
     loader.load(
@@ -87,7 +100,6 @@ export function addCityDecor(group, occ, PLAZA_R) {
           new THREE.MeshBasicMaterial({ color: 0xffe9a8 })
         );
         warm.position.set(x, 6.75, z);
-        // Small neon accent under the bulb
         const neonC = NEON_COLORS[(Math.abs(gi) + a + side) % NEON_COLORS.length];
         const accent = new THREE.Mesh(
           new THREE.BoxGeometry(0.55, 0.12, 0.12),
@@ -106,7 +118,6 @@ export function addCityDecor(group, occ, PLAZA_R) {
     }
   }
 
-  // Vertical neon poles + hanging sign strips around plaza edge (Shibuya crossing energy)
   for (let i = 0; i < 12; i++) {
     const ang = (i / 12) * Math.PI * 2 + 0.12;
     const nx = Math.cos(ang) * 52;
@@ -123,7 +134,6 @@ export function addCityDecor(group, occ, PLAZA_R) {
       })
     );
     pole.position.set(nx, 3.1, nz);
-    // Tall neon tube
     const tube = new THREE.Mesh(
       new THREE.BoxGeometry(0.18, 4.2, 0.18),
       new THREE.MeshBasicMaterial({
@@ -135,7 +145,6 @@ export function addCityDecor(group, occ, PLAZA_R) {
       })
     );
     tube.position.set(nx, 4.8, nz);
-    // Small hanging sign plate
     const sign = new THREE.Mesh(
       new THREE.BoxGeometry(1.8, 0.9, 0.12),
       new THREE.MeshBasicMaterial({
@@ -151,7 +160,6 @@ export function addCityDecor(group, occ, PLAZA_R) {
     group.add(pole, tube, sign);
   }
 
-  // Extra floating neon rectangles on some mid-ring roads for density
   for (let k = 0; k < 18; k++) {
     const ang = (k / 18) * Math.PI * 2 + 0.4;
     const r = 78 + (k % 3) * 22;
