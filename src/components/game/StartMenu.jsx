@@ -6,6 +6,8 @@ import DailyQuestsPanel from "@/components/game/DailyQuestsPanel";
 import ControlsPanel from "@/components/game/ControlsPanel";
 import LanguageSelector from "@/components/game/LanguageSelector";
 import BoomboxPanel from "@/components/game/BoomboxPanel";
+import AccountPanel from "@/components/game/AccountPanel";
+import { UserRound } from "lucide-react";
 // La sala secreta lleva el código fuente empaquetado: se carga solo al abrirla.
 const SecretRoom = lazy(() => import("@/components/game/SecretRoom"));
 import { useI18n } from "@/lib/i18n";
@@ -55,6 +57,7 @@ export default function StartMenu({
   const [showBoombox, setShowBoombox] = useState(false);
   const [showStore, setShowStore] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
   const [secretHits, setSecretHits] = useState(0);
 
   // Sala secreta: cinco toques en el número de versión.
@@ -250,7 +253,7 @@ export default function StartMenu({
         </motion.div>
       </div>
 
-      {showStore && (
+      {showAccount && <AccountPanel onClose={() => setShowAccount(false)} />}\n\n      {showStore && (
         <ShopPanel
           coins={coins}
           owned={shop?.owned || []}
