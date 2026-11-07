@@ -14,7 +14,8 @@ function hashSeat(id) {
 function assignSeats(ids) {
   const used = new Set();
   const map = new Map();
-  for (const id of [...ids].sort()) {
+  const unique = [...new Set(ids.filter(Boolean))];
+  for (const id of unique.sort()) {
     let seat = hashSeat(id);
     let n = 0;
     while (used.has(seat) && n < 16) {
@@ -34,18 +35,23 @@ function safeId(value, fallback) {
   return clean || fallback;
 }
 
+function uniqueIds(ids) {
+  return [...new Set((ids || []).filter(Boolean))];
+}
+
 export class MultiplayerManager {
   constructor(roomCode, connId) {
     this.selfId = safeId(connId, "player");
     this.mySeat = hashSeat(this.selfId);
-    this.remotes = new Map();
-    this.loadouts = new Map();
+    this.remotes = new Map(); // seat -> state
+    this.loadouts = new Map(); // seat -> loadout
+    this.peerToSeat = new Map(); // peerId -> seat (stable view)
     this.onEvent = null;
     this.onMusic = null;
     this.onStatus = null;
     this.onLoadout = null; // (seat, loadout) when a peer identity updates
     this.roomMusic = "";
-    this.byPeer = new Map();
+    this.byPeer = new Map(); // peerId -> { state?, loadout? }
     this.peerIds = [];
     this.lastLoadout = null;
     this.status = "connecting";
@@ -63,7 +69,8 @@ export class MultiplayerManager {
         this._announce();
       },
       onPeersChanged: (peers) => {
-        this.peerIds = (peers || []).map((p) => p.id);
+        // Always unique; never accumulate duplicates from messages
+        this.peerIds = uniqueIds((peers || []).map((p) => p.id));
         this.reindex();
         const connected = (peers || []).filter((p) => p.connectionState === "connected").length;
         this.status = connected > 0 ? "connected" : this.peerIds.length ? "negotiating" : "waiting";
@@ -107,13 +114,15 @@ export class MultiplayerManager {
     }
   }
 
+  /** Rebuild seat maps from the authoritative unique peer list. */
   reindex() {
     const seats = assignSeats([this.selfId, ...this.peerIds]);
     this.mySeat = seats.get(this.selfId) || this.mySeat;
+    this.peerToSeat = seats;
     this.remotes.clear();
     this.loadouts.clear();
     for (const [id, rec] of this.byPeer) {
-      if (!this.peerIds.includes(id)) continue;
+      if (id !== this.selfId && !this.peerIds.includes(id)) continue;
       const seat = seats.get(id);
       if (!seat) continue;
       if (rec.state) this.remotes.set(seat, rec.state);
@@ -121,13 +130,24 @@ export class MultiplayerManager {
     }
   }
 
+  /** Stable seat for a known peer. Does NOT mutate peerIds. */
   seatFor(peerId) {
-    return assignSeats([this.selfId, ...this.peerIds, peerId]).get(peerId);
+    if (!peerId) return null;
+    if (this.peerToSeat.has(peerId)) return this.peerToSeat.get(peerId);
+    // Unknown peer: compute without permanently adding to roster
+    const seats = assignSeats([this.selfId, ...this.peerIds, peerId]);
+    return seats.get(peerId) || null;
   }
 
   handle(fromPeer, data) {
-    if (!data || typeof data !== "object") return;
-    if (!this.peerIds.includes(fromPeer)) this.peerIds.push(fromPeer);
+    if (!data || typeof data !== "object" || !fromPeer) return;
+
+    // Register peer id without duplicates (roster is still driven by presence)
+    if (fromPeer !== this.selfId && !this.peerIds.includes(fromPeer)) {
+      this.peerIds = uniqueIds([...this.peerIds, fromPeer]);
+      this.reindex();
+    }
+
     const rec = this.byPeer.get(fromPeer) || {};
 
     if (data.type === "music") {
@@ -146,7 +166,6 @@ export class MultiplayerManager {
       return;
     }
     if (data.type === "hello") {
-      // Peer is introducing itself — store loadout and reply with ours
       if (data.loadout) {
         const lo = normalizeNetLoadout(data.loadout);
         rec.loadout = lo;
@@ -170,7 +189,9 @@ export class MultiplayerManager {
       const { type, ...state } = data;
       rec.state = state;
       this.byPeer.set(fromPeer, rec);
-      this.reindex();
+      // Lightweight update — full reindex only when seats may change
+      const seat = this.seatFor(fromPeer);
+      if (seat) this.remotes.set(seat, state);
     } else if (data.type === "loadout") {
       const { type, ...raw } = data;
       const lo = normalizeNetLoadout(raw);
@@ -184,8 +205,10 @@ export class MultiplayerManager {
         } catch {}
       }
     } else if (data.type === "event") {
-      const seat = this.seatFor(fromPeer) || data.from || this.mySeat;
-      const withSeat = { ...data, from: seat };
+      // Prefer live seat from peerId; never trust sender's claimed `from` seat
+      const seat = this.seatFor(fromPeer);
+      if (!seat) return;
+      const withSeat = { ...data, from: seat, peerId: fromPeer };
       try {
         this.onEvent?.(withSeat, fromPeer);
       } catch {}
@@ -210,7 +233,13 @@ export class MultiplayerManager {
 
   sendEvent(e) {
     try {
-      this.room.send({ type: "event", from: this.mySeat, ...e });
+      // Include both seat (compat) and selfId so receivers can resolve stably
+      this.room.send({
+        type: "event",
+        from: this.mySeat,
+        peerId: this.selfId,
+        ...e,
+      });
     } catch {}
   }
 
