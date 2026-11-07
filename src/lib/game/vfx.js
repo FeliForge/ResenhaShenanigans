@@ -65,7 +65,7 @@ export class VfxManager {
     const white = new THREE.Color(0xffffff);
     const base = new THREE.Color(color);
     const cyan = new THREE.Color(0x66f0ff);
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 9; i++) {
       const col = i % 4 === 0 ? white : i % 5 === 0 ? cyan : base;
       const mat = new THREE.MeshBasicMaterial({
         color: col,
@@ -100,7 +100,7 @@ export class VfxManager {
   }
 
   addDust(position) {
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 5; i++) {
       const mat = new THREE.MeshBasicMaterial({
         color: 0xb9b3a8,
         transparent: true,
@@ -401,7 +401,7 @@ export class VfxManager {
   }
 
   update(dt) {
-    while (this.items.length > 80) {
+    while (this.items.length > 56) {
       const it = this.items.shift();
       this.scene.remove(it.mesh);
       it.mat.dispose();
