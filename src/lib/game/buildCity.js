@@ -92,11 +92,12 @@ export function buildCity(scene) {
   const COLS = 15,
     COUNT = 185;
   const buildings = new THREE.InstancedMesh(boxGeo, buildingMat, COUNT);
-  buildings.castShadow = true;
-  buildings.receiveShadow = true;
+  // Large distant building batches do not cast per-pixel shadows: this is a major GPU saving.
+  buildings.castShadow = false;
+  buildings.receiveShadow = false;
   const buildingsB = new THREE.InstancedMesh(boxGeo, altMat, 90);
-  buildingsB.castShadow = true;
-  buildingsB.receiveShadow = true;
+  buildingsB.castShadow = false;
+  buildingsB.receiveShadow = false;
   let idxB = 0;
 
   const sidewalkMat = new THREE.MeshStandardMaterial({
@@ -106,11 +107,11 @@ export function buildCity(scene) {
     flatShading: true,
   });
   const sidewalks = new THREE.InstancedMesh(boxGeo, sidewalkMat, COUNT + 40);
-  sidewalks.receiveShadow = true;
+  sidewalks.receiveShadow = false;
 
   const roofMat = new THREE.MeshStandardMaterial({ color: 0x3a3e46, roughness: 0.78, flatShading: true });
   const roofs = new THREE.InstancedMesh(boxGeo, roofMat, COUNT * 2);
-  roofs.castShadow = true;
+  roofs.castShadow = false;
 
   const parkSlots = new Set(["2,1", "-3,2", "4,-2", "-1,-4", "5,3", "-5,0", "0,4", "3,-5"]);
   let idx = 0,
