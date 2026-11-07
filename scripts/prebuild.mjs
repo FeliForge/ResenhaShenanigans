@@ -71,37 +71,23 @@ function patchHub(text) {
 }
 
 function patchCameraControls(text) {
+  // Always widen pitch
   text = text.replace(
-    /camState\.pitch = THREE\.MathUtils\.clamp\(camState\.pitch \+ dy \* 0\.004, 0\.15, 1\.2\)/g,
+    /camState\.pitch = THREE\.MathUtils\.clamp\(camState\.pitch \+ dy \* 0\.004,\s*[^,]+,\s*[^)]+\)/g,
     "camState.pitch = THREE.MathUtils.clamp(camState.pitch + dy * 0.004, -0.15, 1.45)"
   );
   if (text.includes("__MP_POINTER_LOCK__")) return text;
-  const a = `const onPointerDown = (e) => {
-      camState.dragging = true;
-      camState.lastX = e.clientX; camState.lastY = e.clientY;
-    };
-    const onPointerMove = (e) => {
-      if (!camState.dragging) return;
-      const dx = e.clientX - camState.lastX;
-      const dy = e.clientY - camState.lastY;
-      camState.lastX = e.clientX; camState.lastY = e.clientY;
-      camState.yaw -= dx * 0.004;
-      camState.pitch = THREE.MathUtils.clamp(camState.pitch + dy * 0.004, 0.15, 1.2);
-    };
-    const onPointerUp = () => { camState.dragging = false; };
-    renderer.domElement.addEventListener("pointerdown", onPointerDown);
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);`;
-  const b = a.replace("0.15, 1.2", "-0.15, 1.45");
-  const neu = `// __MP_POINTER_LOCK__
+
+  const neu = `
+    // __MP_POINTER_LOCK__
     const onPointerDown = (e) => {
       if (document.pointerLockElement !== renderer.domElement) {
-        try { renderer.domElement.requestPointerLock(); } catch {}
+        try { renderer.domElement.requestPointerLock(); } catch (_) {}
         camState.dragging = true;
         camState.lastX = e.clientX; camState.lastY = e.clientY;
         return;
       }
-      if (e.button === 0) { try { doMove("m1"); } catch {} }
+      if (e.button === 0) { try { doMove("m1"); } catch (_) {} }
     };
     const onPointerMove = (e) => {
       if (document.pointerLockElement === renderer.domElement) {
@@ -120,9 +106,16 @@ function patchCameraControls(text) {
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);`;
-  if (text.includes(a)) text = text.replace(a, neu);
-  else if (text.includes(b)) text = text.replace(b, neu);
-  else console.warn("[prebuild] pointer pattern missing");
+
+  const reHandlers = /const onPointerDown = \(e\) => \{[\s\S]*?window\.addEventListener\("pointerup", onPointerUp\);/;
+  if (reHandlers.test(text)) {
+    text = text.replace(reHandlers, neu.trim());
+  } else {
+    text = text.replace(
+      /(const camState = \{[^}]+\};)/,
+      "$1\n" + neu
+    );
+  }
   return text;
 }
 
@@ -289,6 +282,7 @@ async function main() {
         cur.includes("player.position.set(0, 14, 0)") &&
         cur.includes("buildHub") &&
         cur.includes("__MP_POINTER_LOCK__") &&
+        cur.includes("movementX") &&
         cur.includes("Fixed city posters are permanent") &&
         cur.includes("vfx.addAttackSprite") &&
         cur.includes("0x1a1028") &&
@@ -297,7 +291,7 @@ async function main() {
         cur.includes("__MP_COMBAT_INTEGRITY_V2__") &&
         !cur.includes("refreshSkillTargets();")
       ) {
-        console.log("[prebuild] GameCanvas already complete+patched v2", cur.length);
+        console.log("[prebuild] GameCanvas already complete+patched v3", cur.length);
         return;
       }
       if (isGood(cur)) {
