@@ -39,7 +39,7 @@ export default function MovesetCloudPanel({ moves, onImport }) {
     if (!email.trim() || password.length < 8) { toast.error("Introduce email y contraseña (mínimo 8 caracteres)"); return; }
     setBusy(true);
     try {
-      const result = signUp ? await supabase.auth.signUp({ email: email.trim(), password }) : await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      const result = signUp ? await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: new URL("/", window.location.origin).toString() } }) : await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (result.error) throw result.error;
       if (signUp && !result.data.session) toast.success("Revisa tu correo para confirmar la cuenta.");
       else toast.success(signUp ? "Cuenta creada" : "Sesión iniciada");
