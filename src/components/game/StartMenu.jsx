@@ -59,7 +59,8 @@ export default function StartMenu({
     <div className="dark absolute inset-0 overflow-y-auto bg-[#070912] text-white">
       {/* ambiente de forja */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-40 -top-24 h-[520px] w-[520px] rounded-full bg-[#ff9620]/25 blur-[145px]" />\n        <div className="absolute left-1/2 top-1/3 h-[440px] w-[700px] -translate-x-1/2 rounded-full bg-cyan-500/[0.08] blur-[150px]" />
+        <div className="absolute -left-40 -top-24 h-[520px] w-[520px] rounded-full bg-[#ff9620]/25 blur-[145px]" />
+        <div className="absolute left-1/2 top-1/3 h-[440px] w-[700px] -translate-x-1/2 rounded-full bg-cyan-500/[0.08] blur-[150px]" />
         <div className="absolute -right-32 bottom-0 h-[460px] w-[460px] rounded-full bg-[#ff3b2f]/25 blur-[150px]" />
         {EMBERS.map((e, i) => (
           <span
