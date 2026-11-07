@@ -290,7 +290,14 @@ export function buildCity(scene) {
     crates.push({ mesh: m, health: 50, respawnAt: 0 });
   }
 
-  const { billboards, streetLights } = addCityDecor(group, occ, PLAZA_R);
+  const { billboards, streetLights, bulbMaterial } = addCityDecor(group, occ, PLAZA_R);
+
+  // Local city lighting keeps streets readable even when the wider scene is dark.
+  const cityAmbient = new THREE.HemisphereLight(0xb8d5ff, 0x343044, 1.15);
+  const citySun = new THREE.DirectionalLight(0xffe2b5, 1.25);
+  citySun.position.set(-45, 85, 35);
+  citySun.castShadow = false;
+  group.add(cityAmbient, citySun);
 
   // Colored atmosphere lights — Shibuya night energy
   const p1 = new THREE.PointLight(0x00e5ff, 0.55, 140);
@@ -310,24 +317,35 @@ export function buildCity(scene) {
     }
   });
 
-  function setNight(nightF) {
+  function setNight(value) {
+    const night = THREE.MathUtils.clamp(Number.isFinite(value) ? value : 0, 0, 1);
     for (const n of neons) {
-      n.mat.opacity = n.base * (0.28 + 0.72 * nightF);
+      n.mat.opacity = n.base * (0.28 + 0.72 * night);
     }
-    // Boost point lights at night
-    p1.intensity = 0.25 + 0.45 * nightF;
-    p2.intensity = 0.18 + 0.38 * nightF;
-    p3.intensity = 0.14 + 0.32 * nightF;
-    p4.intensity = 0.1 + 0.28 * nightF;
+    // Maintain a readable city at night; street lamps become the main local light.
+    cityAmbient.intensity = 0.78 - 0.18 * night;
+    citySun.intensity = 1.25 * (1 - night) + 0.12 * night;
+    bulbMaterial.emissiveIntensity = 0.05 + 2.8 * night;
+    p1.intensity = 0.25 + 0.45 * night;
+    p2.intensity = 0.18 + 0.38 * night;
+    p3.intensity = 0.14 + 0.32 * night;
+    p4.intensity = 0.1 + 0.28 * night;
     for (const light of streetLights) {
-      light.intensity = 0.08 + (light.userData.baseIntensity || 2.25) * nightF;
+      light.intensity = 30 * night;
     }
   }
 
   function update(now, nightF) {
-    for (const light of streetLights) {
-      light.intensity = 0.08 + (light.userData.baseIntensity || 2.25) * nightF;
-    }
+    // If the game loop does not provide nightF, run a complete 4-minute
+    // day/night cycle locally instead of leaving the city permanently dark.
+    const cycle = ((now || 0) % 240000) / 240000;
+    const autoNight = THREE.MathUtils.smoothstep(
+      Math.max(0, Math.sin((cycle - 0.25) * Math.PI * 2)),
+      0.05,
+      0.82
+    );
+    const night = Number.isFinite(nightF) ? THREE.MathUtils.clamp(nightF, 0, 1) : autoNight;
+    setNight(night);
     for (const n of neons) {
       const flick =
         0.72 +
