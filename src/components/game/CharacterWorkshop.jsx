@@ -58,6 +58,8 @@ export default function CharacterWorkshop({ onConfirm, onCancel }) {
   const [picks, setPicks] = useState({ m1: 0, special1: 0, special2: 0, special3: 0, ultimate: 0 });
   const [sprites, setSprites] = useState({ ...DEFAULT_ATTACK_SPRITES });
   const [spritePreview, setSpritePreview] = useState({});
+  const [customFx, setCustomFx] = useState({});
+  const [fxUploading, setFxUploading] = useState(null);
 
   const base = CHARACTERS.find((c) => c.id === baseId) || CHARACTERS[0];
 
@@ -76,6 +78,7 @@ export default function CharacterWorkshop({ onConfirm, onCancel }) {
     for (const cat of CATS) {
       const id = sprites[cat] || DEFAULT_ATTACK_SPRITES[cat] || "slash";
       try {
+        if (customFx[cat]) { next[cat] = customFx[cat]; continue; }
         const canvas = makeAttackSpriteCanvas(id, colors.accent || "#ffffff");
         next[cat] = canvas ? canvas.toDataURL() : "";
       } catch {
@@ -83,7 +86,7 @@ export default function CharacterWorkshop({ onConfirm, onCancel }) {
       }
     }
     setSpritePreview(next);
-  }, [sprites, colors.accent]);
+  }, [sprites, colors.accent, customFx]);
 
   function pickBase(c) {
     setBaseId(c.id);
@@ -114,13 +117,28 @@ export default function CharacterWorkshop({ onConfirm, onCancel }) {
     setUploading(false);
   }
 
+  async function onFxFile(cat, event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Selecciona una imagen PNG, JPG o WebP"); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error("La imagen debe pesar 2 MB o menos"); return; }
+    setFxUploading(cat);
+    try {
+      const dataUrl = await imageFileToDataUrl(file);
+      setCustomFx((prev) => ({ ...prev, [cat]: dataUrl }));
+      toast.success("Sprite FX personalizado cargado");
+    } catch { toast.error("No se pudo cargar el Sprite FX"); }
+    finally { setFxUploading(null); }
+  }
+
   function buildMoves() {
     const moves = {};
     for (const cat of CATS) {
       const src = MOVES_BY_CAT[cat][picks[cat]];
       moves[cat] = {
         ...src,
-        attackSprite: sprites[cat] || DEFAULT_ATTACK_SPRITES[cat] || "slash",
+        attackSprite: customFx[cat] || sprites[cat] || DEFAULT_ATTACK_SPRITES[cat] || "slash",
         attackSpriteDuration: cat === "ultimate" ? 0.42 : 0.22,
       };
     }
@@ -401,6 +419,15 @@ export default function CharacterWorkshop({ onConfirm, onCancel }) {
                         </option>
                       ))}
                     </select>
+                  </div>
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-xs font-bold text-cyan-100 transition hover:bg-cyan-300/20">
+                      <Upload size={14} />
+                      {fxUploading === cat ? "Cargando..." : customFx[cat] ? "Cambiar imagen FX" : "Subir mi imagen FX"}
+                      <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" disabled={fxUploading !== null} onChange={(e) => onFxFile(cat, e)} />
+                    </label>
+                    {customFx[cat] && <button type="button" onClick={() => setCustomFx((prev) => { const next = { ...prev }; delete next[cat]; return next; })} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-white/65 hover:bg-white/10">Usar preset</button>}
+                    {customFx[cat] && <span className="text-[10px] font-semibold text-emerald-300">Imagen personalizada</span>}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {ATTACK_SPRITE_PRESETS.map((p) => {
