@@ -161,18 +161,18 @@ export default function CharacterWorkshop({ onConfirm, onCancel }) {
   const ultMove = MOVES_BY_CAT.ultimate[picks.ultimate];
 
   return (
-    <div className="absolute inset-0 z-30 flex flex-col bg-[#0a0b12] text-white">
-      <header className="flex items-center gap-3 border-b border-white/10 bg-black/50 px-4 py-3 backdrop-blur-md">
+    <div className="absolute inset-0 z-30 flex flex-col overflow-hidden bg-[#080b15] text-white">
+      <header className="relative flex items-center gap-3 border-b border-cyan-300/15 bg-gradient-to-r from-[#151d30] via-[#101827] to-[#21162c] px-4 py-4 shadow-lg shadow-black/20 backdrop-blur-xl">
         <button
           onClick={onCancel}
           className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-white/70 transition hover:bg-white/10 hover:text-white"
         >
           <ChevronLeft size={18} /> Atrás
         </button>
-        <h1 className="font-heading text-lg font-bold tracking-tight">Character Workshop</h1>
+        <div className="min-w-0"><h1 className="font-heading text-lg font-black uppercase tracking-[0.08em] text-white sm:text-xl">Character Workshop</h1><p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-200/55">Create · Customize · Battle</p></div>
       </header>
 
-      <div className="flex gap-1 overflow-x-auto border-b border-white/10 px-3 pt-2 scrollbar-none">
+      <div className="flex gap-1 overflow-x-auto border-b border-white/10 bg-[#0d1320] px-3 pt-2 scrollbar-none">
         {TABS.map((t) => {
           const Icon = t.icon;
           return (
@@ -181,7 +181,7 @@ export default function CharacterWorkshop({ onConfirm, onCancel }) {
               onClick={() => setTab(t.id)}
               className={`flex shrink-0 items-center gap-1.5 rounded-t-lg px-3.5 py-2 text-sm font-semibold transition ${
                 tab === t.id
-                  ? "border border-b-0 border-white/15 bg-white/10 text-white"
+                  ? "border border-b-0 border-cyan-300/30 bg-gradient-to-b from-cyan-300/15 to-white/[0.04] text-cyan-100 shadow-[0_-4px_22px_rgba(34,211,238,0.08)]"
                   : "text-white/50 hover:text-white/80"
               }`}
             >
@@ -191,8 +191,8 @@ export default function CharacterWorkshop({ onConfirm, onCancel }) {
         })}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <div className="border-b border-white/10 p-3 lg:w-52 lg:overflow-y-auto lg:border-b-0 lg:border-r">
+      <div className="relative flex min-h-0 flex-1 flex-col bg-[radial-gradient(ellipse_at_50%_0%,rgba(34,211,238,0.07),transparent_48%)] lg:flex-row">
+        <div className="border-b border-white/10 bg-black/15 p-3 lg:w-56 lg:overflow-y-auto lg:border-b-0 lg:border-r">
           <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/40">Base</p>
           <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-1">
             {CHARACTERS.map((c) => {
@@ -219,9 +219,9 @@ export default function CharacterWorkshop({ onConfirm, onCancel }) {
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-3 border-b border-white/10 p-4 lg:w-72 lg:border-b-0 lg:border-r">
+        <div className="flex flex-col items-center gap-3 border-b border-white/10 bg-gradient-to-b from-[#111d30] to-[#0b101b] p-4 lg:w-80 lg:border-b-0 lg:border-r">
           <h3 className="w-full text-xs font-bold uppercase tracking-wider text-white/40">Vista previa</h3>
-          <div className="relative flex h-56 w-full items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-[#1a1a2e] to-[#0f3460]">
+          <div className="relative flex h-56 w-full items-center justify-center overflow-hidden rounded-2xl border border-cyan-200/20 bg-[radial-gradient(circle_at_50%_42%,rgba(56,189,248,0.22),transparent_48%),linear-gradient(145deg,#1b2940,#101522_65%,#21152d)] shadow-[inset_0_0_35px_rgba(0,0,0,0.35),0_15px_40px_rgba(0,0,0,0.2)] before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] before:bg-[size:22px_22px]">
             {mode === "image" && image ? (
               <img src={image} alt="preview" className="h-full w-full object-contain" />
             ) : previewUrl ? (
@@ -247,7 +247,7 @@ export default function CharacterWorkshop({ onConfirm, onCancel }) {
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#0b101b]/80 p-4 sm:p-5">
           {tab === "appearance" && (
             <div className="flex flex-col gap-4">
               <div className="flex gap-2">
@@ -459,7 +459,7 @@ export default function CharacterWorkshop({ onConfirm, onCancel }) {
           <button
             onClick={confirm}
             disabled={mode === "image" && !image}
-            className="mt-auto flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-white to-white/90 px-4 py-3.5 font-bold text-black shadow-lg shadow-white/10 transition hover:opacity-95 disabled:opacity-40"
+            className="mt-auto flex items-center justify-center gap-2 rounded-xl border border-cyan-200/30 bg-gradient-to-r from-cyan-300 via-sky-300 to-violet-300 px-4 py-3.5 font-black uppercase tracking-[0.08em] text-[#07111d] shadow-[0_10px_35px_rgba(34,211,238,0.18)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-40"
           >
             <Check size={18} /> Confirmar y entrar a la arena
           </button>
