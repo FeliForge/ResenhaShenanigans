@@ -113,7 +113,7 @@ export default function StartMenu({
               </span>
             </div>
 
-            <h1 className="font-heading text-[clamp(2.8rem,7.2vw,6.1rem)] font-black uppercase leading-[0.79] tracking-[-0.075em]">
+            <h1 className="font-heading text-[clamp(2.65rem,6.8vw,5.8rem)] font-black uppercase leading-[0.79] tracking-[-0.075em]">
               <span className="block bg-gradient-to-b from-white via-white to-slate-300 bg-clip-text pb-1 text-transparent drop-shadow-[0_10px_45px_rgba(255,255,255,.13)]">
                 Resenha
               </span>
