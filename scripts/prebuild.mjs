@@ -225,6 +225,25 @@ function patchCameraControls(text) {
   return text;
 }
 
+
+function patchFirstPersonMovement(text) {
+  if (text.includes("__FIRST_PERSON_MOVEMENT_INVERT_V1__")) return text;
+
+  const original = `const world = new THREE.Vector3()
+          .addScaledVector(camFwd, -move.z)
+          .addScaledVector(camRight, move.x);`;
+  const corrected = `// __FIRST_PERSON_MOVEMENT_INVERT_V1__: W/S follow the first-person view direction.
+        const forwardInput = camState.firstPerson ? move.z : -move.z;
+        const world = new THREE.Vector3()
+          .addScaledVector(camFwd, forwardInput)
+          .addScaledVector(camRight, move.x);`;
+
+  if (!text.includes(original)) {
+    throw new Error("Movement vector block not found; first-person W/S fix was not applied");
+  }
+  return text.replace(original, corrected);
+}
+
 function patchAttackSprites(text) {
   if (text.includes("vfx.addAttackSprite")) return text;
   const soft = `skills.cast({ ...move, damage: dmg }, { config: cfg, origin, dir, color: character.colors.accent });`;
@@ -317,7 +336,7 @@ function patchAll(text) {
         patchRichMp(
           patchShibuyaNight(
             patchAttackSprites(
-              patchCameraControls(patchHub(patchSpawn(patchCompass(patchBillboards(text)))))
+              patchFirstPersonMovement(patchCameraControls(patchHub(patchSpawn(patchCompass(patchBillboards(text))))))
             )
           )
         )
@@ -371,6 +390,7 @@ async function main() {
         cur.includes("__MP_POINTER_LOCK__") &&
         cur.includes("__MOUSE_WHEEL_ZOOM_V1__") &&
         cur.includes("__FIRST_PERSON_CAMERA_V1__") &&
+        cur.includes("__FIRST_PERSON_MOVEMENT_INVERT_V1__") &&
         cur.includes("movementX") &&
         cur.includes("Fixed city posters are permanent") &&
         cur.includes("vfx.addAttackSprite") &&
