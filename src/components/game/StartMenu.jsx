@@ -1,17 +1,17 @@
 // @ts-nocheck
 import { motion } from "framer-motion";
-import { Coins, Copy, Flame, Loader2, Music, Play, Radio, ScrollText, Swords, Trophy, UserPlus, Users, Settings, Wrench, Store } from "lucide-react";
+import { Coins, Copy, Flame, Loader2, Music, Play, Radio, ScrollText, Swords, Trophy, UserPlus, Users, Settings, Wrench, Store, UserRound } from "lucide-react";
 import ShopPanel from "@/components/game/ShopPanel";
 import DailyQuestsPanel from "@/components/game/DailyQuestsPanel";
 import ControlsPanel from "@/components/game/ControlsPanel";
 import LanguageSelector from "@/components/game/LanguageSelector";
 import BoomboxPanel from "@/components/game/BoomboxPanel";
 import AccountPanel from "@/components/game/AccountPanel";
-import { UserRound } from "lucide-react";
-// La sala secreta lleva el código fuente empaquetado: se carga solo al abrirla.
-const SecretRoom = lazy(() => import("@/components/game/SecretRoom"));
 import { useI18n } from "@/lib/i18n";
 import { Suspense, lazy, useState } from "react";
+
+// La sala secreta lleva el código fuente empaquetado: se carga solo al abrirla.
+const SecretRoom = lazy(() => import("@/components/game/SecretRoom"));
 
 const EMBERS = Array.from({ length: 16 }, (_, i) => ({
   left: `${(i * 137) % 100}%`,
@@ -165,6 +165,12 @@ export default function StartMenu({
 
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
+              onClick={() => setShowAccount(true)}
+              className="flex items-center justify-center gap-2 rounded-xl border border-sky-300/30 bg-sky-300/[0.08] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-sky-100 transition hover:-translate-y-0.5 hover:border-sky-200/60 hover:bg-sky-300/15 sm:col-span-2"
+            >
+              <UserRound size={16} /> Cuenta / Nombre de usuario
+            </button>
+            <button
               onClick={onOpenWorkshop}
               className="flex items-center justify-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-300/[0.08] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-cyan-100 transition hover:-translate-y-0.5 hover:border-cyan-200/60 hover:bg-cyan-300/15"
             >
@@ -253,7 +259,9 @@ export default function StartMenu({
         </motion.div>
       </div>
 
-      {showAccount && <AccountPanel onClose={() => setShowAccount(false)} />}\n\n      {showStore && (
+      {showAccount && <AccountPanel onClose={() => setShowAccount(false)} />}
+
+      {showStore && (
         <ShopPanel
           coins={coins}
           owned={shop?.owned || []}
