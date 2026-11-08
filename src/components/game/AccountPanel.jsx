@@ -4,6 +4,8 @@ import { BadgeCheck, UserRound, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+const OWNER_EMAIL = "felipejerezgatti@gmail.com";
+
 export default function AccountPanel({ onClose }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -12,8 +14,8 @@ export default function AccountPanel({ onClose }) {
   const [username, setUsername] = useState("");
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState("login");
-  // The exclusive badge is tied to this exact account.
-  const isOwnerVerified = String(user?.email || "").toLowerCase() === "felipejerezgatti@gmail.com";
+  // Badge exclusivo para la cuenta del creador.
+  const isOwnerVerified = String(user?.email || "").toLowerCase() === OWNER_EMAIL;
 
   async function loadProfile(currentUser) {
     if (!currentUser) { setProfile(null); return; }
@@ -60,6 +62,16 @@ export default function AccountPanel({ onClose }) {
         ? await supabase.auth.signUp({ email: email.trim(), password })
         : await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (result.error) throw result.error;
+      // Crear fila de perfil si no existe (para poder guardar username).
+      const uid = result.data.user?.id;
+      if (uid) {
+        try {
+          await supabase.from("profiles").upsert(
+            { user_id: uid, username: null, is_verified: String(email.trim()).toLowerCase() === OWNER_EMAIL },
+            { onConflict: "user_id" }
+          );
+        } catch {}
+      }
       toast.success(signUp ? "Cuenta creada." : "Sesión iniciada.");
     } catch (e) {
       const message = e.message || "No se pudo completar el acceso.";
@@ -75,12 +87,20 @@ export default function AccountPanel({ onClose }) {
       toast.error("Usa de 3 a 20 caracteres: letras, números o _.");
       return;
     }
+    if (!user?.id) {
+      toast.error("Inicia sesión primero.");
+      return;
+    }
     setBusy(true);
     try {
+      const payload = {
+        user_id: user.id,
+        username: clean,
+        is_verified: isOwnerVerified,
+      };
       const { data, error } = await supabase
         .from("profiles")
-        .update({ username: clean })
-        .eq("user_id", user.id)
+        .upsert(payload, { onConflict: "user_id" })
         .select("user_id, username, is_verified")
         .single();
       if (error) {
@@ -89,6 +109,7 @@ export default function AccountPanel({ onClose }) {
       }
       setProfile(data);
       setUsername(data.username);
+      try { localStorage.setItem("rs_username", data.username); } catch {}
       toast.success("Nombre de usuario actualizado.");
     } catch (e) {
       toast.error(e.message || "No se pudo guardar el nombre.");
@@ -101,7 +122,10 @@ export default function AccountPanel({ onClose }) {
     setBusy(true);
     const { error } = await supabase.auth.signOut();
     if (error) toast.error(error.message);
-    else toast.success("Sesión cerrada.");
+    else {
+      try { localStorage.removeItem("rs_username"); } catch {}
+      toast.success("Sesión cerrada.");
+    }
     setBusy(false);
   }
 
@@ -128,7 +152,12 @@ export default function AccountPanel({ onClose }) {
             <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
               <p className="text-xs text-white/45">Conectado como</p>
               <p className="mt-1 break-all text-sm font-semibold">{user.email}</p>
-              {isOwnerVerified && <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-sky-400/10 px-2 py-1 text-xs font-bold text-sky-300"><BadgeCheck size={14} fill="currentColor" className="text-sky-300" /><span className="text-sky-200">Verificado</span></span>}
+              {isOwnerVerified && (
+                <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-sky-400/10 px-2 py-1 text-xs font-bold text-sky-300">
+                  <BadgeCheck size={14} fill="currentColor" className="text-sky-300" />
+                  <span className="text-sky-200">Verificado</span>
+                </span>
+              )}
             </div>
             <label className="text-xs font-bold text-white/70">Nombre de usuario único</label>
             <div className="flex items-center rounded-lg border border-white/15 bg-black/30 px-3">
