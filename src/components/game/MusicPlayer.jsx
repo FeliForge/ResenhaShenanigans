@@ -115,8 +115,8 @@ function MusicPlayerInner({ screen = "menu", suspended = false }) {
   const chip = (on) =>
     `rounded-md px-2 py-1 text-xs font-semibold ${on ? "bg-[#ff9620] text-black" : "bg-white/10 text-white/80 hover:bg-white/20"}`;
 
-  // Posición: en combate queda en una esquina pequeña para no tapar la acción.
-  const pos = inCombat ? "bottom-24 left-2 sm:bottom-3" : "bottom-3 left-3";
+  // En combate: debajo de la brújula (arriba-derecha). Fuera: abajo-izquierda.
+  const pos = inCombat ? "top-24 right-3" : "bottom-3 left-3";
 
   return (
     <div className={`fixed z-[60] ${pos} text-white`} data-testid="music-player">
@@ -146,9 +146,9 @@ function MusicPlayerInner({ screen = "menu", suspended = false }) {
         <div className="mt-1 rounded-md bg-black/80 px-2 py-1 text-[11px] text-white/80">Toca para activar la música</div>
       )}
 
-      {/* Panel */}
+      {/* Panel: en combate abre hacia abajo; fuera, hacia arriba */}
       {open && (
-        <div className="absolute bottom-full left-0 mb-2 w-[min(92vw,360px)] rounded-2xl border border-white/10 bg-[#10101c]/95 p-3 shadow-2xl backdrop-blur">
+        <div className={`absolute ${inCombat ? "top-full mt-2 right-0" : "bottom-full left-0 mb-2"} w-[min(92vw,360px)] rounded-2xl border border-white/10 bg-[#10101c]/95 p-3 shadow-2xl backdrop-blur`}>
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm font-bold"><Music size={15} className="text-[#ff9620]" /> MUSIC</div>
             <button className={btn} onClick={() => setOpen(false)} aria-label="Cerrar"><X size={14} /></button>
