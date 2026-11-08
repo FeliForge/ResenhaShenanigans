@@ -37,17 +37,37 @@ function loadBaked() {
   }
 }
 
+function limitZoom(text) {
+  // Reduce max orbit distance (was ~26)
+  text = text.replace(
+    /camState\.dist = THREE\.MathUtils\.clamp\(camState\.dist \+ delta \* 0\.012, 1\.65, 26\)/g,
+    "camState.dist = THREE.MathUtils.clamp(camState.dist + delta * 0.012, 1.65, 12) // MAX_ZOOM_OUT"
+  );
+  text = text.replace(
+    /camState\.dist = THREE\.MathUtils\.clamp\(camState\.dist \+ delta \* [^,]+,\s*[^,]+,\s*26\)/g,
+    "camState.dist = THREE.MathUtils.clamp(camState.dist + delta * 0.012, 1.65, 12)"
+  );
+  return text;
+}
+
 async function main() {
   try {
     if (fs.existsSync(out)) {
       const cur = fs.readFileSync(out, "utf8");
-      if (isGood(cur)) {
+      if (isGood(cur) && cur.includes("MAX_ZOOM_OUT")) {
         console.log("[prebuild] GameCanvas already complete", cur.length);
         return;
       }
+      if (isGood(cur)) {
+        const text = limitZoom(cur);
+        fs.writeFileSync(out, text);
+        console.log("[prebuild] patched zoom on existing GameCanvas", text.length);
+        return;
+      }
     }
-    const text = loadBaked();
+    let text = loadBaked();
     if (text) {
+      text = limitZoom(text);
       fs.mkdirSync(path.dirname(out), { recursive: true });
       fs.writeFileSync(out, text);
       console.log("[prebuild] OK decoded baked GameCanvas", text.length);
