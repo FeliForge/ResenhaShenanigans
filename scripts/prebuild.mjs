@@ -195,11 +195,11 @@ function patchCameraControls(text) {
       "      camera.position.lerp(firstPerson ? eyeTarget : orbitTarget, firstPerson ? 0.24 : 0.12);",
       "",
       "      if (firstPerson) {",
-      "        // __FIRST_PERSON_VIEW_DIRECTION_V1__: point along the camera's actual forward direction.",
+      "        // __FIRST_PERSON_VIEW_DIRECTION_V2__: first-person forward uses the game's +Z-facing convention.",
       "        const viewDir = new THREE.Vector3(",
-      "          -Math.sin(camYaw) * Math.cos(camPitch),",
+      "          Math.sin(camYaw) * Math.cos(camPitch),",
       "          -Math.sin(camPitch),",
-      "          -Math.cos(camYaw) * Math.cos(camPitch)",
+      "          Math.cos(camYaw) * Math.cos(camPitch)",
       "        );",
       "        camera.lookAt(camera.position.clone().addScaledVector(viewDir, 30));",
       "      } else {",
@@ -228,25 +228,25 @@ function patchCameraControls(text) {
 
 
 function patchFirstPersonMovement(text) {
-  if (text.includes("__FIRST_PERSON_MOVEMENT_INVERT_V1__")) return text;
+  if (text.includes("__FIRST_PERSON_MOVEMENT_DIRECTION_V2__")) return text;
 
   const original = `const world = new THREE.Vector3()
           .addScaledVector(camFwd, -move.z)
           .addScaledVector(camRight, move.x);`;
-  const corrected = `// __FIRST_PERSON_MOVEMENT_INVERT_V1__: W/S follow the first-person view direction.
-        const forwardInput = camState.firstPerson ? move.z : -move.z;
+  const corrected = `// __FIRST_PERSON_MOVEMENT_DIRECTION_V2__: W follows the same +camFwd direction as the first-person view.
+        const forwardInput = -move.z;
         const world = new THREE.Vector3()
           .addScaledVector(camFwd, forwardInput)
           .addScaledVector(camRight, move.x);`;
 
   if (!text.includes(original)) {
-    throw new Error("Movement vector block not found; first-person W/S fix was not applied");
+    throw new Error("Movement vector block not found; unified W/S direction was not applied");
   }
   return text.replace(original, corrected);
 }
 
 function patchFirstPersonDash(text) {
-  if (text.includes("__FIRST_PERSON_DASH_DIRECTION_V1__")) return text;
+  if (text.includes("__FIRST_PERSON_DASH_DIRECTION_V2__")) return text;
 
   const original = `      const mz = (keys.has(b.up) ? 1 : 0) - (keys.has(b.down) ? 1 : 0);
       let d;
@@ -257,20 +257,19 @@ function patchFirstPersonDash(text) {
       } else {
         d = game.facing.clone().normalize();
       }`;
-  const corrected = `      // __FIRST_PERSON_DASH_DIRECTION_V1__: dash matches the movement direction in first person.
+  const corrected = `      // __FIRST_PERSON_DASH_DIRECTION_V2__: dash and W/S share the same camera-relative axes.
       const mz = (keys.has(b.up) ? 1 : 0) - (keys.has(b.down) ? 1 : 0);
       const camFwd = new THREE.Vector3(Math.sin(camState.yaw), 0, Math.cos(camState.yaw)).normalize();
       const camRight = new THREE.Vector3(camFwd.z, 0, -camFwd.x);
-      const dashForwardInput = camState.firstPerson ? -mz : mz;
       let d;
       if (mx || mz) {
-        d = new THREE.Vector3().addScaledVector(camFwd, dashForwardInput).addScaledVector(camRight, mx).normalize();
+        d = new THREE.Vector3().addScaledVector(camFwd, mz).addScaledVector(camRight, mx).normalize();
       } else {
-        d = camState.firstPerson ? camFwd.clone().negate() : game.facing.clone().normalize();
+        d = game.facing.clone().normalize();
       }`;
 
   if (!text.includes(original)) {
-    throw new Error("Dash direction block not found; first-person dash correction was not applied");
+    throw new Error("Dash direction block not found; unified dash direction was not applied");
   }
   return text.replace(original, corrected);
 }
@@ -421,9 +420,9 @@ async function main() {
         cur.includes("__MP_POINTER_LOCK__") &&
         cur.includes("__MOUSE_WHEEL_ZOOM_V1__") &&
         cur.includes("__FIRST_PERSON_CAMERA_V1__") &&
-        cur.includes("__FIRST_PERSON_MOVEMENT_INVERT_V1__") &&
-        cur.includes("__FIRST_PERSON_DASH_DIRECTION_V1__") &&
-        cur.includes("__FIRST_PERSON_VIEW_DIRECTION_V1__") &&
+        cur.includes("__FIRST_PERSON_MOVEMENT_DIRECTION_V2__") &&
+        cur.includes("__FIRST_PERSON_DASH_DIRECTION_V2__") &&
+        cur.includes("__FIRST_PERSON_VIEW_DIRECTION_V2__") &&
         cur.includes("movementX") &&
         cur.includes("Fixed city posters are permanent") &&
         cur.includes("vfx.addAttackSprite") &&
