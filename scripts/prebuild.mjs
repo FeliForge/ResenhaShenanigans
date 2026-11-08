@@ -1,11 +1,12 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { gunzipSync } from "zlib";
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(dir, "..");
 const out = path.join(root, "src/components/game/GameCanvas.jsx");
-const bakedDir = path.join(dir, "gc_baked");
+const baked = path.join(dir, "GameCanvas.jsx.gz.b64");
 
 function isGood(text) {
   return (
@@ -19,17 +20,17 @@ function isGood(text) {
   );
 }
 
-function assembleBaked() {
-  if (!fs.existsSync(bakedDir)) return null;
-  const files = fs.readdirSync(bakedDir).filter((f) => f.endsWith(".b64")).sort();
-  if (files.length < 3) return null;
-  let buf = Buffer.alloc(0);
-  for (const f of files) {
-    const raw = fs.readFileSync(path.join(bakedDir, f), "utf8").trim();
-    buf = Buffer.concat([buf, Buffer.from(raw, "base64")]);
+function loadBaked() {
+  if (!fs.existsSync(baked)) return null;
+  try {
+    const b64 = fs.readFileSync(baked, "utf8").trim();
+    const gz = Buffer.from(b64, "base64");
+    const text = gunzipSync(gz).toString("utf8");
+    return isGood(text) ? text : null;
+  } catch (e) {
+    console.warn("[prebuild] baked decode fail", e?.message || e);
+    return null;
   }
-  const text = buf.toString("utf8");
-  return isGood(text) ? text : null;
 }
 
 async function main() {
@@ -41,14 +42,14 @@ async function main() {
         return;
       }
     }
-    const baked = assembleBaked();
-    if (baked) {
+    const text = loadBaked();
+    if (text) {
       fs.mkdirSync(path.dirname(out), { recursive: true });
-      fs.writeFileSync(out, baked);
-      console.log("[prebuild] OK assembled baked GameCanvas", baked.length);
+      fs.writeFileSync(out, text);
+      console.log("[prebuild] OK decoded baked GameCanvas", text.length);
       return;
     }
-    console.warn("[prebuild] no baked GameCanvas found — leaving stub");
+    console.warn("[prebuild] no baked GameCanvas — leaving stub");
   } catch (e) {
     console.error("[prebuild] unexpected", e?.message || e);
   }
