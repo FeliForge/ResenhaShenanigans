@@ -96,7 +96,7 @@ export function buildCity(scene) {
 
   const { map, emissive } = makeBuildingTextures();
   const buildingMat = new THREE.MeshStandardMaterial({
-    map, emissiveMap: emissive, emissive: 0xffffff, emissiveIntensity: 1.05,
+    map, emissiveMap: emissive, emissive: 0xffffff, emissiveIntensity: 0.45,
     flatShading: true, roughness: 0.82, metalness: 0.08,
   });
   const altMat = new THREE.MeshStandardMaterial({ color: 0x5a6570, flatShading: true, roughness: 0.86, metalness: 0.06 });
@@ -277,7 +277,7 @@ export function buildCity(scene) {
     }
 
     if ((dist.name === "neon" || dist.name === "commercial") && Math.random() < 0.55) {
-      const neonMat = new THREE.MeshBasicMaterial({ color: dist.neon, transparent: true, opacity: 0.78, blending: THREE.AdditiveBlending, depthWrite: false });
+      const neonMat = new THREE.MeshBasicMaterial({ color: dist.neon, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false });
       const neonH = Math.min(h * 0.55, 22);
       const neon = new THREE.Mesh(new THREE.BoxGeometry(0.22, neonH, 0.35), neonMat);
       neon.position.set(px + w * 0.52, Math.min(h * 0.42, 14), pz);
