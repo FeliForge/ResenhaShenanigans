@@ -88,7 +88,7 @@ function MusicPlayerInner({ screen = "menu", suspended = false, roomMusicUrl = "
   }
   const btn = "flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white transition hover:bg-white/20 active:scale-95";
   const chip = (on) => `rounded-md px-2 py-1 text-xs font-semibold ${on ? "bg-[#ff9620] text-black" : "bg-white/10 text-white/80 hover:bg-white/20"}`;
-  const pos = inCombat ? "top-24 right-3" : "bottom-3 left-3";
+  const pos = inCombat ? "top-44 right-3" : "bottom-3 left-3";
 
   return (
     <div className={`fixed z-[60] ${pos} text-white`} data-testid="music-player">
