@@ -168,6 +168,70 @@ function patchAttackSprites(text) {
   return text;
 }
 
+function patchAttackPose(text) {
+  if (text.includes("__ATTACK_POSE_V1__")) return text;
+
+  // Import attack texture helper
+  if (!text.includes("makeCharacterAttackTexture")) {
+    text = text.replace(
+      'import { makeCharacterTexture, makeBubbleTexture, makeShadowTexture, makeCityGroundTexture } from "@/lib/gameTexture";',
+      'import { makeCharacterTexture, makeCharacterAttackTexture, makeBubbleTexture, makeShadowTexture, makeCityGroundTexture } from "@/lib/gameTexture";'
+    );
+  }
+
+  // Create attack texture after idle playerTex
+  if (!text.includes("playerAttackTex")) {
+    text = text.replace(
+      "const playerMat = new THREE.MeshBasicMaterial({ map: playerTex, transparent: true, side: THREE.DoubleSide, alphaTest: 0.1 });",
+      `// __ATTACK_POSE_V1__
+    let playerAttackTex = null;
+    try {
+      if (!character.customImage) playerAttackTex = makeCharacterAttackTexture(character);
+    } catch {}
+    const playerMat = new THREE.MeshBasicMaterial({ map: playerTex, transparent: true, side: THREE.DoubleSide, alphaTest: 0.1 });`
+    );
+  }
+
+  // On doMove: swap to attack pose briefly
+  if (text.includes("game.lurch = 1;") && !text.includes("attackPoseUntil")) {
+    text = text.replace(
+      "game.lurch = 1;\n      game.castMove = move;",
+      `game.lurch = 1;
+      game.castMove = move;
+      game.attackPoseUntil = now + (category === "ultimate" ? 420 : category === "m1" ? 180 : 280);
+      if (playerAttackTex && playerMat.map !== playerAttackTex) {
+        playerMat.map = playerAttackTex;
+        playerMat.needsUpdate = true;
+      }`
+    );
+  }
+
+  // Revert pose in the update loop near lurch decay
+  if (text.includes("game.lurch = Math.max(0, game.lurch - dt * 5);") && !text.includes("playerMat.map = playerTex")) {
+    text = text.replace(
+      "game.lurch = Math.max(0, game.lurch - dt * 5);",
+      `game.lurch = Math.max(0, game.lurch - dt * 5);
+      if (game.attackPoseUntil && performance.now() > game.attackPoseUntil) {
+        game.attackPoseUntil = 0;
+        if (playerMat.map !== playerTex) {
+          playerMat.map = playerTex;
+          playerMat.needsUpdate = true;
+        }
+      }`
+    );
+  }
+
+  // Dispose attack tex
+  if (text.includes("playerTex.dispose();") && !text.includes("playerAttackTex?.dispose")) {
+    text = text.replace(
+      "playerTex.dispose();",
+      "playerTex.dispose(); playerAttackTex?.dispose?.();"
+    );
+  }
+
+  return text;
+}
+
 function patchShibuyaNight(text) {
   if (text.includes("0x1a1028") && text.includes("Shibuya night")) return text;
   text = text.replace(/const SKY_NIGHT = new THREE\.Color\(0x2a3a5a\);/, "const SKY_NIGHT = new THREE.Color(0x1a1028); // Shibuya night");
@@ -264,11 +328,13 @@ function patchCombatIntegrity(text) {
 }
 
 function patchAll(text) {
-  return patchCombatIntegrity(
-    patchRichMp(
-      patchShibuyaNight(
-        patchAttackSprites(
-          patchCameraControls(patchHub(patchSpawn(patchCompass(patchBillboards(text)))))
+  return patchAttackPose(
+    patchCombatIntegrity(
+      patchRichMp(
+        patchShibuyaNight(
+          patchAttackSprites(
+            patchCameraControls(patchHub(patchSpawn(patchCompass(patchBillboards(text)))))
+          )
         )
       )
     )
@@ -325,9 +391,10 @@ async function main() {
         cur.includes("buildNetLoadout") &&
         cur.includes('kind === "chat"') &&
         cur.includes("__MP_COMBAT_INTEGRITY_V2__") &&
+        cur.includes("__ATTACK_POSE_V1__") &&
         !cur.includes("refreshSkillTargets();")
       ) {
-        console.log("[prebuild] GameCanvas already complete+patched v3", cur.length);
+        console.log("[prebuild] GameCanvas already complete+patched v4", cur.length);
         return;
       }
       if (isGood(cur)) {
