@@ -4,6 +4,7 @@ import { countMatches, recordMatch } from "@/lib/game/records";
 import GameCanvas from "@/components/game/GameCanvas";
 import CharacterSelect from "@/components/game/CharacterSelect";
 import HUD from "@/components/game/HUD";
+import UltCutscene from "@/components/game/UltCutscene";
 import QuickChat from "@/components/game/QuickChat";
 import MobileControls from "@/components/game/MobileControls";
 import ShopPanel from "@/components/game/ShopPanel";
@@ -284,6 +285,7 @@ export default function GameApp() {
           onSaveBinds={handleSaveBinds} onToggleAudio={toggleAudio} onSaveBillboard={handleSaveBillboard}
           emote={emoteItem} onEmote={() => canvasRef.current?.showEmote()} getHeading={getHeading}
         />
+        <UltCutscene />
         {isTouch && (
           <MobileControls
             onMove={(x, y) => canvasRef.current?.setMobileMove(x, y)}

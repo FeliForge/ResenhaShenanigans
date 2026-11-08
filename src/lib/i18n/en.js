@@ -64,6 +64,8 @@ export const EN = {
   "hud.kos": "KOs",
   "hud.deaths": "Deaths",
   "hud.protected": "PROTECTED",
+  "hud.ultReady": "ULT READY",
+  "cut.ultimate": "ULTIMATE",
   "hud.nearShop": "Forge shop · press E",
 
   "combat.defeated": "DEFEATED",

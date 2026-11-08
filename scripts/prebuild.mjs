@@ -229,8 +229,82 @@ function patchCombatIntegrity(text) {
   return text;
 }
 
+// Aplica un conjunto de reemplazos de forma atómica: si falta cualquier ancla (o aparece más
+// de una vez) devuelve el texto original sin tocar, para no dejar el archivo a medias.
+// Nunca lanza: un fallo aquí solo significa "sin la mejora", nunca un build roto.
+function applyAtomic(text, edits, label) {
+  let out = text;
+  for (const [anchor, replacement] of edits) {
+    const first = out.indexOf(anchor);
+    if (first === -1 || out.indexOf(anchor, first + anchor.length) !== -1) {
+      console.warn(`[prebuild] ${label}: ancla no encontrada o duplicada, se omite:`, anchor.trim().slice(0, 50));
+      return text;
+    }
+    out = out.slice(0, first) + replacement + out.slice(first + anchor.length);
+  }
+  return out;
+}
+
+// Cielo con gradiente, estrellas, brillo solar/lunar, partículas y aura del jugador.
+function patchVisualUpgrade(text) {
+  if (text.includes("__VISUAL_UPGRADE_V1__")) return text;
+  return applyAtomic(
+    text,
+    [
+      [
+        'import { VfxManager } from "@/lib/game/vfx";',
+        'import { VfxManager } from "@/lib/game/vfx";\nimport { installVisualUpgrade } from "@/lib/game/visualUpgrade"; // __VISUAL_UPGRADE_V1__',
+      ],
+      [
+        "vfx.setDashStyle(dashStyleRef.current);",
+        'vfx.setDashStyle(dashStyleRef.current);\n    let visual = null;\n    try { visual = installVisualUpgrade({ scene, camera, hemi, dir, moon, accent: character.colors?.accent }); } catch (e) { console.warn("[visual] install failed", e); }',
+      ],
+      [
+        "      vfx.update(dt);\n",
+        "      vfx.update(dt);\n      try { visual?.update(dt, { elapsed, nightFactor, dusk, player: game.player.position, meter: game.meter, dead: game.dead }); } catch (_) {}\n",
+      ],
+      [
+        "      vfx.dispose();\n",
+        "      try { visual?.dispose(); } catch (_) {}\n      vfx.dispose();\n",
+      ],
+    ],
+    "visual-upgrade"
+  );
+}
+
+// Cutscene breve (solo cámara + UI + efectos) al lanzar un ultimate propio.
+function patchUltCutscene(text) {
+  if (text.includes("__ULT_CUTSCENE_V1__")) return text;
+  return applyAtomic(
+    text,
+    [
+      [
+        'import { VfxManager } from "@/lib/game/vfx";',
+        'import { VfxManager } from "@/lib/game/vfx";\nimport { createUltCutscene } from "@/lib/game/ultCutscene"; // __ULT_CUTSCENE_V1__',
+      ],
+      [
+        "vfx.setDashStyle(dashStyleRef.current);",
+        "vfx.setDashStyle(dashStyleRef.current);\n    const ultCut = createUltCutscene({ camera, vfx });",
+      ],
+      [
+        "if (big) audio.playUltimate(); else audio.playWhoosh();",
+        "if (big) audio.playUltimate(); else audio.playWhoosh();\n      if (big) { try { ultCut.start({ character, move, origin: game.player.position }); } catch (_) {} }",
+      ],
+      [
+        "      vfx.applyShake();\n",
+        "      try { ultCut.apply(camera, game.player.position, { dead: game.dead }, dt); } catch (_) {}\n      vfx.applyShake();\n",
+      ],
+      [
+        "      vfx.dispose();\n",
+        "      try { ultCut.dispose(); } catch (_) {}\n      vfx.dispose();\n",
+      ],
+    ],
+    "ult-cutscene"
+  );
+}
+
 function patchAll(text) {
-  return patchEmoteKey(
+  const base = patchEmoteKey(
     patchAttackPose(
       patchCombatIntegrity(
         patchRichMp(
@@ -243,6 +317,7 @@ function patchAll(text) {
       )
     )
   );
+  return patchUltCutscene(patchVisualUpgrade(base));
 }
 
 async function fetchText(url) {
@@ -296,6 +371,8 @@ async function main() {
         cur.includes("__MP_COMBAT_INTEGRITY_V2__") &&
         cur.includes("__ATTACK_POSE_V1__") &&
         cur.includes("__EMOTE_KEY_F__") &&
+        cur.includes("__VISUAL_UPGRADE_V1__") &&
+        cur.includes("__ULT_CUTSCENE_V1__") &&
         !cur.includes("refreshSkillTargets();")
       ) {
         console.log("[prebuild] GameCanvas already complete+patched v5", cur.length);

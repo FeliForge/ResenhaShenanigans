@@ -64,6 +64,8 @@ export const PT = {
   "hud.kos": "KOs",
   "hud.deaths": "Mortes",
   "hud.protected": "PROTEGIDO",
+  "hud.ultReady": "ULT PRONTA",
+  "cut.ultimate": "ULTIMATE",
   "hud.nearShop": "Loja da forja · aperte E",
 
   "combat.defeated": "DERROTADO",
