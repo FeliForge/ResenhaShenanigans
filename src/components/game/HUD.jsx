@@ -96,6 +96,7 @@ export default function HUD({ character, stats, binds, audioOn, isTouch, onMove,
   const dashReady = dashCd <= 0;
   const protectedNow = (stats.invuln || 0) > 0;
   const combo = stats.combo || 0;
+  const emoteKey = codeToLabel(binds?.emote || "KeyF");
 
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3 font-heading">
@@ -151,10 +152,10 @@ export default function HUD({ character, stats, binds, audioOn, isTouch, onMove,
         </div>
 
         <div className="pointer-events-auto flex flex-col items-end gap-2">
-          <div className="mb-3 mr-1">
+          <div className="mb-1 mr-1">
             <Compass heading={stats.heading ?? 0} getHeading={getHeading} />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="mt-6 flex items-center gap-2">
             {!isTouch && (
               <span className="rounded bg-black/70 px-3 py-1 text-[10px] font-semibold tracking-wide text-white/80 backdrop-blur">
                 {t("hud.hint")}
@@ -163,11 +164,12 @@ export default function HUD({ character, stats, binds, audioOn, isTouch, onMove,
             {emote && (
               <button
                 onClick={onEmote}
-                title={`${t(`shop.item.${emote.id}`) } (E)`}
+                title={`${t(`shop.item.${emote.id}`)} (${emoteKey})`}
                 className="flex items-center gap-1 rounded bg-black/70 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur hover:bg-black/90"
                 aria-label={t("hud.emoteAria")}
               >
                 <Smile size={14} className="text-emerald-300" /> {t(`shop.item.${emote.id}`)}
+                <span className="ml-0.5 rounded bg-white/15 px-1 text-[9px] font-black text-emerald-200">{emoteKey}</span>
               </button>
             )}
             <button onClick={() => setShowControls(true)} className="rounded bg-black/70 p-2 text-white backdrop-blur hover:bg-black/90" aria-label={t("hud.controls")}>
