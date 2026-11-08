@@ -114,10 +114,25 @@ export function buildCity(scene) {
   const roofs = new THREE.InstancedMesh(boxGeo, roofMat, COUNT * 2);
   roofs.castShadow = false;
 
+  // Batched architectural details: floor ledges and metallic corner pilasters.
+  const facadeTrimMat = new THREE.MeshStandardMaterial({
+    color: 0x202a38, roughness: 0.62, metalness: 0.38, flatShading: true,
+  });
+  const facadeEdgeMat = new THREE.MeshStandardMaterial({
+    color: 0x496174, emissive: 0x102938, emissiveIntensity: 0.42,
+    roughness: 0.48, metalness: 0.5, flatShading: true,
+  });
+  const facadeBands = new THREE.InstancedMesh(boxGeo, facadeTrimMat, COUNT * 28);
+  const facadeCorners = new THREE.InstancedMesh(boxGeo, facadeEdgeMat, COUNT * 4);
+  facadeBands.castShadow = false; facadeBands.receiveShadow = false;
+  facadeCorners.castShadow = false; facadeCorners.receiveShadow = false;
+
   const parkSlots = new Set(["2,1", "-3,2", "4,-2", "-1,-4", "5,3", "-5,0", "0,4", "3,-5"]);
   let idx = 0,
     swIdx = 0,
-    roofIdx = 0;
+    roofIdx = 0,
+    facadeBandIdx = 0,
+    facadeCornerIdx = 0;
   const PLAZA_R = 58;
 
   for (let i = 0; i < COUNT; i++) {
@@ -173,12 +188,54 @@ export function buildCity(scene) {
 
     dummy.position.set(px, h / 2, pz);
     dummy.scale.set(w, h, d);
-    dummy.rotation.set(0, Math.random() * 0.08, 0);
+    const buildingYaw = Math.random() * 0.08;
+    dummy.rotation.set(0, buildingYaw, 0);
     dummy.updateMatrix();
     if (Math.random() < 0.26 && idxB < 90) buildingsB.setMatrixAt(idxB++, dummy.matrix);
     else if (idx < COUNT) buildings.setMatrixAt(idx++, dummy.matrix);
     placed.push({ x: px, z: pz, w, d, h });
     occ.tryAdd(px, pz, Math.max(w, d) * 0.55);
+
+    // Build subtle details in local building space, then rotate them with the tower.
+    const rotCos = Math.cos(buildingYaw);
+    const rotSin = Math.sin(buildingYaw);
+    const rotateOffset = (localX, localZ) => ({
+      x: localX * rotCos + localZ * rotSin,
+      z: -localX * rotSin + localZ * rotCos,
+    });
+
+    // Four slim corner columns create a stronger silhouette.
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        const off = rotateOffset(sx * w * 0.5, sz * d * 0.5);
+        dummy.position.set(px + off.x, h * 0.5, pz + off.z);
+        dummy.scale.set(0.22, Math.max(2.4, h * 0.94), 0.22);
+        dummy.rotation.set(0, buildingYaw, 0);
+        dummy.updateMatrix();
+        facadeCorners.setMatrixAt(facadeCornerIdx++, dummy.matrix);
+      }
+    }
+
+    // Continuous ledges divide tall façades into readable architectural floors.
+    const detailLevels = Math.min(7, Math.max(1, Math.floor(h / 8)));
+    for (let floor = 1; floor <= detailLevels; floor++) {
+      const levelY = Math.min(h - 0.35, (h / (detailLevels + 1)) * floor);
+      for (const side of [-1, 1]) {
+        const frontOff = rotateOffset(0, side * (d * 0.5 + 0.055));
+        dummy.position.set(px + frontOff.x, levelY, pz + frontOff.z);
+        dummy.scale.set(w + 0.34, 0.14, 0.18);
+        dummy.rotation.set(0, buildingYaw, 0);
+        dummy.updateMatrix();
+        facadeBands.setMatrixAt(facadeBandIdx++, dummy.matrix);
+
+        const sideOff = rotateOffset(side * (w * 0.5 + 0.055), 0);
+        dummy.position.set(px + sideOff.x, levelY, pz + sideOff.z);
+        dummy.scale.set(0.18, 0.14, d + 0.34);
+        dummy.rotation.set(0, buildingYaw, 0);
+        dummy.updateMatrix();
+        facadeBands.setMatrixAt(facadeBandIdx++, dummy.matrix);
+      }
+    }
 
     dummy.position.set(px, 0.12, pz);
     dummy.scale.set(w + 3.2, 0.25, d + 3.2);
@@ -240,7 +297,11 @@ export function buildCity(scene) {
   sidewalks.instanceMatrix.needsUpdate = true;
   roofs.count = roofIdx;
   roofs.instanceMatrix.needsUpdate = true;
-  group.add(buildings, buildingsB, sidewalks, roofs);
+  facadeBands.count = facadeBandIdx;
+  facadeBands.instanceMatrix.needsUpdate = true;
+  facadeCorners.count = facadeCornerIdx;
+  facadeCorners.instanceMatrix.needsUpdate = true;
+  group.add(buildings, buildingsB, sidewalks, roofs, facadeBands, facadeCorners);
 
   // Plaza central detallada
   buildCentralPlaza(group, occ, makeTree);
@@ -374,6 +435,8 @@ export function buildCity(scene) {
     altMat.dispose();
     sidewalkMat.dispose();
     roofMat.dispose();
+    facadeTrimMat.dispose();
+    facadeEdgeMat.dispose();
     for (const b of billboards) {
       b.mat.map?.dispose();
       b.mat.dispose();

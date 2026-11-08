@@ -292,46 +292,86 @@ export function makeCityGroundTexture() {
 
 // Fachada de edificio con ventanas (map + emissiveMap para ventanas iluminadas).
 export function makeBuildingTextures() {
-  const s = 256;
+  const s = 512;
   const base = document.createElement("canvas"); base.width = s; base.height = s;
   const emi = document.createElement("canvas"); emi.width = s; emi.height = s;
   const bc = base.getContext("2d");
   const ec = emi.getContext("2d");
   ec.fillStyle = "#000"; ec.fillRect(0, 0, s, s);
-  // muro base
-  bc.fillStyle = "#3a3e48";
+
+  // Deep concrete gradient with subtle vertical weathering.
+  const wall = bc.createLinearGradient(0, 0, s, 0);
+  wall.addColorStop(0, "#242c38");
+  wall.addColorStop(0.48, "#424957");
+  wall.addColorStop(1, "#202936");
+  bc.fillStyle = wall;
   bc.fillRect(0, 0, s, s);
-  const cols = 6, rows = 7, pad = 5;
+
+  const cols = 7, rows = 9, pad = 6;
   const cw = s / cols, ch = s / rows;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const x = c * cw + pad, y = r * ch + pad, w = cw - pad * 2, h = ch - pad * 2;
-      // marco de ventana
-      bc.fillStyle = "#15171c";
-      bc.fillRect(x - 2, y - 2, w + 4, h + 4);
-      // vidrio
-      const lit = Math.random() > 0.42;
-      bc.fillStyle = lit ? "#4a5266" : "#232830";
-      bc.fillRect(x, y, w, h);
-      // travesaños (mullion cruzado)
-      bc.strokeStyle = "#15171c";
-      bc.lineWidth = 1.4;
-      bc.beginPath();
-      bc.moveTo(x + w / 2, y); bc.lineTo(x + w / 2, y + h);
-      bc.moveTo(x, y + h / 2); bc.lineTo(x + w, y + h / 2);
-      bc.stroke();
+      const x = c * cw + pad, y = r * ch + pad;
+      const w = cw - pad * 2, h = ch - pad * 2;
+      const lit = Math.random() > 0.43;
+
+      // Recessed metal frame and deep inner shadow.
+      bc.fillStyle = "#101720";
+      bc.fillRect(x - 4, y - 4, w + 8, h + 9);
+      bc.fillStyle = "#697887";
+      bc.fillRect(x - 2, y - 2, w + 4, 2);
+      bc.fillRect(x - 2, y - 2, 2, h + 4);
+
+      const glass = bc.createLinearGradient(x, y, x + w, y + h);
       if (lit) {
-        ec.fillStyle = Math.random() > 0.5 ? "#ffd98a" : "#aee6ff";
-        ec.fillRect(x, y, w, h);
+        glass.addColorStop(0, "#e3bc7c");
+        glass.addColorStop(0.48, "#718c9e");
+        glass.addColorStop(1, "#344b62");
+      } else {
+        glass.addColorStop(0, "#40566c");
+        glass.addColorStop(0.55, "#1e2c3c");
+        glass.addColorStop(1, "#111c2a");
+      }
+      bc.fillStyle = glass;
+      bc.fillRect(x, y, w, h);
+
+      // Reflections, mullions and projecting concrete sills.
+      bc.fillStyle = "rgba(220,245,255,0.18)";
+      bc.fillRect(x + 4, y + 3, Math.max(3, w * 0.12), h - 7);
+      bc.fillStyle = "#101923";
+      bc.fillRect(x + w * 0.5 - 1, y, 2, h);
+      bc.fillRect(x, y + h * 0.56, w, 2);
+      bc.fillStyle = "#8a9aa7";
+      bc.fillRect(x - 3, y + h + 1, w + 6, 3);
+
+      if (lit) {
+        const glow = ec.createLinearGradient(x, y, x + w, y + h);
+        glow.addColorStop(0, "#ffe3a0");
+        glow.addColorStop(1, Math.random() > 0.5 ? "#8fdfff" : "#ffc477");
+        ec.fillStyle = glow;
+        ec.fillRect(x + 1, y + 1, w - 2, h - 2);
       }
     }
   }
-  // líneas de piso
-  bc.fillStyle = "rgba(0,0,0,0.28)";
-  for (let r = 0; r <= rows; r++) bc.fillRect(0, r * ch - 1, s, 2);
+
+  // Strong floor slabs, vertical pilasters and a clean roof/base cornice.
+  bc.fillStyle = "rgba(8,13,22,0.78)";
+  for (let r = 0; r <= rows; r++) bc.fillRect(0, r * ch - 2, s, 5);
+  bc.fillStyle = "rgba(160,184,205,0.24)";
+  for (let c = 0; c <= cols; c++) bc.fillRect(c * cw - 2, 0, 4, s);
+  bc.fillStyle = "#111923";
+  bc.fillRect(0, 0, s, 10);
+  bc.fillRect(0, s - 10, s, 10);
+  bc.fillStyle = "rgba(120,156,180,0.34)";
+  bc.fillRect(0, 12, s, 3);
+  bc.fillRect(0, s - 15, s, 3);
+
   const map = new THREE.CanvasTexture(base);
   const emissive = new THREE.CanvasTexture(emi);
   map.colorSpace = THREE.SRGBColorSpace;
+  emissive.colorSpace = THREE.SRGBColorSpace;
+  map.anisotropy = 8;
+  emissive.anisotropy = 8;
   return { map, emissive };
 }
 

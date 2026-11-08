@@ -195,10 +195,11 @@ function patchCameraControls(text) {
       "      camera.position.lerp(firstPerson ? eyeTarget : orbitTarget, firstPerson ? 0.24 : 0.12);",
       "",
       "      if (firstPerson) {",
+      "        // __FIRST_PERSON_VIEW_DIRECTION_V1__: point along the camera's actual forward direction.",
       "        const viewDir = new THREE.Vector3(",
-      "          Math.sin(camYaw) * Math.cos(camPitch),",
+      "          -Math.sin(camYaw) * Math.cos(camPitch),",
       "          -Math.sin(camPitch),",
-      "          Math.cos(camYaw) * Math.cos(camPitch)",
+      "          -Math.cos(camYaw) * Math.cos(camPitch)",
       "        );",
       "        camera.lookAt(camera.position.clone().addScaledVector(viewDir, 30));",
       "      } else {",
@@ -240,6 +241,36 @@ function patchFirstPersonMovement(text) {
 
   if (!text.includes(original)) {
     throw new Error("Movement vector block not found; first-person W/S fix was not applied");
+  }
+  return text.replace(original, corrected);
+}
+
+function patchFirstPersonDash(text) {
+  if (text.includes("__FIRST_PERSON_DASH_DIRECTION_V1__")) return text;
+
+  const original = `      const mz = (keys.has(b.up) ? 1 : 0) - (keys.has(b.down) ? 1 : 0);
+      let d;
+      if (mx || mz) {
+        const camFwd = new THREE.Vector3(Math.sin(camState.yaw), 0, Math.cos(camState.yaw)).normalize();
+        const camRight = new THREE.Vector3(camFwd.z, 0, -camFwd.x);
+        d = new THREE.Vector3().addScaledVector(camFwd, mz).addScaledVector(camRight, mx).normalize();
+      } else {
+        d = game.facing.clone().normalize();
+      }`;
+  const corrected = `      // __FIRST_PERSON_DASH_DIRECTION_V1__: dash matches the movement direction in first person.
+      const mz = (keys.has(b.up) ? 1 : 0) - (keys.has(b.down) ? 1 : 0);
+      const camFwd = new THREE.Vector3(Math.sin(camState.yaw), 0, Math.cos(camState.yaw)).normalize();
+      const camRight = new THREE.Vector3(camFwd.z, 0, -camFwd.x);
+      const dashForwardInput = camState.firstPerson ? -mz : mz;
+      let d;
+      if (mx || mz) {
+        d = new THREE.Vector3().addScaledVector(camFwd, dashForwardInput).addScaledVector(camRight, mx).normalize();
+      } else {
+        d = camState.firstPerson ? camFwd.clone().negate() : game.facing.clone().normalize();
+      }`;
+
+  if (!text.includes(original)) {
+    throw new Error("Dash direction block not found; first-person dash correction was not applied");
   }
   return text.replace(original, corrected);
 }
@@ -336,7 +367,7 @@ function patchAll(text) {
         patchRichMp(
           patchShibuyaNight(
             patchAttackSprites(
-              patchFirstPersonMovement(patchCameraControls(patchHub(patchSpawn(patchCompass(patchBillboards(text))))))
+              patchFirstPersonDash(patchFirstPersonMovement(patchCameraControls(patchHub(patchSpawn(patchCompass(patchBillboards(text)))))))
             )
           )
         )
@@ -391,6 +422,8 @@ async function main() {
         cur.includes("__MOUSE_WHEEL_ZOOM_V1__") &&
         cur.includes("__FIRST_PERSON_CAMERA_V1__") &&
         cur.includes("__FIRST_PERSON_MOVEMENT_INVERT_V1__") &&
+        cur.includes("__FIRST_PERSON_DASH_DIRECTION_V1__") &&
+        cur.includes("__FIRST_PERSON_VIEW_DIRECTION_V1__") &&
         cur.includes("movementX") &&
         cur.includes("Fixed city posters are permanent") &&
         cur.includes("vfx.addAttackSprite") &&
