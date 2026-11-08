@@ -6,7 +6,6 @@ import { gunzipSync } from "zlib";
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(dir, "..");
 const out = path.join(root, "src/components/game/GameCanvas.jsx");
-const baked = path.join(dir, "GameCanvas.jsx.gz.b64");
 
 function isGood(text) {
   return (
@@ -21,9 +20,16 @@ function isGood(text) {
 }
 
 function loadBaked() {
-  if (!fs.existsSync(baked)) return null;
+  const a = path.join(dir, "GameCanvas.a.b64");
+  const b = path.join(dir, "GameCanvas.b.b64");
+  const single = path.join(dir, "GameCanvas.jsx.gz.b64");
   try {
-    const b64 = fs.readFileSync(baked, "utf8").trim();
+    let b64 = "";
+    if (fs.existsSync(a) && fs.existsSync(b)) {
+      b64 = fs.readFileSync(a, "utf8").trim() + fs.readFileSync(b, "utf8").trim();
+    } else if (fs.existsSync(single)) {
+      b64 = fs.readFileSync(single, "utf8").trim();
+    } else return null;
     const gz = Buffer.from(b64, "base64");
     const text = gunzipSync(gz).toString("utf8");
     return isGood(text) ? text : null;
