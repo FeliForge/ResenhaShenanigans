@@ -228,25 +228,26 @@ function patchCameraControls(text) {
 
 
 function patchFirstPersonMovement(text) {
-  if (text.includes("__FIRST_PERSON_MOVEMENT_DIRECTION_V2__")) return text;
+  if (text.includes("__FIRST_PERSON_MOVEMENT_DIRECTION_V3__")) return text;
 
   const original = `const world = new THREE.Vector3()
           .addScaledVector(camFwd, -move.z)
           .addScaledVector(camRight, move.x);`;
-  const corrected = `// __FIRST_PERSON_MOVEMENT_DIRECTION_V2__: W follows the same +camFwd direction as the first-person view.
-        const forwardInput = -move.z;
+  const corrected = `// __FIRST_PERSON_MOVEMENT_DIRECTION_V3__: reverse all WASD axes only in first person.
+        const forwardInput = camState.firstPerson ? move.z : -move.z;
+        const lateralInput = camState.firstPerson ? -move.x : move.x;
         const world = new THREE.Vector3()
           .addScaledVector(camFwd, forwardInput)
-          .addScaledVector(camRight, move.x);`;
+          .addScaledVector(camRight, lateralInput);`;
 
   if (!text.includes(original)) {
-    throw new Error("Movement vector block not found; unified W/S direction was not applied");
+    throw new Error("Movement vector block not found; first-person WASD inversion was not applied");
   }
   return text.replace(original, corrected);
 }
 
 function patchFirstPersonDash(text) {
-  if (text.includes("__FIRST_PERSON_DASH_DIRECTION_V2__")) return text;
+  if (text.includes("__FIRST_PERSON_DASH_DIRECTION_V3__")) return text;
 
   const original = `      const mz = (keys.has(b.up) ? 1 : 0) - (keys.has(b.down) ? 1 : 0);
       let d;
@@ -257,19 +258,21 @@ function patchFirstPersonDash(text) {
       } else {
         d = game.facing.clone().normalize();
       }`;
-  const corrected = `      // __FIRST_PERSON_DASH_DIRECTION_V2__: dash and W/S share the same camera-relative axes.
+  const corrected = `      // __FIRST_PERSON_DASH_DIRECTION_V3__: reverse dash axes in first person to match WASD.
       const mz = (keys.has(b.up) ? 1 : 0) - (keys.has(b.down) ? 1 : 0);
       const camFwd = new THREE.Vector3(Math.sin(camState.yaw), 0, Math.cos(camState.yaw)).normalize();
       const camRight = new THREE.Vector3(camFwd.z, 0, -camFwd.x);
+      const dashForwardInput = camState.firstPerson ? -mz : mz;
+      const dashLateralInput = camState.firstPerson ? -mx : mx;
       let d;
       if (mx || mz) {
-        d = new THREE.Vector3().addScaledVector(camFwd, mz).addScaledVector(camRight, mx).normalize();
+        d = new THREE.Vector3().addScaledVector(camFwd, dashForwardInput).addScaledVector(camRight, dashLateralInput).normalize();
       } else {
-        d = game.facing.clone().normalize();
+        d = camState.firstPerson ? game.facing.clone().negate().normalize() : game.facing.clone().normalize();
       }`;
 
   if (!text.includes(original)) {
-    throw new Error("Dash direction block not found; unified dash direction was not applied");
+    throw new Error("Dash direction block not found; first-person dash inversion was not applied");
   }
   return text.replace(original, corrected);
 }
@@ -420,8 +423,8 @@ async function main() {
         cur.includes("__MP_POINTER_LOCK__") &&
         cur.includes("__MOUSE_WHEEL_ZOOM_V1__") &&
         cur.includes("__FIRST_PERSON_CAMERA_V1__") &&
-        cur.includes("__FIRST_PERSON_MOVEMENT_DIRECTION_V2__") &&
-        cur.includes("__FIRST_PERSON_DASH_DIRECTION_V2__") &&
+        cur.includes("__FIRST_PERSON_MOVEMENT_DIRECTION_V3__") &&
+        cur.includes("__FIRST_PERSON_DASH_DIRECTION_V3__") &&
         cur.includes("__FIRST_PERSON_VIEW_DIRECTION_V2__") &&
         cur.includes("movementX") &&
         cur.includes("Fixed city posters are permanent") &&
