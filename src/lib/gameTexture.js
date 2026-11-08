@@ -80,6 +80,87 @@ export function makeCharacterTexture(character) {
   return tex;
 }
 
+/** Pose de golpe: brazo derecho extendido hacia adelante. */
+export function makeCharacterAttackTexture(character) {
+  const w = 256, h = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  const colors = character?.colors || {};
+  const primary = colors.primary || "#00e5ff";
+  const secondary = colors.secondary || "#6a7a8a";
+  const accent = colors.accent || "#ffcc00";
+  ctx.clearRect(0, 0, w, h);
+
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.beginPath();
+  ctx.ellipse(w / 2, h - 22, 72, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // piernas: postura de embestida (más abierta)
+  const legGrad = ctx.createLinearGradient(0, 330, 0, 472);
+  legGrad.addColorStop(0, secondary);
+  legGrad.addColorStop(1, shade(secondary, -30));
+  ctx.fillStyle = legGrad;
+  poly(ctx, [[90, 332], [108, 330], [118, 474], [92, 476]]);
+  poly(ctx, [[148, 330], [168, 334], [172, 476], [146, 474]]);
+
+  ctx.fillStyle = accent;
+  poly(ctx, [[88, 462], [122, 460], [118, 486], [90, 486]]);
+  poly(ctx, [[144, 462], [176, 464], [172, 488], [144, 486]]);
+
+  // torso inclinado hacia el golpe
+  const bodyGrad = ctx.createLinearGradient(0, 230, 0, 340);
+  bodyGrad.addColorStop(0, shade(primary, 25));
+  bodyGrad.addColorStop(1, shade(primary, -20));
+  ctx.fillStyle = bodyGrad;
+  poly(ctx, [[100, 228], [168, 220], [176, 340], [88, 348]]);
+
+  ctx.fillStyle = accent;
+  ctx.fillRect(90, 324, 84, 14);
+
+  // brazo izquierdo retraído
+  ctx.fillStyle = secondary;
+  poly(ctx, [[100, 236], [116, 240], [72, 280], [56, 272]]);
+  ctx.fillStyle = accent;
+  poly(ctx, [[50, 264], [76, 270], [70, 294], [48, 286]]);
+
+  // brazo derecho extendido (golpe)
+  ctx.fillStyle = secondary;
+  poly(ctx, [[160, 230], [178, 226], [236, 248], [228, 268]]);
+  ctx.fillStyle = accent;
+  poly(ctx, [[224, 240], [248, 246], [246, 272], [220, 264]]);
+  // destello en el puño
+  ctx.fillStyle = "rgba(255,255,255,0.65)";
+  ctx.beginPath();
+  ctx.arc(238, 254, 10, 0, Math.PI * 2);
+  ctx.fill();
+
+  // cabeza inclinada
+  const headGrad = ctx.createLinearGradient(0, 145, 0, 220);
+  headGrad.addColorStop(0, shade(primary, 30));
+  headGrad.addColorStop(1, primary);
+  ctx.fillStyle = headGrad;
+  poly(ctx, [[134, 145], [168, 160], [166, 204], [132, 220], [100, 206], [102, 162]]);
+
+  ctx.fillStyle = accent;
+  poly(ctx, [[110, 172], [158, 168], [154, 190], [112, 192]]);
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  poly(ctx, [[116, 176], [130, 174], [128, 184], [116, 184]]);
+
+  ctx.strokeStyle = "rgba(0,0,0,0.4)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(134, 145); ctx.lineTo(168, 160); ctx.lineTo(166, 204);
+  ctx.lineTo(132, 220); ctx.lineTo(100, 206); ctx.lineTo(102, 162);
+  ctx.closePath(); ctx.stroke();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.anisotropy = 4;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 // Burbuja de Quick Chat.
 export function makeBubbleTexture(text) {
   const w = 256, h = 80;
