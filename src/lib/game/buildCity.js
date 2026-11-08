@@ -89,11 +89,11 @@ function makeTvTexture() {
 }
 
 function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, platforms, tvTex, withTv) {
-  const H = 18;
-  const FLOOR_H = 6;
-  const WALL_T = 0.45;
-  const DOOR_W = 3.4;
-  const DOOR_H = 3.2;
+  const H = 36;
+  const FLOOR_H = 12;
+  const WALL_T = 0.55;
+  const DOOR_W = 5.5;
+  const DOOR_H = 4.2;
   const g = new THREE.Group();
   g.position.set(px, 0, pz);
   g.rotation.y = yaw;
@@ -149,25 +149,25 @@ function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, platform
     colliders.push({ x: px + w / 2 - sideW / 2, z: pz + d / 2, w: sideW + 0.25, d: WALL_T + 0.4 });
   }
 
-  const colGeo = new THREE.BoxGeometry(0.5, H - 0.4, 0.5);
+  const colGeo = new THREE.BoxGeometry(0.65, H - 0.4, 0.65);
   for (const [cx, cz] of [[-w * 0.28, -d * 0.28], [w * 0.28, -d * 0.28], [-w * 0.28, d * 0.22], [w * 0.28, d * 0.22]]) {
     const col = new THREE.Mesh(colGeo, colMat);
     col.position.set(cx, H / 2 - 0.1, cz);
     g.add(col);
-    colliders.push({ x: px + cx, z: pz + cz, w: 0.85, d: 0.85 });
+    colliders.push({ x: px + cx, z: pz + cz, w: 1.0, d: 1.0 });
   }
 
-  const stepCount = 8;
+  const stepCount = 12;
   const stepH = FLOOR_H / stepCount;
-  const stepD = 0.55;
-  const stairW = 2.2;
+  const stepD = 0.75;
+  const stairW = 3.2;
   const stairMat = mats.stair;
   for (let level = 0; level < 2; level++) {
     const baseY = level * FLOOR_H;
     for (let s = 0; s < stepCount; s++) {
       const sy = baseY + (s + 0.5) * stepH;
-      const sz = -d / 2 + 1.2 + s * stepD;
-      const sx = -w / 2 + 1.4;
+      const sz = -d / 2 + 1.6 + s * stepD;
+      const sx = -w / 2 + 2.0;
       const step = new THREE.Mesh(new THREE.BoxGeometry(stairW, stepH * 0.92, stepD * 0.95), stairMat);
       step.position.set(sx, sy, sz);
       g.add(step);
@@ -177,25 +177,25 @@ function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, platform
 
   const winMat = new THREE.MeshBasicMaterial({ color: 0x88ccee, transparent: true, opacity: 0.35 });
   for (let f = 0; f < 3; f++) {
-    const wy = f * FLOOR_H + 2.4;
+    const wy = f * FLOOR_H + 4.0;
     for (const side of [-1, 1]) {
-      const pane = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.6), winMat);
-      pane.position.set(side * (w / 2 - 0.12), wy, 0);
+      const pane = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 2.4), winMat);
+      pane.position.set(side * (w / 2 - 0.15), wy, 0);
       pane.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
       g.add(pane);
     }
   }
 
   if (withTv && tvTex) {
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.9, 0.12), trimMat);
-    frame.position.set(0, FLOOR_H + 2.2, -d / 2 + 0.55);
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(5.5, 3.2, 0.15), trimMat);
+    frame.position.set(0, FLOOR_H + 3.5, -d / 2 + 0.65);
     g.add(frame);
-    const screen = new THREE.Mesh(new THREE.PlaneGeometry(2.9, 1.65), new THREE.MeshBasicMaterial({ map: tvTex }));
-    screen.position.set(0, FLOOR_H + 2.2, -d / 2 + 0.62);
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(5.1, 2.9), new THREE.MeshBasicMaterial({ map: tvTex }));
+    screen.position.set(0, FLOOR_H + 3.5, -d / 2 + 0.74);
     g.add(screen);
   }
 
-  const sw = new THREE.Mesh(new THREE.BoxGeometry(w + 3, 0.22, d + 3), mats.sidewalk);
+  const sw = new THREE.Mesh(new THREE.BoxGeometry(w + 4, 0.22, d + 4), mats.sidewalk);
   sw.position.set(0, 0.11, 0);
   g.add(sw);
   group.add(g);
@@ -279,8 +279,8 @@ export function buildCity(scene) {
 
     if (hollowKeys.has(slotKey) && hollowBuilt < HOLLOW_SLOTS.length) {
       const slot = HOLLOW_SLOTS.find((s) => `${s.gx},${s.gz}` === slotKey) || HOLLOW_SLOTS[hollowBuilt];
-      const w = 14 + Math.random() * 4;
-      const d = 12 + Math.random() * 4;
+      const w = 32 + Math.random() * 10;
+      const d = 28 + Math.random() * 10;
       const yaw = (Math.random() - 0.5) * 0.08;
       buildHollowBuilding(group, px, pz, w, d, yaw, hollowMats, treeColliders, platforms, tvTex, !!slot.withTv);
       occ.tryAdd(px, pz, Math.max(w, d) * 0.55);
