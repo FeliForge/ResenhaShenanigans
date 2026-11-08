@@ -14,25 +14,39 @@ const INTERIOR_URLS = {
   cama: "/interiors/Cama.png",
 };
 
-let _propMats = null;
-let _floorMat = null;
-let _loaderStarted = false;
+/** Shared materials/geometries — created once for all hollow buildings */
+const SHARED = {
+  ready: false,
+  propMats: null,
+  floorMat: null,
+  interiorMat: null,
+  ceilMat: null,
+  colMat: null,
+  stairMat: null,
+  glassMat: null,
+  frameMat: null,
+  tableMat: null,
+  lampStandMat: null,
+  lampShadeMat: null,
+  potMat: null,
+  leafMat: null,
+  fixtureMat: null,
+  rugMats: null,
+  geo: {},
+};
 
 function makeFallbackTex(label, bg, fg) {
   const c = document.createElement("canvas");
-  c.width = 256;
-  c.height = 256;
+  c.width = 128;
+  c.height = 128;
   const ctx = c.getContext("2d");
   ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, 256, 256);
-  ctx.strokeStyle = "rgba(255,255,255,0.15)";
-  ctx.lineWidth = 4;
-  ctx.strokeRect(8, 8, 240, 240);
+  ctx.fillRect(0, 0, 128, 128);
   ctx.fillStyle = fg;
-  ctx.font = "bold 28px system-ui,sans-serif";
+  ctx.font = "bold 16px system-ui,sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(label, 128, 128);
+  ctx.fillText(label, 64, 64);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
@@ -40,160 +54,192 @@ function makeFallbackTex(label, bg, fg) {
 
 function makeFloorTileTex() {
   const c = document.createElement("canvas");
-  c.width = 256;
-  c.height = 256;
+  c.width = 128;
+  c.height = 128;
   const ctx = c.getContext("2d");
   ctx.fillStyle = "#6a6a70";
-  ctx.fillRect(0, 0, 256, 256);
+  ctx.fillRect(0, 0, 128, 128);
   ctx.strokeStyle = "#55555a";
-  ctx.lineWidth = 2;
-  for (let i = 0; i <= 8; i++) {
-    const p = (i / 8) * 256;
-    ctx.beginPath();
-    ctx.moveTo(p, 0);
-    ctx.lineTo(p, 256);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, p);
-    ctx.lineTo(256, p);
-    ctx.stroke();
-  }
-  for (let y = 0; y < 8; y++) {
-    for (let x = 0; x < 8; x++) {
-      if ((x + y) % 2 === 0) {
-        ctx.fillStyle = "rgba(0,0,0,0.06)";
-        ctx.fillRect(x * 32, y * 32, 32, 32);
-      }
-    }
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const p = (i / 4) * 128;
+    ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, 128); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(128, p); ctx.stroke();
   }
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(4, 4);
   tex.colorSpace = THREE.SRGBColorSpace;
+  tex.generateMipmaps = true;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
   return tex;
 }
 
-function ensureInteriorAssets() {
-  if (_propMats) return _propMats;
-  if (!_floorMat) {
-    _floorMat = new THREE.MeshStandardMaterial({
-      map: makeFloorTileTex(),
-      color: 0xffffff,
-      roughness: 0.92,
-      metalness: 0.02,
-      flatShading: true,
-    });
-  }
+function ensureShared() {
+  if (SHARED.ready) return SHARED;
+  SHARED.floorMat = new THREE.MeshStandardMaterial({
+    map: makeFloorTileTex(), color: 0xffffff, roughness: 0.92, metalness: 0.02, flatShading: true,
+  });
+  SHARED.interiorMat = new THREE.MeshStandardMaterial({ color: 0x7a7a7e, roughness: 0.92, flatShading: true });
+  SHARED.ceilMat = new THREE.MeshStandardMaterial({ color: 0x5c5c60, roughness: 0.9, flatShading: true });
+  SHARED.colMat = new THREE.MeshStandardMaterial({ color: 0x6e6e72, roughness: 0.8, flatShading: true });
+  SHARED.stairMat = new THREE.MeshStandardMaterial({ color: 0x5a5a5e, roughness: 0.88, flatShading: true });
+  SHARED.glassMat = new THREE.MeshBasicMaterial({
+    color: 0xa8c8e0, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false,
+  });
+  SHARED.frameMat = new THREE.MeshStandardMaterial({ color: 0x1e242c, roughness: 0.55, metalness: 0.35, flatShading: true });
+  SHARED.tableMat = new THREE.MeshStandardMaterial({ color: 0x4a4038, roughness: 0.8, flatShading: true });
+  SHARED.lampStandMat = new THREE.MeshStandardMaterial({ color: 0x2a2a30, flatShading: true });
+  SHARED.lampShadeMat = new THREE.MeshStandardMaterial({ color: 0xe8d8a0, emissive: 0xffcc66, emissiveIntensity: 0.3, flatShading: true });
+  SHARED.potMat = new THREE.MeshStandardMaterial({ color: 0x6a4030, flatShading: true });
+  SHARED.leafMat = new THREE.MeshStandardMaterial({ color: 0x2e7d32, flatShading: true });
+  SHARED.fixtureMat = new THREE.MeshStandardMaterial({ color: 0x3a3a40, emissive: 0xfff0d0, emissiveIntensity: 0.2, flatShading: true });
+  SHARED.rugMats = [
+    new THREE.MeshStandardMaterial({ color: 0x4a3a3a, roughness: 0.95, flatShading: true }),
+    new THREE.MeshStandardMaterial({ color: 0x3a4a4a, roughness: 0.95, flatShading: true }),
+    new THREE.MeshStandardMaterial({ color: 0x3a3a4a, roughness: 0.95, flatShading: true }),
+  ];
+
   const fallbacks = {
-    sofa: makeFallbackTex("SOF\u00c1", "#3a4550", "#c0d0e0"),
+    sofa: makeFallbackTex("SOFA", "#3a4550", "#c0d0e0"),
     bebedor: makeFallbackTex("BEBEDOR", "#2a4050", "#80c0e0"),
     poster: makeFallbackTex("POSTER", "#2a2030", "#ff6b9a"),
     cama: makeFallbackTex("CAMA", "#4a3a50", "#e0d0f0"),
   };
-  _propMats = {};
+  SHARED.propMats = {};
   for (const key of Object.keys(INTERIOR_URLS)) {
-    const tex = fallbacks[key];
-    _propMats[key] = new THREE.MeshBasicMaterial({
-      map: tex,
-      transparent: true,
-      alphaTest: 0.15,
-      side: THREE.DoubleSide,
-      depthWrite: true,
+    SHARED.propMats[key] = new THREE.MeshBasicMaterial({
+      map: fallbacks[key], transparent: true, alphaTest: 0.15, side: THREE.DoubleSide, depthWrite: true,
     });
   }
-  if (typeof document !== "undefined" && !_loaderStarted) {
-    _loaderStarted = true;
+  if (typeof document !== "undefined") {
     const loader = new THREE.TextureLoader();
     for (const [key, url] of Object.entries(INTERIOR_URLS)) {
-      loader.load(
-        url,
-        (tex) => {
-          tex.colorSpace = THREE.SRGBColorSpace;
-          tex.anisotropy = 4;
-          if (_propMats[key]) {
-            const old = _propMats[key].map;
-            _propMats[key].map = tex;
-            _propMats[key].needsUpdate = true;
-            if (old && old.dispose) old.dispose();
-          }
-        },
-        undefined,
-        () => {}
-      );
+      loader.load(url, (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 2;
+        tex.generateMipmaps = true;
+        const old = SHARED.propMats[key].map;
+        SHARED.propMats[key].map = tex;
+        SHARED.propMats[key].needsUpdate = true;
+        if (old?.dispose) old.dispose();
+      }, undefined, () => {});
     }
   }
-  return _propMats;
+
+  SHARED.geo.winPane = new THREE.PlaneGeometry(2.6, 2.2);
+  SHARED.geo.winFrame = new THREE.BoxGeometry(2.84, 2.44, 0.08);
+  SHARED.geo.col = new THREE.BoxGeometry(0.65, 35.6, 0.65);
+  SHARED.geo.colCap = new THREE.BoxGeometry(0.9, 0.2, 0.9);
+  SHARED.geo.table = new THREE.BoxGeometry(1.2, 0.7, 0.8);
+  SHARED.geo.lampStand = new THREE.CylinderGeometry(0.08, 0.12, 1.1, 5);
+  SHARED.geo.lampShade = new THREE.ConeGeometry(0.35, 0.4, 5);
+  SHARED.geo.pot = new THREE.CylinderGeometry(0.25, 0.3, 0.4, 5);
+  SHARED.geo.leaf = new THREE.ConeGeometry(0.5, 1.2, 5);
+  SHARED.geo.fixture = new THREE.BoxGeometry(1.4, 0.12, 1.4);
+  SHARED.geo.propPlane = {
+    sofa: new THREE.PlaneGeometry(4.2, 2.4),
+    cama: new THREE.PlaneGeometry(3.6, 2.0),
+    bebedor: new THREE.PlaneGeometry(1.6, 2.6),
+    poster: new THREE.PlaneGeometry(2.4, 3.0),
+  };
+
+  SHARED.ready = true;
+  return SHARED;
 }
 
-function addPropSprite(parent, mat, x, y, z, width, height, rotY = 0) {
-  if (!mat) return;
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
+function addProp(parent, key, x, y, z, rotY = 0) {
+  const S = ensureShared();
+  const geo = S.geo.propPlane[key];
+  const mat = S.propMats[key];
+  if (!geo || !mat) return;
+  const mesh = new THREE.Mesh(geo, mat);
   mesh.position.set(x, y, z);
   mesh.rotation.y = rotY;
+  mesh.frustumCulled = true;
   parent.add(mesh);
-  return mesh;
 }
 
-function decorateFloor(g, floorIndex, w, d, WALL_T, FLOOR_H, propMats) {
+function decorateFloor(g, floorIndex, w, d, WALL_T, FLOOR_H) {
+  const S = ensureShared();
   const baseY = floorIndex * FLOOR_H;
   const inset = WALL_T + 1.2;
   const halfW = w / 2 - inset;
   const halfD = d / 2 - inset;
 
-  const rugMat = new THREE.MeshStandardMaterial({
-    color: floorIndex === 0 ? 0x4a3a3a : floorIndex === 1 ? 0x3a4a4a : 0x3a3a4a,
-    roughness: 0.95,
-    flatShading: true,
-  });
-  const rug = new THREE.Mesh(new THREE.BoxGeometry(Math.min(8, halfW * 1.2), 0.06, Math.min(5, halfD)), rugMat);
+  const rug = new THREE.Mesh(
+    new THREE.BoxGeometry(Math.min(8, halfW * 1.2), 0.06, Math.min(5, halfD)),
+    S.rugMats[floorIndex % 3]
+  );
   rug.position.set(halfW * 0.15, baseY + 0.32, halfD * 0.05);
   g.add(rug);
 
-  addPropSprite(g, propMats.sofa, halfW * 0.25, baseY + 1.35, -halfD + 0.4, 4.2, 2.4, 0);
-  addPropSprite(g, propMats.cama, -halfW * 0.55, baseY + 1.15, halfD * 0.35, 3.6, 2.0, Math.PI / 2);
-  addPropSprite(g, propMats.bebedor, halfW * 0.7, baseY + 1.4, halfD * 0.55, 1.6, 2.6, -Math.PI / 2);
-  addPropSprite(g, propMats.poster, -w / 2 + WALL_T + 0.12, baseY + 3.2, -halfD * 0.2, 2.4, 3.0, Math.PI / 2);
-  addPropSprite(g, propMats.poster, w / 2 - WALL_T - 0.12, baseY + 3.4, halfD * 0.15, 2.2, 2.8, -Math.PI / 2);
+  addProp(g, "sofa", halfW * 0.25, baseY + 1.35, -halfD + 0.4, 0);
+  addProp(g, "cama", -halfW * 0.55, baseY + 1.15, halfD * 0.35, Math.PI / 2);
+  addProp(g, "bebedor", halfW * 0.7, baseY + 1.4, halfD * 0.55, -Math.PI / 2);
+  addProp(g, "poster", -w / 2 + WALL_T + 0.12, baseY + 3.2, -halfD * 0.2, Math.PI / 2);
 
-  const tableMat = new THREE.MeshStandardMaterial({ color: 0x4a4038, roughness: 0.8, flatShading: true });
-  const table = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 0.8), tableMat);
+  const table = new THREE.Mesh(S.geo.table, S.tableMat);
   table.position.set(halfW * 0.55, baseY + 0.65, -halfD + 0.9);
   g.add(table);
 
-  const lampStand = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.08, 0.12, 1.1, 6),
-    new THREE.MeshStandardMaterial({ color: 0x2a2a30, flatShading: true })
-  );
-  lampStand.position.set(halfW * 0.55, baseY + 1.25, -halfD + 0.9);
-  g.add(lampStand);
-  const lampShade = new THREE.Mesh(
-    new THREE.ConeGeometry(0.35, 0.4, 6),
-    new THREE.MeshStandardMaterial({ color: 0xe8d8a0, emissive: 0xffcc66, emissiveIntensity: 0.35, flatShading: true })
-  );
-  lampShade.position.set(halfW * 0.55, baseY + 1.95, -halfD + 0.9);
-  g.add(lampShade);
-
-  if (floorIndex !== 1) {
-    const pot = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.25, 0.3, 0.4, 6),
-      new THREE.MeshStandardMaterial({ color: 0x6a4030, flatShading: true })
-    );
+  if (floorIndex === 0) {
+    const lampStand = new THREE.Mesh(S.geo.lampStand, S.lampStandMat);
+    lampStand.position.set(halfW * 0.55, baseY + 1.25, -halfD + 0.9);
+    g.add(lampStand);
+    const lampShade = new THREE.Mesh(S.geo.lampShade, S.lampShadeMat);
+    lampShade.position.set(halfW * 0.55, baseY + 1.95, -halfD + 0.9);
+    g.add(lampShade);
+    const pot = new THREE.Mesh(S.geo.pot, S.potMat);
     pot.position.set(-halfW * 0.2, baseY + 0.5, -halfD + 0.6);
     g.add(pot);
-    const leaf = new THREE.Mesh(
-      new THREE.ConeGeometry(0.5, 1.2, 5),
-      new THREE.MeshStandardMaterial({ color: 0x2e7d32, flatShading: true })
-    );
+    const leaf = new THREE.Mesh(S.geo.leaf, S.leafMat);
     leaf.position.set(-halfW * 0.2, baseY + 1.3, -halfD + 0.6);
     g.add(leaf);
   }
 
-  const fixture = new THREE.Mesh(
-    new THREE.BoxGeometry(1.4, 0.12, 1.4),
-    new THREE.MeshStandardMaterial({ color: 0x3a3a40, emissive: 0xfff0d0, emissiveIntensity: 0.25, flatShading: true })
-  );
+  const fixture = new THREE.Mesh(S.geo.fixture, S.fixtureMat);
   fixture.position.set(0, baseY + FLOOR_H - 0.25, 0);
   g.add(fixture);
+}
+
+/** Visual ramp + stepped platforms for collision (AABB height). */
+function addRamp(g, px, pz, w, d, level, FLOOR_H, platforms, yaw, stairMat, frameMat) {
+  const baseY = level * FLOOR_H;
+  const rampLen = FLOOR_H * 1.15;
+  const rampW = 3.4;
+  const rampT = 0.28;
+  const sx = -w / 2 + 2.2;
+  const startZ = -d / 2 + 1.4;
+
+  const angle = Math.atan2(FLOOR_H, rampLen);
+  const hyp = Math.sqrt(FLOOR_H * FLOOR_H + rampLen * rampLen);
+  const ramp = new THREE.Mesh(new THREE.BoxGeometry(rampW, rampT, hyp), stairMat);
+  ramp.position.set(sx, baseY + FLOOR_H / 2, startZ + rampLen / 2);
+  ramp.rotation.x = -angle;
+  g.add(ramp);
+
+  for (const side of [-1, 1]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.9, hyp), frameMat);
+    rail.position.set(sx + side * (rampW * 0.48), baseY + FLOOR_H / 2 + 0.55, startZ + rampLen / 2);
+    rail.rotation.x = -angle;
+    g.add(rail);
+  }
+
+  const samples = 6;
+  for (let i = 0; i <= samples; i++) {
+    const t = i / samples;
+    const y = baseY + t * FLOOR_H;
+    const z = startZ + t * rampLen;
+    platforms.push({
+      x: px + sx,
+      z: pz + z,
+      w: rampW * 0.95,
+      d: (rampLen / samples) * 1.15,
+      y: y + 0.05,
+      yaw,
+    });
+  }
 }
 
 export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, platforms, tvTex, withTv) {
@@ -206,48 +252,29 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
   g.position.set(px, 0, pz);
   g.rotation.y = yaw;
 
-  const propMats = ensureInteriorAssets();
-
+  const S = ensureShared();
   const extColor = EXTERIOR_COLORS[Math.floor(Math.random() * EXTERIOR_COLORS.length)];
   const wallMat = new THREE.MeshStandardMaterial({
     color: extColor,
     emissiveMap: mats.emissiveMap || null,
     emissive: 0xffffff,
-    emissiveIntensity: mats.emissiveMap ? 0.28 : 0.06,
+    emissiveIntensity: mats.emissiveMap ? 0.22 : 0.05,
     flatShading: true,
     roughness: 0.88,
     metalness: 0.04,
-    side: THREE.FrontSide,
   });
   const accent = new THREE.Color(extColor).multiplyScalar(0.72);
   const trimMat = new THREE.MeshStandardMaterial({
-    color: accent.getHex(),
-    roughness: 0.65,
-    metalness: 0.22,
-    flatShading: true,
+    color: accent.getHex(), roughness: 0.65, metalness: 0.22, flatShading: true,
   });
-  const floorMat = _floorMat || new THREE.MeshStandardMaterial({ color: 0x6a6a6e, roughness: 0.95, flatShading: true });
-  const interiorMat = new THREE.MeshStandardMaterial({ color: 0x7a7a7e, roughness: 0.92, flatShading: true });
-  const ceilMat = new THREE.MeshStandardMaterial({ color: 0x5c5c60, roughness: 0.9, flatShading: true });
-  const colMat = mats.col || new THREE.MeshStandardMaterial({ color: 0x6e6e72, roughness: 0.8, flatShading: true });
-  const stairMat = mats.stair || new THREE.MeshStandardMaterial({ color: 0x5a5a5e, roughness: 0.9, flatShading: true });
-  const glassMat = new THREE.MeshPhysicalMaterial({
-    color: 0xa8c8e0,
-    transparent: true,
-    opacity: 0.28,
-    roughness: 0.08,
-    metalness: 0.05,
-    transmission: 0.55,
-    thickness: 0.15,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-  });
-  const frameMat = new THREE.MeshStandardMaterial({
-    color: 0x1e242c,
-    roughness: 0.55,
-    metalness: 0.35,
-    flatShading: true,
-  });
+
+  const floorMat = S.floorMat;
+  const interiorMat = S.interiorMat;
+  const ceilMat = S.ceilMat;
+  const colMat = mats.col || S.colMat;
+  const stairMat = mats.stair || S.stairMat;
+  const glassMat = S.glassMat;
+  const frameMat = S.frameMat;
 
   for (let f = 0; f < 3; f++) {
     const fy = f * FLOOR_H;
@@ -261,7 +288,7 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
       band.position.set(0, fy, 0);
       g.add(band);
     }
-    decorateFloor(g, f, w, d, WALL_T, FLOOR_H, propMats);
+    decorateFloor(g, f, w, d, WALL_T, FLOOR_H);
   }
 
   const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 0.5, 0.4, d + 0.5), trimMat);
@@ -270,7 +297,6 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
   const cornice = new THREE.Mesh(new THREE.BoxGeometry(w + 0.9, 0.35, d + 0.9), frameMat);
   cornice.position.set(0, H - 0.15, 0);
   g.add(cornice);
-
   const plinth = new THREE.Mesh(new THREE.BoxGeometry(w + 0.6, 0.7, d + 0.6), frameMat);
   plinth.position.set(0, 0.35, 0);
   g.add(plinth);
@@ -322,42 +348,22 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
     g.add(lintel);
   }
 
-  const winW = 2.6;
-  const winH = 2.2;
-  const winDepth = 0.08;
   function addWindow(lx, ly, lz, rotY) {
-    const pane = new THREE.Mesh(new THREE.PlaneGeometry(winW, winH), glassMat);
+    const pane = new THREE.Mesh(S.geo.winPane, glassMat);
     pane.position.set(lx, ly, lz);
     pane.rotation.y = rotY;
     g.add(pane);
-    const fw = 0.12;
-    const outer = new THREE.Mesh(new THREE.BoxGeometry(winW + fw * 2, winH + fw * 2, winDepth), frameMat);
+    const outer = new THREE.Mesh(S.geo.winFrame, frameMat);
     outer.position.set(lx, ly, lz);
     outer.rotation.y = rotY;
     g.add(outer);
-    const vbar = new THREE.Mesh(new THREE.BoxGeometry(fw * 0.7, winH, winDepth * 1.2), frameMat);
-    vbar.position.set(lx, ly, lz);
-    vbar.rotation.y = rotY;
-    g.add(vbar);
-    const hbar = new THREE.Mesh(new THREE.BoxGeometry(winW, fw * 0.7, winDepth * 1.2), frameMat);
-    hbar.position.set(lx, ly, lz);
-    hbar.rotation.y = rotY;
-    g.add(hbar);
-    const sill = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.3, 0.1, 0.35), trimMat);
-    const sillOff = 0.2;
-    sill.position.set(lx + Math.sin(rotY) * sillOff, ly - winH / 2 - 0.08, lz + Math.cos(rotY) * sillOff);
-    sill.rotation.y = rotY;
-    g.add(sill);
   }
-
   for (let f = 0; f < 3; f++) {
     const wy = f * FLOOR_H + 5.0;
     for (const side of [-1, 1]) {
-      for (const zOff of [-d * 0.22, d * 0.18]) {
-        addWindow(side * (w / 2 - 0.02), wy, zOff, side > 0 ? -Math.PI / 2 : Math.PI / 2);
-      }
+      addWindow(side * (w / 2 - 0.02), wy, 0, side > 0 ? -Math.PI / 2 : Math.PI / 2);
     }
-    for (const xOff of [-w * 0.28, 0, w * 0.28]) {
+    for (const xOff of [-w * 0.25, w * 0.25]) {
       addWindow(xOff, wy, -d / 2 + 0.02, 0);
     }
   }
@@ -389,10 +395,6 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
     const fr = new THREE.Mesh(new THREE.PlaneGeometry(sideW - 0.1, H - 0.4), interiorMat);
     fr.position.set(w / 2 - sideW / 2, H / 2, d / 2 - insetW);
     g.add(fr);
-    const upperH = H - DOOR_H;
-    const upper = new THREE.Mesh(new THREE.PlaneGeometry(DOOR_W, upperH - 0.2), interiorMat);
-    upper.position.set(0, DOOR_H + upperH / 2, d / 2 - insetW);
-    g.add(upper);
   }
   for (let f = 1; f < 3; f++) {
     const fy = f * FLOOR_H;
@@ -401,36 +403,18 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
     g.add(ceil);
   }
 
-  const colGeo = new THREE.BoxGeometry(0.65, H - 0.4, 0.65);
-  for (const [cx, cz] of [[-w * 0.28, -d * 0.28], [w * 0.28, -d * 0.28], [-w * 0.28, d * 0.22], [w * 0.28, d * 0.22]]) {
-    const col = new THREE.Mesh(colGeo, colMat);
+  for (const [cx, cz] of [[-w * 0.28, -d * 0.2], [w * 0.28, d * 0.15]]) {
+    const col = new THREE.Mesh(S.geo.col, colMat);
     col.position.set(cx, H / 2 - 0.1, cz);
     g.add(col);
-    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.2, 0.9), trimMat);
+    const cap = new THREE.Mesh(S.geo.colCap, trimMat);
     cap.position.set(cx, H - 0.35, cz);
     g.add(cap);
     colliders.push({ x: px + cx, z: pz + cz, w: 1.0, d: 1.0 });
   }
 
-  const stepCount = 12;
-  const stepH = FLOOR_H / stepCount;
-  const stepD = 0.75;
-  const stairW = 3.2;
-  for (let level = 0; level < 2; level++) {
-    const baseY = level * FLOOR_H;
-    for (let s = 0; s < stepCount; s++) {
-      const sy = baseY + (s + 0.5) * stepH;
-      const sz = -d / 2 + 1.6 + s * stepD;
-      const sx = -w / 2 + 2.0;
-      const step = new THREE.Mesh(new THREE.BoxGeometry(stairW, stepH * 0.92, stepD * 0.95), stairMat);
-      step.position.set(sx, sy, sz);
-      g.add(step);
-      platforms.push({ x: px + sx, z: pz + sz, w: stairW * 0.9, d: stepD * 0.9, y: baseY + (s + 1) * stepH, yaw });
-    }
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.08, FLOOR_H * 0.9, 0.08), frameMat);
-    rail.position.set(-w / 2 + 2.0 + stairW * 0.45, baseY + FLOOR_H * 0.45, -d / 2 + 1.6 + (stepCount * stepD) * 0.45);
-    g.add(rail);
-  }
+  addRamp(g, px, pz, w, d, 0, FLOOR_H, platforms, yaw, stairMat, frameMat);
+  addRamp(g, px, pz, w, d, 1, FLOOR_H, platforms, yaw, stairMat, frameMat);
 
   if (withTv && tvTex) {
     const frame = new THREE.Mesh(new THREE.BoxGeometry(5.5, 3.2, 0.15), trimMat);
