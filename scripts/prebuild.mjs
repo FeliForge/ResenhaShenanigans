@@ -20,16 +20,14 @@ function isGood(text) {
 }
 
 function loadBaked() {
-  const a = path.join(dir, "GameCanvas.a.b64");
-  const b = path.join(dir, "GameCanvas.b.b64");
-  const single = path.join(dir, "GameCanvas.jsx.gz.b64");
   try {
     let b64 = "";
-    if (fs.existsSync(a) && fs.existsSync(b)) {
-      b64 = fs.readFileSync(a, "utf8").trim() + fs.readFileSync(b, "utf8").trim();
-    } else if (fs.existsSync(single)) {
-      b64 = fs.readFileSync(single, "utf8").trim();
-    } else return null;
+    const names = ["a0","a1","a2","a3","b0","b1","b2","b3"];
+    for (const n of names) {
+      const p = path.join(dir, "gc_chunks", n + ".b64");
+      if (!fs.existsSync(p)) return null;
+      b64 += fs.readFileSync(p, "utf8").trim();
+    }
     const gz = Buffer.from(b64, "base64");
     const text = gunzipSync(gz).toString("utf8");
     return isGood(text) ? text : null;
