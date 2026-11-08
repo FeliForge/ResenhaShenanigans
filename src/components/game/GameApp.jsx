@@ -24,8 +24,10 @@ import { loadBinds, saveBinds, inputState, DEFAULT_BINDS } from "@/lib/game/inpu
 import { audio } from "@/lib/game/audio";
 import { loadRoomMusic, saveRoomMusic } from "@/lib/game/roomMusic";
 import { loadMyLoadout, saveMyLoadout, toLoadout, characterFromLoadout } from "@/lib/game/loadout";
+import { supabase } from "@/integrations/supabase/client";
 
 const zeroCooldowns = { m1: 0, special1: 0, special2: 0, special3: 0, ultimate: 0, dash: 0 };
+const OWNER_EMAIL = "felipejerezgatti@gmail.com";
 
 export default function GameApp() {
   const [screen, setScreen] = useState("intro");
@@ -56,12 +58,16 @@ export default function GameApp() {
   const [showSettings, setShowSettings] = useState(false);
   const [showBoombox, setShowBoombox] = useState(false);
   const [showCharacterHub, setShowCharacterHub] = useState(false);
+  const [accountUsername, setAccountUsername] = useState("");
+  const [accountVerified, setAccountVerified] = useState(false);
   const countersRef = useRef(null);
   const reportedRef = useRef({});
   const canvasRef = useRef(null);
   const claimable = (quests || []).filter((q) => !q.claimed && (q.progress || 0) >= q.target).length;
   const dashItem = getShopItem(shop.dash);
   const emoteItem = getShopItem(shop.emote);
+
+  const displayName = accountUsername || character?.displayName || "Tú";
 
   const getHeading = useCallback(() => {
     try {
@@ -74,6 +80,40 @@ export default function GameApp() {
 
   useEffect(() => {
     setBinds(loadBinds());
+    try {
+      const cached = localStorage.getItem("rs_username");
+      if (cached) setAccountUsername(cached);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function refreshAccount() {
+      try {
+        const { data } = await supabase.auth.getUser();
+        const u = data?.user;
+        if (!u || !active) return;
+        const owner = String(u.email || "").toLowerCase() === OWNER_EMAIL;
+        setAccountVerified(owner);
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username, is_verified")
+          .eq("user_id", u.id)
+          .maybeSingle();
+        if (!active) return;
+        if (profile?.username) {
+          setAccountUsername(profile.username);
+          try { localStorage.setItem("rs_username", profile.username); } catch {}
+        }
+        if (profile?.is_verified || owner) setAccountVerified(true);
+      } catch {}
+    }
+    refreshAccount();
+    const { data: listener } = supabase.auth.onAuthStateChange(() => { refreshAccount(); });
+    return () => {
+      active = false;
+      listener?.subscription?.unsubscribe?.();
+    };
   }, []);
 
   // Al abrir tiendas/paneles: soltar mouse y bloquear input del juego
@@ -298,7 +338,7 @@ export default function GameApp() {
               if (roomCode) saveRoomMusic(roomCode, url);
             }
           }}
-          playerName={character.displayName || "Tú"}
+          playerName={accountVerified ? `${displayName} ✓` : displayName}
           billboardUrl={billboardUrl}
           dashStyle={dashItem}
           emote={emoteItem}
