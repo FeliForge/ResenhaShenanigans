@@ -109,38 +109,119 @@ function patchCameraControls(text) {
     /camState\.pitch = THREE\.MathUtils\.clamp\(camState\.pitch \+ dy \* 0\.004,\s*[^,]+,\s*[^)]+\)/g,
     "camState.pitch = THREE.MathUtils.clamp(camState.pitch + dy * 0.004, -0.15, 1.45)"
   );
-  if (text.includes("__MP_POINTER_LOCK__")) return text;
-  const neu = `
-    // __MP_POINTER_LOCK__
-    const onPointerDown = (e) => {
-      if (document.pointerLockElement !== renderer.domElement) {
-        try { renderer.domElement.requestPointerLock(); } catch (_) {}
-        camState.dragging = true;
-        camState.lastX = e.clientX; camState.lastY = e.clientY;
-        return;
-      }
-      if (e.button === 0) { try { doMove("m1"); } catch (_) {} }
-    };
-    const onPointerMove = (e) => {
-      if (document.pointerLockElement === renderer.domElement) {
-        camState.yaw -= (e.movementX || 0) * 0.0022;
-        camState.pitch = THREE.MathUtils.clamp(camState.pitch + (e.movementY || 0) * 0.0022, -0.15, 1.45);
-        return;
-      }
-      if (!camState.dragging) return;
-      const dx = e.clientX - camState.lastX;
-      const dy = e.clientY - camState.lastY;
-      camState.lastX = e.clientX; camState.lastY = e.clientY;
-      camState.yaw -= dx * 0.004;
-      camState.pitch = THREE.MathUtils.clamp(camState.pitch + dy * 0.004, -0.15, 1.45);
-    };
-    const onPointerUp = () => { camState.dragging = false; };
-    renderer.domElement.addEventListener("pointerdown", onPointerDown);
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);`;
-  const reHandlers = /const onPointerDown = \(e\) => \{[\s\S]*?window\.addEventListener\("pointerup", onPointerUp\);/;
-  if (reHandlers.test(text)) text = text.replace(reHandlers, neu.trim());
-  else text = text.replace(/(const camState = \{[^}]+\};)/, "$1\n" + neu);
+
+  // __MOUSE_WHEEL_ZOOM_V1__: mouse-wheel zoom with clamped orbit distance.
+  if (!text.includes("__MOUSE_WHEEL_ZOOM_V1__")) {
+    const camStatePattern = /const camState = \{[^\n]+\};/;
+    if (!camStatePattern.test(text)) throw new Error("Camera state not found for mouse-wheel zoom");
+    text = text.replace(
+      camStatePattern,
+      (match) => match + "\n    // __MOUSE_WHEEL_ZOOM_V1__\n    const onWheelZoom = (e) => {\n      e.preventDefault();\n      const delta = THREE.MathUtils.clamp(e.deltaY, -180, 180);\n      camState.dist = THREE.MathUtils.clamp(camState.dist + delta * 0.012, 1.65, 26);\n    };\n    renderer.domElement.addEventListener(\"wheel\", onWheelZoom, { passive: false });"
+    );
+  }
+
+  if (!text.includes("__MP_POINTER_LOCK__")) {
+    const neu = [
+      "    // __MP_POINTER_LOCK__",
+      "    const onPointerDown = (e) => {",
+      "      if (document.pointerLockElement !== renderer.domElement) {",
+      "        try { renderer.domElement.requestPointerLock(); } catch (_) {}",
+      "        camState.dragging = true;",
+      "        camState.lastX = e.clientX; camState.lastY = e.clientY;",
+      "        return;",
+      "      }",
+      "      if (e.button === 0) { try { doMove(\"m1\"); } catch (_) {} }",
+      "    };",
+      "    const onPointerMove = (e) => {",
+      "      if (document.pointerLockElement === renderer.domElement) {",
+      "        camState.yaw -= (e.movementX || 0) * 0.0022;",
+      "        camState.pitch = THREE.MathUtils.clamp(camState.pitch + (e.movementY || 0) * 0.0022, -0.15, 1.45);",
+      "        return;",
+      "      }",
+      "      if (!camState.dragging) return;",
+      "      const dx = e.clientX - camState.lastX;",
+      "      const dy = e.clientY - camState.lastY;",
+      "      camState.lastX = e.clientX; camState.lastY = e.clientY;",
+      "      camState.yaw -= dx * 0.004;",
+      "      camState.pitch = THREE.MathUtils.clamp(camState.pitch + dy * 0.004, -0.15, 1.45);",
+      "    };",
+      "    const onPointerUp = () => { camState.dragging = false; };",
+      "    renderer.domElement.addEventListener(\"pointerdown\", onPointerDown);",
+      "    window.addEventListener(\"pointermove\", onPointerMove);",
+      "    window.addEventListener(\"pointerup\", onPointerUp);",
+    ].join("\n");
+    const reHandlers = /const onPointerDown = \(e\) => \{[\s\S]*?window\.addEventListener\("pointerup", onPointerUp\);/;
+    if (reHandlers.test(text)) text = text.replace(reHandlers, neu.trim());
+    else text = text.replace(/(const camState = \{[^}]+\};)/, "$1\n" + neu);
+  }
+
+  // __FIRST_PERSON_CAMERA_V1__: smooth first-person transition with hysteresis.
+  if (!text.includes("__FIRST_PERSON_CAMERA_V1__")) {
+    const oldCamera = [
+      "      // Cámara orbital (más cerca y girando lentamente durante la derrota)",
+      "      const camYaw = camState.yaw + (game.dead ? elapsed * 0.14 : 0);",
+      "      const camDist = game.dead ? camState.dist * 0.62 : camState.dist;",
+      "      const camPitch = game.dead ? Math.min(0.46, camState.pitch) : camState.pitch;",
+      "      const off = new THREE.Vector3(",
+      "        Math.sin(camYaw) * Math.cos(camPitch) * camDist,",
+      "        Math.sin(camPitch) * camDist + 2,",
+      "        Math.cos(camYaw) * Math.cos(camPitch) * camDist",
+      "      );",
+      "      const camTarget = game.player.position.clone().add(off);",
+      "      camera.position.lerp(camTarget, 0.12);",
+      "      camera.lookAt(game.player.position.x, game.player.position.y + 0.5, game.player.position.z);",
+    ].join("\n");
+
+    const newCamera = [
+      "      // __FIRST_PERSON_CAMERA_V1__",
+      "      // Scroll close to enter first person; scroll back to restore the orbit camera.",
+      "      const camYaw = camState.yaw + (game.dead ? elapsed * 0.14 : 0);",
+      "      const camDist = game.dead ? camState.dist * 0.62 : camState.dist;",
+      "      const camPitch = game.dead ? Math.min(0.46, camState.pitch) : camState.pitch;",
+      "",
+      "      if (game.dead) camState.firstPerson = false;",
+      "      if (!camState.firstPerson && camState.dist <= 2.25) camState.firstPerson = true;",
+      "      else if (camState.firstPerson && camState.dist >= 3.05) camState.firstPerson = false;",
+      "      const firstPerson = !game.dead && !!camState.firstPerson;",
+      "      sprite.visible = !firstPerson;",
+      "",
+      "      const off = new THREE.Vector3(",
+      "        Math.sin(camYaw) * Math.cos(camPitch) * camDist,",
+      "        Math.sin(camPitch) * camDist + 2,",
+      "        Math.cos(camYaw) * Math.cos(camPitch) * camDist",
+      "      );",
+      "      const orbitTarget = game.player.position.clone().add(off);",
+      "      const eyeTarget = game.player.position.clone().add(new THREE.Vector3(0, 1.02, 0));",
+      "      camera.position.lerp(firstPerson ? eyeTarget : orbitTarget, firstPerson ? 0.24 : 0.12);",
+      "",
+      "      if (firstPerson) {",
+      "        const viewDir = new THREE.Vector3(",
+      "          Math.sin(camYaw) * Math.cos(camPitch),",
+      "          -Math.sin(camPitch),",
+      "          Math.cos(camYaw) * Math.cos(camPitch)",
+      "        );",
+      "        camera.lookAt(camera.position.clone().addScaledVector(viewDir, 30));",
+      "      } else {",
+      "        camera.lookAt(game.player.position.x, game.player.position.y + 0.5, game.player.position.z);",
+      "      }",
+      "",
+      "      const targetFov = firstPerson ? 72 : 55;",
+      "      if (Math.abs(camera.fov - targetFov) > 0.08) {",
+      "        camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 0.14);",
+      "        camera.updateProjectionMatrix();",
+      "      }",
+    ].join("\n");
+
+    if (!text.includes(oldCamera)) throw new Error("Orbit camera block not found");
+    text = text.replace(oldCamera, newCamera);
+  }
+
+  if (!text.includes('removeEventListener("wheel", onWheelZoom)')) {
+    const cleanup = 'renderer.domElement.removeEventListener("pointerdown", onPointerDown);';
+    if (!text.includes(cleanup)) throw new Error("Camera cleanup anchor not found");
+    text = text.replace(cleanup, cleanup + '\n      renderer.domElement.removeEventListener("wheel", onWheelZoom);');
+  }
+
   return text;
 }
 
@@ -288,6 +369,8 @@ async function main() {
         cur.includes("buildHub") &&
         cur.includes("__INTERACTIVE_HUBS_V1__") &&
         cur.includes("__MP_POINTER_LOCK__") &&
+        cur.includes("__MOUSE_WHEEL_ZOOM_V1__") &&
+        cur.includes("__FIRST_PERSON_CAMERA_V1__") &&
         cur.includes("movementX") &&
         cur.includes("Fixed city posters are permanent") &&
         cur.includes("vfx.addAttackSprite") &&
