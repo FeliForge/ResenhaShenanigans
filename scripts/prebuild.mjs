@@ -54,7 +54,6 @@ function patchSpawn(text) {
 }
 
 function patchHub(text) {
-  // Add the kiosk meshes and wire their proximity prompts + E-key actions.
   if (!text.includes('import { buildHub } from "@/lib/game/buildHub";')) {
     text = text.replace(
       'import { buildShop } from "@/lib/game/buildShop";',
@@ -106,13 +105,11 @@ function patchHub(text) {
 }
 
 function patchCameraControls(text) {
-  // Always widen pitch
   text = text.replace(
     /camState\.pitch = THREE\.MathUtils\.clamp\(camState\.pitch \+ dy \* 0\.004,\s*[^,]+,\s*[^)]+\)/g,
     "camState.pitch = THREE.MathUtils.clamp(camState.pitch + dy * 0.004, -0.15, 1.45)"
   );
   if (text.includes("__MP_POINTER_LOCK__")) return text;
-
   const neu = `
     // __MP_POINTER_LOCK__
     const onPointerDown = (e) => {
@@ -141,16 +138,9 @@ function patchCameraControls(text) {
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);`;
-
   const reHandlers = /const onPointerDown = \(e\) => \{[\s\S]*?window\.addEventListener\("pointerup", onPointerUp\);/;
-  if (reHandlers.test(text)) {
-    text = text.replace(reHandlers, neu.trim());
-  } else {
-    text = text.replace(
-      /(const camState = \{[^}]+\};)/,
-      "$1\n" + neu
-    );
-  }
+  if (reHandlers.test(text)) text = text.replace(reHandlers, neu.trim());
+  else text = text.replace(/(const camState = \{[^}]+\};)/, "$1\n" + neu);
   return text;
 }
 
@@ -158,77 +148,51 @@ function patchAttackSprites(text) {
   if (text.includes("vfx.addAttackSprite")) return text;
   const soft = `skills.cast({ ...move, damage: dmg }, { config: cfg, origin, dir, color: character.colors.accent });`;
   if (text.includes(soft)) {
-    text = text.replace(
-      soft,
-      soft + `\n\n      try { vfx.addAttackSprite(origin, dir, { ...move, category }, character.colors.accent); } catch {}`
-    );
-  } else {
-    console.warn("[prebuild] attack sprite patch pattern not found");
+    text = text.replace(soft, soft + `\n\n      try { vfx.addAttackSprite(origin, dir, { ...move, category }, character.colors.accent); } catch {}`);
   }
   return text;
 }
 
 function patchAttackPose(text) {
   if (text.includes("__ATTACK_POSE_V1__")) return text;
-
-  // Import attack texture helper
   if (!text.includes("makeCharacterAttackTexture")) {
     text = text.replace(
       'import { makeCharacterTexture, makeBubbleTexture, makeShadowTexture, makeCityGroundTexture } from "@/lib/gameTexture";',
       'import { makeCharacterTexture, makeCharacterAttackTexture, makeBubbleTexture, makeShadowTexture, makeCityGroundTexture } from "@/lib/gameTexture";'
     );
   }
-
-  // Create attack texture after idle playerTex
   if (!text.includes("playerAttackTex")) {
     text = text.replace(
       "const playerMat = new THREE.MeshBasicMaterial({ map: playerTex, transparent: true, side: THREE.DoubleSide, alphaTest: 0.1 });",
-      `// __ATTACK_POSE_V1__
-    let playerAttackTex = null;
-    try {
-      if (!character.customImage) playerAttackTex = makeCharacterAttackTexture(character);
-    } catch {}
-    const playerMat = new THREE.MeshBasicMaterial({ map: playerTex, transparent: true, side: THREE.DoubleSide, alphaTest: 0.1 });`
+      `// __ATTACK_POSE_V1__\n    let playerAttackTex = null;\n    try { if (!character.customImage) playerAttackTex = makeCharacterAttackTexture(character); } catch {}\n    const playerMat = new THREE.MeshBasicMaterial({ map: playerTex, transparent: true, side: THREE.DoubleSide, alphaTest: 0.1 });`
     );
   }
-
-  // On doMove: swap to attack pose briefly
   if (text.includes("game.lurch = 1;") && !text.includes("attackPoseUntil")) {
     text = text.replace(
       "game.lurch = 1;\n      game.castMove = move;",
-      `game.lurch = 1;
-      game.castMove = move;
-      game.attackPoseUntil = now + (category === "ultimate" ? 420 : category === "m1" ? 180 : 280);
-      if (playerAttackTex && playerMat.map !== playerAttackTex) {
-        playerMat.map = playerAttackTex;
-        playerMat.needsUpdate = true;
-      }`
+      `game.lurch = 1;\n      game.castMove = move;\n      game.attackPoseUntil = now + (category === "ultimate" ? 420 : category === "m1" ? 180 : 280);\n      if (playerAttackTex && playerMat.map !== playerAttackTex) { playerMat.map = playerAttackTex; playerMat.needsUpdate = true; }`
     );
   }
-
-  // Revert pose in the update loop near lurch decay
   if (text.includes("game.lurch = Math.max(0, game.lurch - dt * 5);") && !text.includes("playerMat.map = playerTex")) {
     text = text.replace(
       "game.lurch = Math.max(0, game.lurch - dt * 5);",
-      `game.lurch = Math.max(0, game.lurch - dt * 5);
-      if (game.attackPoseUntil && performance.now() > game.attackPoseUntil) {
-        game.attackPoseUntil = 0;
-        if (playerMat.map !== playerTex) {
-          playerMat.map = playerTex;
-          playerMat.needsUpdate = true;
-        }
-      }`
+      `game.lurch = Math.max(0, game.lurch - dt * 5);\n      if (game.attackPoseUntil && performance.now() > game.attackPoseUntil) {\n        game.attackPoseUntil = 0;\n        if (playerMat.map !== playerTex) { playerMat.map = playerTex; playerMat.needsUpdate = true; }\n      }`
     );
   }
-
-  // Dispose attack tex
   if (text.includes("playerTex.dispose();") && !text.includes("playerAttackTex?.dispose")) {
+    text = text.replace("playerTex.dispose();", "playerTex.dispose(); playerAttackTex?.dispose?.();");
+  }
+  return text;
+}
+
+function patchEmoteKey(text) {
+  if (text.includes("__EMOTE_KEY_F__")) return text;
+  if (text.includes('else if (act && ["m1", "special1", "special2", "special3", "ultimate"].includes(act)) doMove(act);')) {
     text = text.replace(
-      "playerTex.dispose();",
-      "playerTex.dispose(); playerAttackTex?.dispose?.();"
+      'else if (act && ["m1", "special1", "special2", "special3", "ultimate"].includes(act)) doMove(act);',
+      'else if (act && ["m1", "special1", "special2", "special3", "ultimate"].includes(act)) doMove(act);\n      else if (act === "emote") { try { doEmote(); } catch {} } // __EMOTE_KEY_F__'
     );
   }
-
   return text;
 }
 
@@ -257,83 +221,23 @@ function patchCombatIntegrity(text) {
   text = text.replace(/\n    refreshSkillTargets\(\);\n/, "\n");
   if (text.includes("__MP_COMBAT_INTEGRITY_V2__")) return text;
   if (text.includes("if (attackerSeat) game.lastAttacker = attackerSeat;")) {
-    text = text.replace(
-      "if (attackerSeat) game.lastAttacker = attackerSeat;",
-      "if (attackerSeat) { game.lastAttacker = attackerSeat; game.lastAttackerAt = now; }"
-    );
+    text = text.replace("if (attackerSeat) game.lastAttacker = attackerSeat;", "if (attackerSeat) { game.lastAttacker = attackerSeat; game.lastAttackerAt = now; }");
   }
   if (text.includes("killer: game.lastAttacker || null,")) {
-    text = text.replace(
-      "killer: game.lastAttacker || null,",
-      "killer: (game.lastAttackerAt && performance.now() - game.lastAttackerAt < 4000) ? (game.lastAttacker || null) : null,"
-    );
-  }
-  if (text.includes("applyDamage(msg.damage || (ult ? 320 : 60), msg.from);") && !text.includes("__MP_COMBAT_INTEGRITY_V2__")) {
-    text = text.replace(
-      "if (p.distanceTo(game.player.position) < (ult ? 4 : 2.3)) {\n            if (msg.slow) skills.addBuff({ stat: \"speed\", mult: Math.max(0.4, 1 - msg.slow), duration: 1200 });\n            if (msg.stun) game.stunUntil = performance.now() + msg.stun;\n            applyDamage(msg.damage || (ult ? 320 : 60), msg.from);\n          }",
-      `// __MP_COMBAT_INTEGRITY_V2__
-          const hitR = ult ? 5.5 : (msg.category === "special3" || msg.category === "special2" ? 3.6 : 2.8);
-          if (p.distanceTo(game.player.position) < hitR) {
-            if (msg.slow) skills.addBuff({ stat: "speed", mult: Math.max(0.4, 1 - msg.slow), duration: 1200 });
-            if (msg.stun) game.stunUntil = performance.now() + Math.min(msg.stun, 2500);
-            const cap = ult ? 380 : (msg.category === "special3" ? 220 : msg.category === "special2" ? 160 : 110);
-            const raw = Number(msg.damage);
-            const dmgIn = Number.isFinite(raw) ? Math.min(Math.max(0, raw), cap) : (ult ? 200 : 55);
-            applyDamage(dmgIn, msg.from);
-          }`
-    );
-  }
-  if (text.includes("skills.setTargets(npcTargets);") && !text.includes("function refreshSkillTargets")) {
-    text = text.replace(
-      "skills.setTargets(npcTargets);",
-      `skills.setTargets(npcTargets);
-    function refreshSkillTargets() {
-      let map = null;
-      try { map = remoteSprites; } catch { return; }
-      if (!map) return;
-      const remoteT = [];
-      for (const [seat, r] of map) {
-        if (!r || r.deadAt) continue;
-        remoteT.push({
-          id: "remote-" + seat,
-          seat,
-          pos: r.pos,
-          radius: 1.15,
-          get alive() { return !r.deadAt; },
-          hurt(dmg) {
-            if (r.deadAt) return;
-            try { vfx.addImpact(r.pos.clone().setY(1.2), tmpColor.set(character.colors.accent), 0.9); } catch {}
-            if (mp) {
-              mp.sendEvent({
-                kind: "hit",
-                x: r.pos.x, y: 1.6, z: r.pos.z,
-                color: character.colors.accent,
-                damage: Math.round(dmg),
-                slow: 0, stun: 0,
-                category: game.castMove?.category || "m1",
-                dirX: game.facing?.x || 0, dirZ: game.facing?.z || 1,
-              });
-            }
-          },
-        });
-      }
-      skills.setTargets([...npcTargets, ...remoteT]);
-    }`
-    );
-  }
-  if (text.includes("skills.update(dt);") && text.includes("function refreshSkillTargets") && !text.includes("try { refreshSkillTargets(); } catch {}")) {
-    text = text.replace("skills.update(dt);", "try { refreshSkillTargets(); } catch {}\n      skills.update(dt);");
+    text = text.replace("killer: game.lastAttacker || null,", "killer: (game.lastAttackerAt && performance.now() - game.lastAttackerAt < 4000) ? (game.lastAttacker || null) : null,");
   }
   return text;
 }
 
 function patchAll(text) {
-  return patchAttackPose(
-    patchCombatIntegrity(
-      patchRichMp(
-        patchShibuyaNight(
-          patchAttackSprites(
-            patchCameraControls(patchHub(patchSpawn(patchCompass(patchBillboards(text)))))
+  return patchEmoteKey(
+    patchAttackPose(
+      patchCombatIntegrity(
+        patchRichMp(
+          patchShibuyaNight(
+            patchAttackSprites(
+              patchCameraControls(patchHub(patchSpawn(patchCompass(patchBillboards(text)))))
+            )
           )
         )
       )
@@ -389,12 +293,12 @@ async function main() {
         cur.includes("vfx.addAttackSprite") &&
         cur.includes("0x1a1028") &&
         cur.includes("buildNetLoadout") &&
-        cur.includes('kind === "chat"') &&
         cur.includes("__MP_COMBAT_INTEGRITY_V2__") &&
         cur.includes("__ATTACK_POSE_V1__") &&
+        cur.includes("__EMOTE_KEY_F__") &&
         !cur.includes("refreshSkillTargets();")
       ) {
-        console.log("[prebuild] GameCanvas already complete+patched v4", cur.length);
+        console.log("[prebuild] GameCanvas already complete+patched v5", cur.length);
         return;
       }
       if (isGood(cur)) {
