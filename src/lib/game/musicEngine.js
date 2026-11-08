@@ -74,7 +74,48 @@ class MusicEngine {
     this.playlists = loadPlaylists();
     // descartar pistas del queue que ya no existen
     const valid = new Set(this.library.map((t) => t.id));
+    const before = this.queue.length;
     this.queue = this.queue.filter((id) => valid.has(id));
+    if (this.index >= this.queue.length) this.index = this.queue.length ? this.queue.length - 1 : -1;
+    // si la pista actual ya no existe, parar o saltar
+    if (this.state.trackId && !valid.has(this.state.trackId)) {
+      if (this.queue.length) {
+        const i = Math.max(0, Math.min(this.index, this.queue.length - 1));
+        this.loadIndex(i, this.state.playing);
+      } else {
+        this.stop();
+      }
+    } else if (before && !this.queue.length) {
+      this.stop();
+    }
+  }
+
+  /** Parar por completo y liberar el blob actual (p.ej. al borrar la canción). */
+  stop() {
+    clearInterval(this.fadeTimer);
+    this.loadToken += 1;
+    const a = this.audio;
+    if (a) {
+      try { a.pause(); } catch {}
+      try { a.removeAttribute("src"); a.load(); } catch {}
+    }
+    if (this.currentUrl) {
+      try { URL.revokeObjectURL(this.currentUrl); } catch {}
+      this.currentUrl = "";
+    }
+    this.index = -1;
+    this.failStreak = 0;
+    this.patch({ playing: false, trackId: "", title: "", time: 0, duration: 0, error: "" });
+  }
+
+  /** Llamar tras borrar pistas de la biblioteca. */
+  onTracksRemoved(ids) {
+    const gone = new Set(Array.isArray(ids) ? ids : [ids]);
+    this.refreshData();
+    if (this.state.trackId && gone.has(this.state.trackId)) {
+      if (this.queue.length) this.loadIndex(Math.max(0, this.index), false);
+      else this.stop();
+    }
   }
 
   trackTitle(id) {
@@ -146,7 +187,8 @@ class MusicEngine {
     this.queue = this.buildQueue(playlistId);
     this.failStreak = 0;
     if (!this.queue.length) {
-      this.patch({ playing: false, trackId: "", title: "", error: "No hay canciones en esta playlist" });
+      this.stop();
+      this.patch({ error: "No hay canciones en esta playlist" });
       return;
     }
     let i = startTrackId ? this.queue.indexOf(startTrackId) : 0;
@@ -158,7 +200,10 @@ class MusicEngine {
 
   async loadIndex(i, autoplay = true) {
     const a = this.ensureAudio();
-    if (!a || !this.queue.length) return;
+    if (!a || !this.queue.length) {
+      this.stop();
+      return;
+    }
     const n = this.queue.length;
     this.index = ((i % n) + n) % n;
     const id = this.queue[this.index];
@@ -267,7 +312,10 @@ class MusicEngine {
     const name = this.trackTitle(this.state.trackId) || "pista";
     this.patch({ playing: false, error: msg || `No se pudo reproducir "${name}"` });
     // Si fallan todas, paramos; si no, saltamos a la siguiente.
-    if (this.failStreak >= Math.max(1, this.queue.length)) return;
+    if (this.failStreak >= Math.max(1, this.queue.length)) {
+      this.stop();
+      return;
+    }
     setTimeout(() => this.loadIndex(this.index + 1, true), 400);
   }
 
