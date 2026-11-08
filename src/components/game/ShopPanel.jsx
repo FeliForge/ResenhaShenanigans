@@ -4,17 +4,15 @@ import { ArrowUp, Check, Coins, Dumbbell, Hand, Loader2, Music, RotateCw, Smile,
 import { DASH_EFFECTS, EMOTES } from "@/data/shop";
 import { useI18n } from "@/lib/i18n";
 import { inputState } from "@/lib/game/input";
-import MovesetCloudPanel from "@/components/game/MovesetCloudPanel";
 
 const ANIM_ICONS = { dance: Music, wave: Hand, spin: RotateCw, flex: Dumbbell, hop: ArrowUp };
 
-export default function ShopPanel({ coins, owned, dash, emote, loading, busyId, onBuy, onEquip, onClose, moves = {}, onImport }) {
+export default function ShopPanel({ coins, owned, dash, emote, loading, busyId, onBuy, onEquip, onClose }) {
   const { t } = useI18n();
   const [tab, setTab] = useState("dash");
   const tabs = [
     { id: "dash", label: t("shop.tab.dash"), icon: Zap },
     { id: "emote", label: t("shop.tab.emotes"), icon: Smile },
-    { id: "movesets", label: "Movesets", icon: Dumbbell },
   ];
   const items = tab === "dash" ? DASH_EFFECTS : EMOTES;
   const equipped = tab === "dash" ? dash : emote;
