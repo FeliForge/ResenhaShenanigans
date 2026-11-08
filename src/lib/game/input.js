@@ -13,21 +13,22 @@ export const ACTIONS = [
   { id: "special2", label: "Especial 2" },
   { id: "special3", label: "Especial 3" },
   { id: "ultimate", label: "Ultimate" },
+  { id: "emote", label: "Emote" },
   { id: "quickchat", label: "Quick Chat" },
 ];
 
-// W y S invertidos por defecto. Dash en Shift. M1 = clic izquierdo.
+// W y S invertidos por defecto. Dash en Shift. M1 = clic izquierdo. Emote = F.
 export const DEFAULT_BINDS = {
   up: "KeyS", down: "KeyW", left: "KeyA", right: "KeyD",
   jump: "Space", dash: "ShiftLeft",
   m1: "Mouse0", special1: "Digit2", special2: "Digit3",
-  special3: "Digit4", ultimate: "Digit5", quickchat: "KeyT",
+  special3: "Digit4", ultimate: "Digit5", emote: "KeyF", quickchat: "KeyT",
 };
 
 // Cuando un panel (ajustes/tienda) está abierto, el juego ignora el input.
 export const inputState = { blocked: false };
 
-const KEY = "cb_bindsv3";
+const KEY = "cb_bindsv4";
 
 export function loadBinds() {
   try {
