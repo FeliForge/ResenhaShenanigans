@@ -66,6 +66,13 @@ export default function CharacterSelect({ onConfirm, onBack }) {
     { id: "balanced", label: "Balanced" },
   ];
 
+  const passiveText =
+    !passive
+      ? ""
+      : typeof passive === "string"
+        ? passive
+        : t(`passive.${passive.type}`) || String(passive.type || "");
+
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[#06080f] text-white">
       <div
@@ -139,9 +146,9 @@ export default function CharacterSelect({ onConfirm, onBack }) {
                 <button
                   key={c.id}
                   onClick={() => {
-                      setSelectedId(c.id);
-                      if (isTouch) onConfirm(c);
-                    }}
+                    setSelectedId(c.id);
+                    if (isTouch) onConfirm(c);
+                  }}
                   className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition ${
                     active
                       ? "border-white/40 bg-white/10 shadow-lg shadow-black/40 ring-1 ring-white/20"
@@ -214,11 +221,11 @@ export default function CharacterSelect({ onConfirm, onBack }) {
               <Stat icon={<Mountain size={14} className="text-stone-300" />} label={t("select.stats.weight")} value={selected.stats.weight} />
             </div>
 
-            {passive && (
+            {passiveText && (
               <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3">
                 <p className="text-sm text-white/80">
                   <span className="font-bold uppercase tracking-wider text-emerald-300">{t("select.passive")}: </span>
-                  {passive}
+                  {passiveText}
                 </p>
               </div>
             )}
@@ -226,20 +233,23 @@ export default function CharacterSelect({ onConfirm, onBack }) {
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-white/40">{t("select.moves")}</h3>
               <div className="mt-2 space-y-2">
-                {Object.entries(selected.moves).map(([category, base]) => {
-                  const m = localMove(selected.id, category, base);
+                {Object.entries(selected.moves || {}).map(([category, base]) => {
+                  const m = localMove(selected.id, category, base) || base || {};
+                  const name = typeof m.name === "string" ? m.name : (base?.name || category);
+                  const desc = typeof m.desc === "string" ? m.desc : (base?.desc || "");
+                  const damage = typeof m.damage === "number" ? m.damage : (base?.damage ?? "?");
                   return (
                     <div key={category} className="rounded-lg border border-white/10 bg-white/[0.03] p-2.5">
                       <div className="flex items-center gap-2">
                         <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-black text-white/70">
                           {CAT_SHORT[category] || category}
                         </span>
-                        <span className="text-sm font-semibold">{m.name || base.name}</span>
+                        <span className="text-sm font-semibold">{name}</span>
                         <span className="ml-auto text-[11px] text-white/40">
-                          {t("select.dmg", { n: m.damage })}
+                          {t("select.dmg", { n: damage })}
                         </span>
                       </div>
-                      {m.desc && <p className="mt-1 text-xs leading-relaxed text-white/45">{m.desc}</p>}
+                      {desc ? <p className="mt-1 text-xs leading-relaxed text-white/45">{desc}</p> : null}
                     </div>
                   );
                 })}
