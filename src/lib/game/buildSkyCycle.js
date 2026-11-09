@@ -2,7 +2,7 @@
 import * as THREE from "three";
 
 /**
- * Huge moving sun/moon billboards using /sky/sun.jpg and /sky/moon.jpg.
+ * Moving sun/moon billboards using /sky/sun.jpg and /sky/moon.jpg.
  * Falls back to soft discs until textures load.
  */
 export function createSkyCycle(group) {
@@ -61,7 +61,7 @@ export function createSkyCycle(group) {
     transparent: true,
     depthWrite: false,
     depthTest: false,
-    opacity: 0.3,
+    opacity: 0.75,
     sizeAttenuation: true,
   });
 
@@ -87,8 +87,8 @@ export function createSkyCycle(group) {
   applyTex(sunMat, "/sky/sun.jpg");
   applyTex(moonMat, "/sky/moon.jpg");
 
-  const SUN_SIZE = 400;
-  const MOON_SIZE = 320;
+  const SUN_SIZE = 72;
+  const MOON_SIZE = 58;
   const sun = new THREE.Sprite(sunMat);
   sun.scale.set(SUN_SIZE, SUN_SIZE, 1);
   sun.renderOrder = 5;
@@ -125,14 +125,15 @@ export function createSkyCycle(group) {
     const moonH = THREE.MathUtils.clamp((my - 10) / 120, 0, 1);
     const n = Number.isFinite(night) ? THREE.MathUtils.clamp(night, 0, 1) : 1 - sunH;
 
-    sunMat.opacity = THREE.MathUtils.clamp(Math.max(0.35, sunH) * (1.1 - n * 0.7), 0.25, 1);
-    moonMat.opacity = THREE.MathUtils.clamp(Math.max(0.2, moonH) * (0.2 + n * 0.95), 0.15, 1);
+    // Lower transparency (higher opacity)
+    sunMat.opacity = THREE.MathUtils.clamp(0.55 + sunH * 0.45 - n * 0.15, 0.7, 1);
+    moonMat.opacity = THREE.MathUtils.clamp(0.5 + moonH * 0.5 - (1 - n) * 0.2, 0.65, 1);
 
     sun.scale.set(SUN_SIZE, SUN_SIZE, 1);
     moon.scale.set(MOON_SIZE, MOON_SIZE, 1);
   }
 
-  update(45000, 0.05); // start near daytime so sun is up
+  update(45000, 0.05);
 
   return { sun, moon, sunMat, moonMat, update };
 }
