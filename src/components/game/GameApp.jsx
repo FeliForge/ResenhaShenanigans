@@ -296,11 +296,22 @@ export default function GameApp() {
         <KillFeed entries={feed} />
         <DefeatOverlay open={!!defeat} info={defeat} onRespawn={handleRespawn} />
         {(nearShop || nearHub) && !showShop && !showSettings && !showBoombox && !showCharacterHub && (
-          <div className="pointer-events-none absolute bottom-28 left-1/2 z-30 -translate-x-1/2 rounded-lg border border-white/20 bg-black/70 px-4 py-2 text-center text-sm text-white shadow-lg backdrop-blur">
-            {nearHub === "settings" && <span>Presiona <b>E</b> — Configuración</span>}
-            {nearHub === "music" && <span>Presiona <b>E</b> — Música</span>}
-            {nearHub === "character" && <span>Presiona <b>E</b> — Personaje</span>}
-            {nearShop && !nearHub && <span>Presiona <b>E</b> — Tienda</span>}
+          <div className="pointer-events-none absolute bottom-[11.5rem] left-1/2 z-30 w-[min(92vw,22rem)] -translate-x-1/2 rounded-xl border border-white/20 bg-black/75 px-3 py-2 text-center text-xs text-white shadow-lg backdrop-blur sm:bottom-28 sm:text-sm">
+            {isTouch ? (
+              <>
+                {nearHub === "settings" && <span>Acércate al hub — Configuración</span>}
+                {nearHub === "music" && <span>Acércate al hub — Música</span>}
+                {nearHub === "character" && <span>Acércate al hub — Personaje</span>}
+                {nearShop && !nearHub && <span>Acércate a la tienda</span>}
+              </>
+            ) : (
+              <>
+                {nearHub === "settings" && <span>Presiona <b>E</b> — Configuración</span>}
+                {nearHub === "music" && <span>Presiona <b>E</b> — Música</span>}
+                {nearHub === "character" && <span>Presiona <b>E</b> — Personaje</span>}
+                {nearShop && !nearHub && <span>Presiona <b>E</b> — Tienda</span>}
+              </>
+            )}
           </div>
         )}
         {showShop && (
