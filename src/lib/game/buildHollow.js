@@ -132,17 +132,17 @@ function ensureShared() {
   SHARED.geo.winFrame = new THREE.BoxGeometry(2.84, 2.44, 0.08);
   SHARED.geo.col = new THREE.BoxGeometry(0.65, 35.6, 0.65);
   SHARED.geo.colCap = new THREE.BoxGeometry(0.9, 0.2, 0.9);
-  SHARED.geo.table = new THREE.BoxGeometry(1.2, 0.7, 0.8);
+  SHARED.geo.table = new THREE.BoxGeometry(2.0, 1.0, 1.3);
   SHARED.geo.lampStand = new THREE.CylinderGeometry(0.08, 0.12, 1.1, 5);
   SHARED.geo.lampShade = new THREE.ConeGeometry(0.35, 0.4, 5);
   SHARED.geo.pot = new THREE.CylinderGeometry(0.25, 0.3, 0.4, 5);
   SHARED.geo.leaf = new THREE.ConeGeometry(0.5, 1.2, 5);
   SHARED.geo.fixture = new THREE.BoxGeometry(1.4, 0.12, 1.4);
   SHARED.geo.propPlane = {
-    sofa: new THREE.PlaneGeometry(4.2, 2.4),
-    cama: new THREE.PlaneGeometry(3.6, 2.0),
-    bebedor: new THREE.PlaneGeometry(1.6, 2.6),
-    poster: new THREE.PlaneGeometry(2.4, 3.0),
+    sofa: new THREE.PlaneGeometry(7.2, 4.2),
+    cama: new THREE.PlaneGeometry(6.2, 3.5),
+    bebedor: new THREE.PlaneGeometry(2.8, 4.5),
+    poster: new THREE.PlaneGeometry(4.0, 5.0),
   };
 
   SHARED.ready = true;
@@ -169,16 +169,16 @@ function decorateFloor(g, floorIndex, w, d, WALL_T, FLOOR_H) {
   const halfD = d / 2 - inset;
 
   const rug = new THREE.Mesh(
-    new THREE.BoxGeometry(Math.min(8, halfW * 1.2), 0.06, Math.min(5, halfD)),
+    new THREE.BoxGeometry(Math.min(12, halfW * 1.5), 0.08, Math.min(8, halfD * 1.2)),
     S.rugMats[floorIndex % 3]
   );
   rug.position.set(halfW * 0.15, baseY + 0.32, halfD * 0.05);
   g.add(rug);
 
-  addProp(g, "sofa", halfW * 0.25, baseY + 1.35, -halfD + 0.4, 0);
-  addProp(g, "cama", -halfW * 0.55, baseY + 1.15, halfD * 0.35, Math.PI / 2);
-  addProp(g, "bebedor", halfW * 0.7, baseY + 1.4, halfD * 0.55, -Math.PI / 2);
-  addProp(g, "poster", -w / 2 + WALL_T + 0.12, baseY + 3.2, -halfD * 0.2, Math.PI / 2);
+  addProp(g, "sofa", halfW * 0.2, baseY + 2.2, -halfD + 0.5, 0);
+  addProp(g, "cama", -halfW * 0.5, baseY + 1.9, halfD * 0.3, Math.PI / 2);
+  addProp(g, "bebedor", halfW * 0.65, baseY + 2.4, halfD * 0.5, -Math.PI / 2);
+  addProp(g, "poster", -w / 2 + WALL_T + 0.12, baseY + 4.0, -halfD * 0.2, Math.PI / 2);
 
   const table = new THREE.Mesh(S.geo.table, S.tableMat);
   table.position.set(halfW * 0.55, baseY + 0.65, -halfD + 0.9);
@@ -379,7 +379,7 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
   {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(d - WALL_T * 2, H - 0.4), interiorMat);
     m.position.set(-w / 2 + insetW, H / 2, 0);
-    m.rotation.y = Math.PI / 2;
+    m.rotation.y = -Math.PI / 2;
     g.add(m);
   }
   {
