@@ -1,60 +1,146 @@
 // @ts-nocheck
 import * as THREE from "three";
 
-/** Create sun/moon sprites. Returns { sun, moon, sunMat, moonMat, update(now, night) }. */
+/**
+ * Huge moving sun/moon billboards using /sky/sun.jpg and /sky/moon.jpg.
+ * Falls back to soft discs until textures load.
+ */
 export function createSkyCycle(group) {
   const loader = new THREE.TextureLoader();
+
+  function discFallback(kind) {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 512;
+    const ctx = c.getContext("2d");
+    ctx.clearRect(0, 0, 512, 512);
+    if (kind === "sun") {
+      const g = ctx.createRadialGradient(256, 256, 20, 256, 256, 250);
+      g.addColorStop(0, "rgba(255,255,240,1)");
+      g.addColorStop(0.25, "rgba(255,220,80,0.95)");
+      g.addColorStop(0.55, "rgba(255,140,40,0.55)");
+      g.addColorStop(1, "rgba(255,100,20,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(256, 256, 250, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      const g = ctx.createRadialGradient(256, 256, 16, 256, 256, 240);
+      g.addColorStop(0, "rgba(245,248,255,1)");
+      g.addColorStop(0.4, "rgba(180,200,240,0.9)");
+      g.addColorStop(0.75, "rgba(100,120,180,0.35)");
+      g.addColorStop(1, "rgba(40,50,90,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(256, 256, 240, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(90,100,130,0.35)";
+      [[200, 190, 28], [300, 250, 18], [240, 300, 12]].forEach(([x, y, r]) => {
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
   const sunMat = new THREE.SpriteMaterial({
-    color: 0xfff0c0, transparent: true, depthWrite: false, opacity: 1,
+    map: discFallback("sun"),
+    color: 0xffffff,
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+    opacity: 1,
+    sizeAttenuation: true,
   });
   const moonMat = new THREE.SpriteMaterial({
-    color: 0xc0d0ff, transparent: true, depthWrite: false, opacity: 0,
+    map: discFallback("moon"),
+    color: 0xffffff,
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+    opacity: 0,
+    sizeAttenuation: true,
   });
 
-  {
-    const sc = document.createElement("canvas"); sc.width = 128; sc.height = 128;
-    const sctx = sc.getContext("2d");
-    const grd = sctx.createRadialGradient(64, 64, 8, 64, 64, 60);
-    grd.addColorStop(0, "#fff8e0"); grd.addColorStop(0.4, "#ffd060"); grd.addColorStop(1, "rgba(255,160,40,0)");
-    sctx.fillStyle = grd; sctx.beginPath(); sctx.arc(64, 64, 60, 0, Math.PI * 2); sctx.fill();
-    sunMat.map = new THREE.CanvasTexture(sc); sunMat.map.colorSpace = THREE.SRGBColorSpace;
-
-    const mc = document.createElement("canvas"); mc.width = 128; mc.height = 128;
-    const mctx = mc.getContext("2d");
-    const mgrd = mctx.createRadialGradient(64, 64, 6, 64, 64, 55);
-    mgrd.addColorStop(0, "#f0f4ff"); mgrd.addColorStop(0.5, "#b0c0e8"); mgrd.addColorStop(1, "rgba(80,100,160,0)");
-    mctx.fillStyle = mgrd; mctx.beginPath(); mctx.arc(64, 64, 55, 0, Math.PI * 2); mctx.fill();
-    mctx.fillStyle = "rgba(100,110,140,0.35)";
-    mctx.beginPath(); mctx.arc(48, 52, 8, 0, Math.PI * 2); mctx.fill();
-    mctx.beginPath(); mctx.arc(72, 70, 5, 0, Math.PI * 2); mctx.fill();
-    moonMat.map = new THREE.CanvasTexture(mc); moonMat.map.colorSpace = THREE.SRGBColorSpace;
+  function applyTex(mat, url) {
+    loader.load(
+      url,
+      (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 4;
+        tex.generateMipmaps = true;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        const old = mat.map;
+        mat.map = tex;
+        mat.color.set(0xffffff);
+        mat.needsUpdate = true;
+        if (old?.dispose) old.dispose();
+      },
+      undefined,
+      () => {
+        /* keep fallback disc */
+      }
+    );
   }
+  applyTex(sunMat, "/sky/sun.jpg");
+  applyTex(moonMat, "/sky/moon.jpg");
 
-  loader.load("/sky/sun.jpg", (tex) => {
-    tex.colorSpace = THREE.SRGBColorSpace; sunMat.map = tex; sunMat.needsUpdate = true;
-  }, undefined, () => {});
-  loader.load("/sky/moon.jpg", (tex) => {
-    tex.colorSpace = THREE.SRGBColorSpace; moonMat.map = tex; moonMat.needsUpdate = true;
-  }, undefined, () => {});
-
+  // Enormous, always-visible sky discs
+  const SUN_SIZE = 220;
+  const MOON_SIZE = 180;
   const sun = new THREE.Sprite(sunMat);
-  sun.scale.set(48, 48, 1);
+  sun.scale.set(SUN_SIZE, SUN_SIZE, 1);
+  sun.renderOrder = 5;
+  sun.frustumCulled = false;
+
   const moon = new THREE.Sprite(moonMat);
-  moon.scale.set(36, 36, 1);
+  moon.scale.set(MOON_SIZE, MOON_SIZE, 1);
+  moon.renderOrder = 5;
+  moon.frustumCulled = false;
+
   group.add(sun, moon);
 
+  // Slightly faster cycle so motion is obvious (~3 min full day)
+  const CYCLE_MS = 180000;
+
   function update(now, night) {
-    const cycle = ((now || 0) % 240000) / 240000;
-    const sunAngle = cycle * Math.PI * 2 - Math.PI * 0.15;
-    const skyR = 220;
-    const skyY = 40;
-    sun.position.set(Math.cos(sunAngle) * skyR, Math.sin(sunAngle) * skyR * 0.55 + skyY, Math.sin(sunAngle * 0.3) * 40);
+    const t = ((now || 0) % CYCLE_MS) / CYCLE_MS;
+    // Sun rises from east, arcs over, sets west
+    const sunAngle = t * Math.PI * 2 - Math.PI * 0.5;
+    const skyR = 320;
+    const arc = 0.72;
+    const baseY = 30;
+
+    const sx = Math.cos(sunAngle) * skyR;
+    const sy = Math.sin(sunAngle) * skyR * arc + baseY;
+    const sz = Math.sin(sunAngle * 0.35) * 80;
+    sun.position.set(sx, Math.max(sy, -40), sz);
+
     const moonAngle = sunAngle + Math.PI;
-    moon.position.set(Math.cos(moonAngle) * skyR, Math.sin(moonAngle) * skyR * 0.55 + skyY, Math.sin(moonAngle * 0.3) * 40);
-    const n = Number.isFinite(night) ? night : 0;
-    sunMat.opacity = THREE.MathUtils.clamp(1.15 - n * 1.4, 0, 1);
-    moonMat.opacity = THREE.MathUtils.clamp(n * 1.2 - 0.15, 0, 1);
+    const mx = Math.cos(moonAngle) * skyR;
+    const my = Math.sin(moonAngle) * skyR * arc + baseY;
+    const mz = Math.sin(moonAngle * 0.35) * 80;
+    moon.position.set(mx, Math.max(my, -40), mz);
+
+    // Fade by height + night factor so both can be seen at twilight
+    const sunH = THREE.MathUtils.clamp((sy - 10) / 120, 0, 1);
+    const moonH = THREE.MathUtils.clamp((my - 10) / 120, 0, 1);
+    const n = Number.isFinite(night) ? THREE.MathUtils.clamp(night, 0, 1) : 1 - sunH;
+
+    sunMat.opacity = THREE.MathUtils.clamp(sunH * (1.05 - n * 0.85), 0, 1);
+    moonMat.opacity = THREE.MathUtils.clamp(moonH * (0.15 + n * 0.95), 0, 1);
+
+    // Keep them huge even at distance
+    sun.scale.set(SUN_SIZE, SUN_SIZE, 1);
+    moon.scale.set(MOON_SIZE, MOON_SIZE, 1);
   }
+
+  // Kick first frame so they aren't stacked at origin
+  update(0, 0);
 
   return { sun, moon, sunMat, moonMat, update };
 }
