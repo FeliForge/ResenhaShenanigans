@@ -1,8 +1,8 @@
-Place these textures here (exact names):
+Place these textures here (exact names, lowercase):
 
-- Sofa.png
-- Bebedor.png
-- Poster.png
-- Cama.png
+- sofa.png
+- bebedor.png
+- poster.png
+- cama.png
 
 They are loaded by hollow building interiors at `/interiors/...`.
