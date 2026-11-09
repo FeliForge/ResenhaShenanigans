@@ -61,7 +61,7 @@ export function createSkyCycle(group) {
     transparent: true,
     depthWrite: false,
     depthTest: false,
-    opacity: 0,
+    opacity: 0.3,
     sizeAttenuation: true,
   });
 
@@ -81,17 +81,14 @@ export function createSkyCycle(group) {
         if (old?.dispose) old.dispose();
       },
       undefined,
-      () => {
-        /* keep fallback disc */
-      }
+      () => {}
     );
   }
   applyTex(sunMat, "/sky/sun.jpg");
   applyTex(moonMat, "/sky/moon.jpg");
 
-  // Enormous, always-visible sky discs
-  const SUN_SIZE = 220;
-  const MOON_SIZE = 180;
+  const SUN_SIZE = 400;
+  const MOON_SIZE = 320;
   const sun = new THREE.Sprite(sunMat);
   sun.scale.set(SUN_SIZE, SUN_SIZE, 1);
   sun.renderOrder = 5;
@@ -104,43 +101,38 @@ export function createSkyCycle(group) {
 
   group.add(sun, moon);
 
-  // Slightly faster cycle so motion is obvious (~3 min full day)
   const CYCLE_MS = 180000;
 
   function update(now, night) {
     const t = ((now || 0) % CYCLE_MS) / CYCLE_MS;
-    // Sun rises from east, arcs over, sets west
     const sunAngle = t * Math.PI * 2 - Math.PI * 0.5;
-    const skyR = 320;
-    const arc = 0.72;
-    const baseY = 30;
+    const skyR = 280;
+    const arc = 0.85;
+    const baseY = 50;
 
     const sx = Math.cos(sunAngle) * skyR;
     const sy = Math.sin(sunAngle) * skyR * arc + baseY;
     const sz = Math.sin(sunAngle * 0.35) * 80;
-    sun.position.set(sx, Math.max(sy, -40), sz);
+    sun.position.set(sx, Math.max(sy, 20), sz);
 
     const moonAngle = sunAngle + Math.PI;
     const mx = Math.cos(moonAngle) * skyR;
     const my = Math.sin(moonAngle) * skyR * arc + baseY;
     const mz = Math.sin(moonAngle * 0.35) * 80;
-    moon.position.set(mx, Math.max(my, -40), mz);
+    moon.position.set(mx, Math.max(my, 20), mz);
 
-    // Fade by height + night factor so both can be seen at twilight
     const sunH = THREE.MathUtils.clamp((sy - 10) / 120, 0, 1);
     const moonH = THREE.MathUtils.clamp((my - 10) / 120, 0, 1);
     const n = Number.isFinite(night) ? THREE.MathUtils.clamp(night, 0, 1) : 1 - sunH;
 
-    sunMat.opacity = THREE.MathUtils.clamp(sunH * (1.05 - n * 0.85), 0, 1);
-    moonMat.opacity = THREE.MathUtils.clamp(moonH * (0.15 + n * 0.95), 0, 1);
+    sunMat.opacity = THREE.MathUtils.clamp(Math.max(0.35, sunH) * (1.1 - n * 0.7), 0.25, 1);
+    moonMat.opacity = THREE.MathUtils.clamp(Math.max(0.2, moonH) * (0.2 + n * 0.95), 0.15, 1);
 
-    // Keep them huge even at distance
     sun.scale.set(SUN_SIZE, SUN_SIZE, 1);
     moon.scale.set(MOON_SIZE, MOON_SIZE, 1);
   }
 
-  // Kick first frame so they aren't stacked at origin
-  update(0, 0);
+  update(45000, 0.05); // start near daytime so sun is up
 
   return { sun, moon, sunMat, moonMat, update };
 }
