@@ -46,16 +46,24 @@ function districtAt(x, z) {
 
 function makeOcc() {
   const pts = [];
-  return {
-    add(x, z, r) { pts.push({ x, z, r }); },
-    free(x, z, r) {
-      for (const p of pts) {
-        const dx = p.x - x, dz = p.z - z;
-        if (dx * dx + dz * dz < (r + p.r) * (r + p.r) * 0.25) return false;
-      }
-      return true;
-    },
-  };
+  function free(x, z, r = 1) {
+    for (const p of pts) {
+      const dx = p.x - x, dz = p.z - z;
+      const min = (r || 1) + (p.r || 1);
+      if (dx * dx + dz * dz < min * min * 0.25) return false;
+    }
+    return true;
+  }
+  function add(x, z, r = 1) {
+    pts.push({ x, z, r: r || 1 });
+  }
+  /** @returns {boolean} true if placed */
+  function tryAdd(x, z, r = 1) {
+    if (!free(x, z, r)) return false;
+    add(x, z, r);
+    return true;
+  }
+  return { pts, free, add, tryAdd };
 }
 
 function makeTVTexture() {
@@ -109,7 +117,6 @@ export function buildCity(scene) {
   const tvTex = makeTVTexture();
   let hollowCount = 0;
 
-  // Central plaza hollow buildings nearby
   const hollowSpots = [
     { x: 28, z: 22, w: 22, d: 18 },
     { x: -26, z: 24, w: 20, d: 20 },
@@ -129,7 +136,6 @@ export function buildCity(scene) {
     }
   }
 
-  // Solid instanced city fill
   for (let attempt = 0; attempt < 900 && bi + biB < 500; attempt++) {
     const ang = Math.random() * Math.PI * 2;
     const rad = 50 + Math.random() * 220;
@@ -183,7 +189,6 @@ export function buildCity(scene) {
   facadeBands.count = fi; facadeBands.instanceMatrix.needsUpdate = true;
   facadeCorners.count = ci; facadeCorners.instanceMatrix.needsUpdate = true;
 
-  // Trees / grass
   const treeColliders = [];
   const grassMat = new THREE.MeshStandardMaterial({ color: 0x3a6a3a, flatShading: true });
   const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a3a20, flatShading: true });
@@ -210,7 +215,6 @@ export function buildCity(scene) {
     }
   }
 
-  // Extra neon / antenna decor on solid buildings
   for (let i = 0; i < Math.min(40, placed.length); i++) {
     const p = placed[Math.floor(Math.random() * placed.length)];
     if (Math.random() > 0.5) {
@@ -235,7 +239,6 @@ export function buildCity(scene) {
 
   try { buildCentralPlaza(group, occ, PLAZA_R); } catch (e) { console.warn(e); }
 
-  // Sidewalk clutter
   const sidewalkSlots = [];
   for (const p of placed) {
     for (const [ox, oz] of [[p.w / 2 + 2, 0], [-p.w / 2 - 2, 0], [0, p.d / 2 + 2], [0, -p.d / 2 - 2]]) {
