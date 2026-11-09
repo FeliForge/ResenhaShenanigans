@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ChevronLeft,
   Check,
@@ -39,11 +39,7 @@ export default function CharacterSelect({ onConfirm, onBack }) {
   const [selectedId, setSelectedId] = useState(CHARACTERS[0].id);
   const [showWorkshop, setShowWorkshop] = useState(false);
   const [filter, setFilter] = useState("all");
-  const [isTouch, setIsTouch] = useState(false);
-
-  useEffect(() => {
-    setIsTouch("ontouchstart" in window || navigator.maxTouchPoints > 0);
-  }, []);
+  // Double-click character name to start match (desktop + mobile double-tap)
 
   const selected = CHARACTERS.find((c) => c.id === selectedId) || CHARACTERS[0];
   const info = localChar(selected) || selected;
@@ -145,10 +141,7 @@ export default function CharacterSelect({ onConfirm, onBack }) {
               return (
                 <button
                   key={c.id}
-                  onClick={() => {
-                    setSelectedId(c.id);
-                    if (isTouch) onConfirm(c);
-                  }}
+                  onClick={() => setSelectedId(c.id)}
                   className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition ${
                     active
                       ? "border-white/40 bg-white/10 shadow-lg shadow-black/40 ring-1 ring-white/20"
@@ -172,7 +165,17 @@ export default function CharacterSelect({ onConfirm, onBack }) {
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 p-2">
-                    <span className="truncate text-xs font-bold">{localized.name || c.name}</span>
+                    <span
+                      className="truncate text-xs font-bold"
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedId(c.id);
+                        onConfirm(c);
+                      }}
+                      title="Doble clic para jugar"
+                    >
+                      {localized.name || c.name}
+                    </span>
                     <Star size={14} className="ml-auto shrink-0 text-amber-300 opacity-70 group-hover:opacity-100" />
                   </div>
                 </button>
@@ -208,7 +211,13 @@ export default function CharacterSelect({ onConfirm, onBack }) {
               <p className={`mb-1 inline-flex rounded border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${archStyle.badge}`}>
                 {archetype}
               </p>
-              <h2 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">{info.name || selected.name}</h2>
+              <h2
+                className="cursor-pointer font-heading text-2xl font-bold tracking-tight sm:text-3xl"
+                onDoubleClick={() => onConfirm(selected)}
+                title="Doble clic para iniciar partida"
+              >
+                {info.name || selected.name}
+              </h2>
               <p className="mt-1 text-sm text-white/55">{info.tagline || selected.tagline || ""}</p>
             </div>
           </div>
