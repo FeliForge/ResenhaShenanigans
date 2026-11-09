@@ -25,11 +25,36 @@ function pickHeight(dist) {
 }
 
 function isOnRoad(x, z) {
+  // Roads form a grid every 56 units; keep a wider clear band so footprints don't clip the street
   const near = (v) => {
     const m = ((v % 56) + 56) % 56;
-    return m < 7 || m > 49;
+    return m < 10 || m > 46;
   };
   return near(x) || near(z);
+}
+
+const PLAZA_PATH = 14;
+
+/** Shop stand in the plaza — buildings must stay clear of this zone. */
+const SHOP_ZONE = { x: 16, z: 20, r: 14 };
+
+/** True if building footprint (center + half-extents) touches a road or plaza cross. */
+function footprintOnRoad(x, z, w, d) {
+  const hw = (w || 10) * 0.5 + 1.5;
+  const hd = (d || 10) * 0.5 + 1.5;
+  const samples = [
+    [x, z],
+    [x + hw, z], [x - hw, z], [x, z + hd], [x, z - hd],
+    [x + hw * 0.7, z + hd * 0.7], [x - hw * 0.7, z + hd * 0.7],
+    [x + hw * 0.7, z - hd * 0.7], [x - hw * 0.7, z - hd * 0.7],
+  ];
+  for (const [sx, sz] of samples) {
+    if (isOnRoad(sx, sz)) return true;
+  }
+  // Keep main plaza axes open (cross paths through the plaza)
+  if (Math.abs(x) < 8 + hw && Math.abs(z) < PLAZA_PATH + hd) return true;
+  if (Math.abs(z) < 8 + hd && Math.abs(x) < PLAZA_PATH + hw) return true;
+  return false;
 }
 
 function districtAt(x, z) {
@@ -116,6 +141,10 @@ export function buildCity(scene) {
   const treeColliders = [];
   const occ = makeOcc(12);
   const PLAZA_R = 58;
+  // Keep shop + approach clear (matches buildShop POS)
+  occ.add(SHOP_ZONE.x, SHOP_ZONE.z, SHOP_ZONE.r);
+  // Keep plaza cross open
+  occ.add(0, 0, 22);
 
   const hollowMats = {
     emissiveMap: emissive,
@@ -135,6 +164,8 @@ export function buildCity(scene) {
   let hollowBuilt = 0;
   for (const slot of HOLLOW_SLOTS) {
     const px = slot.gx * 28, pz = slot.gz * 28;
+    if (footprintOnRoad(px, pz, slot.w, slot.d)) continue;
+    if (Math.hypot(px - SHOP_ZONE.x, pz - SHOP_ZONE.z) < SHOP_ZONE.r + Math.max(slot.w, slot.d) * 0.4) continue;
     if (!occ.tryAdd(px, pz, Math.max(slot.w, slot.d) * 0.55)) continue;
     buildHollowBuilding(group, px, pz, slot.w, slot.d, 0, hollowMats, treeColliders, platforms, tvTex, !!slot.withTv);
     hollowBuilt++;
@@ -152,12 +183,13 @@ export function buildCity(scene) {
     px = Math.round(px / 16) * 16;
     pz = Math.round(pz / 16) * 16;
     if (Math.hypot(px, pz) < PLAZA_R + 12) continue;
-    if (isOnRoad(px, pz)) continue;
 
     const dist = districtAt(px, pz);
     const w = 8 + Math.floor(Math.random() * 12);
     const d = 8 + Math.floor(Math.random() * 12);
     const h = pickHeight(dist);
+    if (footprintOnRoad(px, pz, w, d)) continue;
+    if (Math.hypot(px - SHOP_ZONE.x, pz - SHOP_ZONE.z) < SHOP_ZONE.r + Math.max(w, d) * 0.45) continue;
     if (!occ.tryAdd(px, pz, Math.max(w, d) * 0.55)) continue;
 
     if (Math.random() > 0.72) {
@@ -165,6 +197,7 @@ export function buildCity(scene) {
         const tx = px + (Math.random() - 0.5) * (w + 8);
         const tz = pz + (Math.random() - 0.5) * (d + 8);
         if (!occ.tryAdd(tx, tz, 3)) continue;
+        if (isOnRoad(tx, tz)) continue;
         const trunk = new THREE.Mesh(
           new THREE.CylinderGeometry(0.3, 0.4, 3.2, 5),
           new THREE.MeshStandardMaterial({ color: 0x5a3a20, flatShading: true })
@@ -248,6 +281,8 @@ export function buildCity(scene) {
       ? { x: p.x + (Math.random() > 0.5 ? 1 : -1) * (p.w / 2 + 2.2), z: p.z + (Math.random() - 0.5) * p.d * 0.6 }
       : { x: p.x + (Math.random() - 0.5) * p.w * 0.6, z: p.z + (Math.random() > 0.5 ? 1 : -1) * (p.d / 2 + 2.2) };
     if (Math.abs(side.x) < PLAZA_R && Math.abs(side.z) < PLAZA_R) continue;
+    if (isOnRoad(side.x, side.z)) continue;
+    if (Math.hypot(side.x - SHOP_ZONE.x, side.z - SHOP_ZONE.z) < SHOP_ZONE.r) continue;
     if (!occ.tryAdd(side.x, side.z, 3.5)) continue;
     sidewalkSlots.push(side);
   }
