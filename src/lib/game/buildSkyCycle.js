@@ -30,10 +30,10 @@ export function createSkyCycle(group) {
     moonMat.map = new THREE.CanvasTexture(mc); moonMat.map.colorSpace = THREE.SRGBColorSpace;
   }
 
-  loader.load("/sky/sun.png", (tex) => {
+  loader.load("/sky/sun.jpg", (tex) => {
     tex.colorSpace = THREE.SRGBColorSpace; sunMat.map = tex; sunMat.needsUpdate = true;
   }, undefined, () => {});
-  loader.load("/sky/moon.png", (tex) => {
+  loader.load("/sky/moon.jpg", (tex) => {
     tex.colorSpace = THREE.SRGBColorSpace; moonMat.map = tex; moonMat.needsUpdate = true;
   }, undefined, () => {});
 
