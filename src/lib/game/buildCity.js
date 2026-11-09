@@ -99,7 +99,7 @@ export function buildCity(scene) {
   const facadeTrimMat = new THREE.MeshStandardMaterial({ color: 0x1e2228, roughness: 0.7, metalness: 0.2, flatShading: true });
   const facadeEdgeMat = new THREE.MeshStandardMaterial({ color: 0x3a4048, roughness: 0.8, flatShading: true });
 
-  const COLS = 15, COUNT = 185;
+  const COLS = 11, COUNT = 90;
   const buildings = new THREE.InstancedMesh(boxGeo, buildingMat, COUNT);
   const buildingsB = new THREE.InstancedMesh(boxGeo, altMat, 90);
   const sidewalks = new THREE.InstancedMesh(boxGeo, sidewalkMat, COUNT + 40);
@@ -162,7 +162,6 @@ export function buildCity(scene) {
     const h = pickHeight(dist);
     if (!occ.tryAdd(px, pz, Math.max(w, d) * 0.55)) continue;
 
-    // trees near some buildings
     if (Math.random() > 0.72) {
       for (let t = 0; t < 2 + Math.floor(Math.random() * 3); t++) {
         const tx = px + (Math.random() - 0.5) * (w + 8);
@@ -233,7 +232,6 @@ export function buildCity(scene) {
     }
   }
 
-  // force remaining hollow slots near plaza if not built via grid
   for (const slot of HOLLOW_SLOTS) {
     if (hollowBuilt >= HOLLOW_SLOTS.length) break;
     const px = slot.gx * 28, pz = slot.gz * 28;
