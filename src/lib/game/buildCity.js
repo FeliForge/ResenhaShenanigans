@@ -99,7 +99,7 @@ export function buildCity(scene) {
   const facadeTrimMat = new THREE.MeshStandardMaterial({ color: 0x1e2228, roughness: 0.7, metalness: 0.2, flatShading: true });
   const facadeEdgeMat = new THREE.MeshStandardMaterial({ color: 0x3a4048, roughness: 0.8, flatShading: true });
 
-  const COLS = 11, COUNT = 90;
+  const COUNT = 90;
   const buildings = new THREE.InstancedMesh(boxGeo, buildingMat, COUNT);
   const buildingsB = new THREE.InstancedMesh(boxGeo, altMat, 90);
   const sidewalks = new THREE.InstancedMesh(boxGeo, sidewalkMat, COUNT + 40);
@@ -123,38 +123,36 @@ export function buildCity(scene) {
   };
   const tvTex = makeTVTexture();
 
+  // Hollow buildings around the plaza in all directions (N/E/S/W)
   const HOLLOW_SLOTS = [
-    { gx: 3, gz: 2, w: 28, d: 24, withTv: true },
-    { gx: -3, gz: 2, w: 26, d: 26, withTv: false },
-    { gx: 3, gz: -3, w: 30, d: 22, withTv: true },
-    { gx: -3, gz: -2, w: 24, d: 28, withTv: false },
-    { gx: 0, gz: 4, w: 26, d: 22, withTv: true },
-    { gx: 4, gz: 0, w: 22, d: 28, withTv: false },
+    { gx: 3, gz: 0, w: 28, d: 24, withTv: true },
+    { gx: -3, gz: 0, w: 26, d: 26, withTv: false },
+    { gx: 0, gz: 3, w: 26, d: 22, withTv: true },
+    { gx: 0, gz: -3, w: 24, d: 28, withTv: false },
+    { gx: 2, gz: 2, w: 24, d: 24, withTv: true },
+    { gx: -2, gz: -2, w: 22, d: 26, withTv: false },
   ];
-  const hollowKeys = new Set(HOLLOW_SLOTS.map((s) => `${s.gx},${s.gz}`));
   let hollowBuilt = 0;
+  for (const slot of HOLLOW_SLOTS) {
+    const px = slot.gx * 28, pz = slot.gz * 28;
+    if (!occ.tryAdd(px, pz, Math.max(slot.w, slot.d) * 0.55)) continue;
+    buildHollowBuilding(group, px, pz, slot.w, slot.d, 0, hollowMats, treeColliders, platforms, tvTex, !!slot.withTv);
+    hollowBuilt++;
+  }
 
   let idx = 0, idxB = 0, swIdx = 0, roofIdx = 0, facadeBandIdx = 0, facadeCornerIdx = 0;
 
-  for (let i = 0; i < COUNT; i++) {
-    const col = i % COLS;
-    const row = Math.floor(i / COLS);
-    let px = (col - COLS / 2) * 28 + (Math.random() - 0.5) * 6;
-    let pz = (row - COLS / 2) * 28 + (Math.random() - 0.5) * 6;
-    if (Math.abs(px) < PLAZA_R && Math.abs(pz) < PLAZA_R) continue;
+  // Radial placement: spread buildings evenly in all directions (fixes empty south)
+  const TARGET = COUNT;
+  for (let attempt = 0; attempt < TARGET * 5 && idx + idxB < TARGET; attempt++) {
+    const ang = (attempt / (TARGET * 5)) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
+    const rad = PLAZA_R + 20 + Math.random() * 150;
+    let px = Math.cos(ang) * rad;
+    let pz = Math.sin(ang) * rad;
+    px = Math.round(px / 16) * 16;
+    pz = Math.round(pz / 16) * 16;
+    if (Math.hypot(px, pz) < PLAZA_R + 12) continue;
     if (isOnRoad(px, pz)) continue;
-
-    const slotKey = `${Math.round(px / 28)},${Math.round(pz / 28)}`;
-    if (hollowKeys.has(slotKey) && hollowBuilt < HOLLOW_SLOTS.length) {
-      const slot = HOLLOW_SLOTS.find((s) => `${s.gx},${s.gz}` === slotKey) || HOLLOW_SLOTS[hollowBuilt];
-      const w = slot.w, d = slot.d;
-      const yaw = 0;
-      px = slot.gx * 28; pz = slot.gz * 28;
-      buildHollowBuilding(group, px, pz, w, d, yaw, hollowMats, treeColliders, platforms, tvTex, !!slot.withTv);
-      occ.tryAdd(px, pz, Math.max(w, d) * 0.55);
-      hollowBuilt++;
-      continue;
-    }
 
     const dist = districtAt(px, pz);
     const w = 8 + Math.floor(Math.random() * 12);
@@ -230,15 +228,6 @@ export function buildCity(scene) {
       dummy.updateMatrix();
       roofs.setMatrixAt(roofIdx++, dummy.matrix);
     }
-  }
-
-  for (const slot of HOLLOW_SLOTS) {
-    if (hollowBuilt >= HOLLOW_SLOTS.length) break;
-    const px = slot.gx * 28, pz = slot.gz * 28;
-    if (Math.abs(px) < 20 && Math.abs(pz) < 20) continue;
-    if (!occ.tryAdd(px, pz, Math.max(slot.w, slot.d) * 0.55)) continue;
-    buildHollowBuilding(group, px, pz, slot.w, slot.d, 0, hollowMats, treeColliders, platforms, tvTex, !!slot.withTv);
-    hollowBuilt++;
   }
 
   buildings.count = idx; buildings.instanceMatrix.needsUpdate = true;
