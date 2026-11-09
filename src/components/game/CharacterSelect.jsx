@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChevronLeft,
   Check,
@@ -39,6 +39,11 @@ export default function CharacterSelect({ onConfirm, onBack }) {
   const [selectedId, setSelectedId] = useState(CHARACTERS[0].id);
   const [showWorkshop, setShowWorkshop] = useState(false);
   const [filter, setFilter] = useState("all");
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    setIsTouch("ontouchstart" in window || navigator.maxTouchPoints > 0);
+  }, []);
 
   const selected = CHARACTERS.find((c) => c.id === selectedId) || CHARACTERS[0];
   const info = localChar(selected) || selected;
@@ -52,52 +57,71 @@ export default function CharacterSelect({ onConfirm, onBack }) {
   }, [filter]);
 
   const filters = [
-    { id: "all", label: "Todos" },
-    { id: "rush", label: t("arch.rush") },
-    { id: "tank", label: t("arch.tank") },
-    { id: "range", label: t("arch.range") },
-    { id: "trick", label: t("arch.trick") },
-    { id: "control", label: t("arch.control") },
-    { id: "balanced", label: t("arch.balanced") },
+    { id: "all", label: t("select.filter.all") || "Todos" },
+    { id: "rush", label: "Rush" },
+    { id: "tank", label: "Tank" },
+    { id: "range", label: "Range" },
+    { id: "trick", label: "Trick" },
+    { id: "control", label: "Control" },
+    { id: "balanced", label: "Balanced" },
   ];
 
   return (
-    <div className="absolute inset-0 flex flex-col overflow-hidden bg-[#0a0b12] text-white">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[#06080f] text-white">
       <div
-        className="pointer-events-none absolute inset-0 opacity-40"
+        className="pointer-events-none absolute inset-0 opacity-80"
         style={{
           background: `radial-gradient(ellipse 80% 50% at 20% 10%, ${selected.colors.primary}33, transparent 55%),
                        radial-gradient(ellipse 60% 40% at 80% 80%, ${selected.colors.secondary}22, transparent 50%)`,
         }}
       />
 
-      <header className="relative z-10 flex items-center gap-3 border-b border-white/10 bg-black/40 px-4 py-3 backdrop-blur-md">
+      <header className="relative z-10 flex shrink-0 items-center gap-3 border-b border-white/10 bg-black/40 px-3 py-2.5 backdrop-blur-md sm:px-5">
         <button
           onClick={onBack}
-          className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-white/70 transition hover:bg-white/10 hover:text-white"
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-white/80 transition hover:bg-white/10"
+          aria-label="Back"
         >
-          <ChevronLeft size={18} /> {t("common.back")}
+          <ChevronLeft size={20} />
         </button>
-        <div className="flex flex-1 items-center gap-2">
-          <Sparkles size={16} className="text-amber-300" />
+        <div className="min-w-0 flex-1">
           <h1 className="font-heading text-lg font-bold tracking-tight">{t("select.title")}</h1>
+          <p className="truncate text-xs text-white/45">{info.name || selected.name}</p>
         </div>
-        <span className="hidden rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white/50 sm:inline">
-          {CHARACTERS.length} luchadores
-        </span>
+        <div className="hidden items-center gap-2 sm:flex">
+          {filters.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition ${
+                filter === f.id
+                  ? "border-white/40 bg-white/15 text-white"
+                  : "border-white/10 bg-white/5 text-white/50 hover:text-white/80"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setShowWorkshop(true)}
+          className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs font-semibold text-white/80 transition hover:bg-white/10"
+        >
+          <Wrench size={14} /> <span className="hidden sm:inline">Workshop</span>
+        </button>
       </header>
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col lg:flex-row">
-        <div className="flex min-h-0 flex-col border-b border-white/10 lg:w-[46%] lg:border-b-0 lg:border-r">
-          <div className="flex gap-1.5 overflow-x-auto px-3 py-2.5 scrollbar-none">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3 sm:flex-row sm:gap-4 sm:p-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto sm:max-w-[42%]">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 sm:hidden">
             {filters.map((f) => (
               <button
                 key={f.id}
                 onClick={() => setFilter(f.id)}
-                className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition ${
+                className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
                   filter === f.id
-                    ? "bg-white text-black"
-                    : "bg-white/5 text-white/55 hover:bg-white/10 hover:text-white/80"
+                    ? "border-white/40 bg-white/15 text-white"
+                    : "border-white/10 bg-white/5 text-white/50"
                 }`}
               >
                 {f.label}
@@ -105,107 +129,84 @@ export default function CharacterSelect({ onConfirm, onBack }) {
             ))}
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-3 pt-0">
-            <button
-              onClick={() => setShowWorkshop(true)}
-              className="group mb-3 flex w-full items-center gap-3 rounded-xl border border-dashed border-amber-400/50 bg-gradient-to-r from-amber-500/10 to-fuchsia-500/10 p-3 text-left transition hover:border-amber-300 hover:from-amber-500/20 hover:to-fuchsia-500/20"
-            >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-fuchsia-500 text-black shadow-lg shadow-amber-500/20">
-                <Wrench size={20} />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-bold text-white">Character Workshop</span>
-                <span className="block text-xs text-white/55">
-                  Apariencia · Moveset · Sprites de ataque · Ultimate
-                </span>
-              </span>
-              <Star size={16} className="ml-auto shrink-0 text-amber-300 opacity-70 group-hover:opacity-100" />
-            </button>
-
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
-              {filtered.map((c) => {
-                const active = c.id === selectedId;
-                const localized = localChar(c) || c;
-                const arch = getArchetype(c.id);
-                const style = ARCH_STYLES[arch] || ARCH_STYLES.balanced;
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedId(c.id)}
-                    className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition ${
-                      active
-                        ? "border-white/40 bg-white/10 shadow-lg shadow-black/40 ring-1 ring-white/20"
-                        : "border-white/10 bg-white/[0.03] hover:border-white/25 hover:bg-white/[0.06]"
-                    }`}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((c) => {
+              const active = c.id === selectedId;
+              const localized = localChar(c) || c;
+              const arch = getArchetype(c.id);
+              const style = ARCH_STYLES[arch] || ARCH_STYLES.balanced;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => {
+                      setSelectedId(c.id);
+                      if (isTouch) onConfirm(c);
+                    }}
+                  className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition ${
+                    active
+                      ? "border-white/40 bg-white/10 shadow-lg shadow-black/40 ring-1 ring-white/20"
+                      : "border-white/10 bg-white/[0.03] hover:border-white/25 hover:bg-white/[0.06]"
+                  }`}
+                >
+                  <div
+                    className="relative h-16 w-full"
+                    style={{
+                      background: `linear-gradient(135deg, ${c.colors.primary}, ${c.colors.secondary})`,
+                    }}
                   >
                     <div
-                      className="relative h-16 w-full"
+                      className="absolute inset-0 opacity-40"
                       style={{
-                        background: `linear-gradient(135deg, ${c.colors.primary}, ${c.colors.secondary})`,
+                        background: `radial-gradient(circle at 30% 20%, ${c.colors.accent}, transparent 55%)`,
                       }}
-                    >
-                      <div
-                        className="absolute inset-0 opacity-40"
-                        style={{
-                          background: `radial-gradient(circle at 30% 20%, ${c.colors.accent}, transparent 55%)`,
-                        }}
-                      />
-                      {active && (
-                        <span className="absolute right-1.5 top-1.5 rounded-full bg-black/50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white backdrop-blur">
-                          ✓
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-0.5 p-2.5">
-                      <span className="truncate text-sm font-semibold leading-tight">{localized.displayName}</span>
-                      <span
-                        className={`w-fit rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${style.badge}`}
-                      >
-                        {t(`arch.${arch}`)}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                    />
+                    <span className={`absolute left-1.5 top-1.5 rounded border px-1.5 py-0.5 text-[9px] font-black uppercase ${style.badge}`}>
+                      {arch}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 p-2">
+                    <span className="truncate text-xs font-bold">{localized.name || c.name}</span>
+                    <Star size={14} className="ml-auto shrink-0 text-amber-300 opacity-70 group-hover:opacity-100" />
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/35 backdrop-blur-md">
           <div
-            className="relative flex items-end gap-5 px-5 pb-5 pt-8"
+            className="relative flex shrink-0 flex-col items-center gap-3 border-b border-white/10 p-4 sm:flex-row sm:items-end sm:gap-5 sm:p-5"
             style={{
               background: `linear-gradient(160deg, ${selected.colors.primary}55 0%, transparent 70%),
                            linear-gradient(to bottom, ${selected.colors.secondary}22, transparent)`,
             }}
           >
             <div
-              className={`relative h-28 w-24 shrink-0 rounded-2xl bg-gradient-to-br p-[3px] shadow-2xl ${archStyle.ring}`}
+              className="relative h-28 w-28 shrink-0 rounded-2xl sm:h-36 sm:w-36"
               style={{
                 backgroundImage: `linear-gradient(160deg, ${selected.colors.primary}, ${selected.colors.secondary})`,
                 boxShadow: `0 12px 40px ${selected.colors.primary}55, inset 0 0 0 3px ${selected.colors.accent}`,
               }}
             >
               <div
-                className="h-full w-full rounded-[13px]"
+                className="absolute inset-2 rounded-xl opacity-50"
                 style={{
                   background: `linear-gradient(160deg, ${selected.colors.primary}, ${selected.colors.secondary})`,
                   boxShadow: `inset 0 0 0 3px ${selected.colors.accent}88`,
                 }}
               />
             </div>
-            <div className="min-w-0 flex-1 pb-1">
-              <div className="mb-1 flex flex-wrap items-center gap-2">
-                <h2 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">{info.displayName}</h2>
-                <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${archStyle.badge}`}>
-                  {t(`arch.${archetype}`)}
-                </span>
-              </div>
-              <p className="max-w-md text-sm leading-relaxed text-white/65">{info.bio}</p>
+            <div className="min-w-0 flex-1 text-center sm:text-left">
+              <p className={`mb-1 inline-flex rounded border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${archStyle.badge}`}>
+                {archetype}
+              </p>
+              <h2 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">{info.name || selected.name}</h2>
+              <p className="mt-1 text-sm text-white/55">{info.tagline || selected.tagline || ""}</p>
             </div>
           </div>
 
-          <div className="flex flex-col gap-4 px-5 pb-6">
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4 sm:p-5">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Stat icon={<Heart size={14} className="text-rose-400" />} label={t("select.stats.health")} value={selected.stats.health} />
               <Stat icon={<Gauge size={14} className="text-cyan-400" />} label={t("select.stats.speed")} value={selected.stats.speed} />
@@ -214,42 +215,27 @@ export default function CharacterSelect({ onConfirm, onBack }) {
             </div>
 
             {passive && (
-              <div className="flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs text-emerald-200">
-                <Shield size={15} className="mt-0.5 shrink-0 text-emerald-300" />
-                <span>
+              <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3">
+                <p className="text-sm text-white/80">
                   <span className="font-bold uppercase tracking-wider text-emerald-300">{t("select.passive")}: </span>
-                  {t(`passive.${passive.type}`) || ""}
-                </span>
+                  {passive}
+                </p>
               </div>
             )}
 
-            <div className="flex flex-col gap-2">
+            <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-white/40">{t("select.moves")}</h3>
-              <div className="grid gap-2">
+              <div className="mt-2 space-y-2">
                 {Object.entries(selected.moves).map(([category, base]) => {
                   const m = localMove(selected.id, category, base);
-                  const isUlt = category === "ultimate";
                   return (
-                    <div
-                      key={m.id}
-                      className={`rounded-xl border px-3.5 py-2.5 transition ${
-                        isUlt
-                          ? "border-amber-400/35 bg-gradient-to-r from-amber-500/15 to-fuchsia-500/10"
-                          : "border-white/10 bg-white/[0.04]"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`rounded-md px-1.5 py-0.5 text-[10px] font-black tracking-wide ${
-                              isUlt ? "bg-amber-400 text-black" : "bg-white/10 text-white/70"
-                            }`}
-                          >
-                            {CAT_SHORT[category] || category}
-                          </span>
-                          <span className="text-sm font-semibold">{m.name}</span>
-                        </div>
-                        <span className="shrink-0 text-xs font-medium text-white/45">
+                    <div key={category} className="rounded-lg border border-white/10 bg-white/[0.03] p-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-black text-white/70">
+                          {CAT_SHORT[category] || category}
+                        </span>
+                        <span className="text-sm font-semibold">{m.name || base.name}</span>
+                        <span className="ml-auto text-[11px] text-white/40">
                           {t("select.dmg", { n: m.damage })}
                         </span>
                       </div>
@@ -285,12 +271,12 @@ export default function CharacterSelect({ onConfirm, onBack }) {
 
 function Stat({ icon, label, value }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5">
-      <div className="mb-0.5 flex items-center gap-1.5 text-[11px] text-white/45">
+    <div className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2">
+      <div className="flex items-center gap-1.5 text-white/50">
         {icon}
-        {label}
+        <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
       </div>
-      <div className="font-heading text-lg font-bold tabular-nums">{value}</div>
+      <p className="mt-0.5 text-lg font-bold tabular-nums">{value}</p>
     </div>
   );
 }
