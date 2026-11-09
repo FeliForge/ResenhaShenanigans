@@ -2,8 +2,8 @@
 import * as THREE from "three";
 
 const AD_URLS = [
-  "/ads/ad1.png", "/ads/ad2.png", "/ads/ad3.png",
-  "/ads/ad4.png", "/ads/ad5.png", "/ads/ad6.png",
+  "/ads/ad1.jpg", "/ads/ad2.jpg", "/ads/ad3.jpg",
+  "/ads/ad4.jpg", "/ads/ad5.jpg", "/ads/ad6.jpg",
 ];
 
 const STATE = {
@@ -35,7 +35,7 @@ function makeAdFallback(i) {
 
 function ensureAds() {
   if (STATE.ready) return STATE;
-  STATE.geo = new THREE.PlaneGeometry(4.5, 2.4);
+  STATE.geo = new THREE.PlaneGeometry(10, 5.5);
   for (let i = 0; i < 6; i++) {
     const tex = makeAdFallback(i);
     const mat = new THREE.ShaderMaterial({
@@ -116,7 +116,7 @@ export function addNeonAds(g, w, d, FLOOR_H = 12) {
     mesh.rotation.y = s.ry;
     mesh.frustumCulled = true;
     g.add(mesh);
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(4.7, 2.6, 0.06), frameMat);
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(10.3, 5.8, 0.08), frameMat);
     frame.position.set(s.x - Math.sin(s.ry) * 0.04, s.y, s.z - Math.cos(s.ry) * 0.04);
     frame.rotation.y = s.ry;
     g.add(frame);
