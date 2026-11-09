@@ -36,7 +36,7 @@ function makeSignTexture() {
 
 export function buildShop(scene) {
   const group = new THREE.Group();
-  const POS = new THREE.Vector3(82, 0, 48); // lejos de la plaza / fuente
+  const POS = new THREE.Vector3(16, 0, 20); // plaza central (cerca de la fuente)
   group.position.copy(POS);
   group.rotation.y = Math.atan2(-POS.x, -POS.z);
   scene.add(group);
@@ -84,63 +84,58 @@ export function buildShop(scene) {
 
   // cartel luminoso
   const signTex = makeSignTexture();
-  const signMat = new THREE.MeshBasicMaterial({ map: signTex, transparent: true, side: THREE.DoubleSide });
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 2), signMat);
+  const sign = new THREE.Mesh(
+    new THREE.PlaneGeometry(6.5, 2.0),
+    new THREE.MeshBasicMaterial({ map: signTex, transparent: true })
+  );
   sign.position.set(0, 5.9, 0);
   group.add(sign);
-
-  const glowMat = new THREE.MeshBasicMaterial({ color: 0xffa63d, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false });
-  const glow = new THREE.Mesh(new THREE.PlaneGeometry(9, 3.4), glowMat);
+  const glow = new THREE.Mesh(
+    new THREE.PlaneGeometry(6.7, 2.15),
+    new THREE.MeshBasicMaterial({ color: 0xff9620, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false })
+  );
   glow.position.set(0, 5.9, -0.12);
   group.add(glow);
 
-  // moneda girando sobre el cartel
-  const coinMat = new THREE.MeshStandardMaterial({ color: 0xffc23d, emissive: 0xff8a00, emissiveIntensity: 0.9, metalness: 0.7, roughness: 0.3 });
-  const coin = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 0.22, 20), coinMat);
-  coin.rotation.x = Math.PI / 2;
+  // moneda flotante
+  const coin = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.55, 0.55, 0.12, 16),
+    new THREE.MeshStandardMaterial({ color: 0xffb020, emissive: 0xff8800, emissiveIntensity: 0.8, metalness: 0.6, roughness: 0.35 })
+  );
   coin.position.set(0, 7.6, 0);
+  coin.rotation.x = Math.PI / 2;
   group.add(coin);
 
-  // luz cálida del puesto
-  const light = new THREE.PointLight(0xffa640, 1.2, 26);
+  const light = new THREE.PointLight(0xffa040, 1.2, 28);
   light.position.set(0, 4.2, 1.6);
   group.add(light);
 
-  // sacos y cajas alrededor
-  const sackMat = new THREE.MeshStandardMaterial({ color: 0x8a7440, roughness: 1, flatShading: true });
-  for (const [sx, sz, sc] of [[-5.4, 1.2, 1], [5.6, 0.6, 0.85], [-5.2, -2.2, 0.7], [5.2, -2.4, 1.1]]) {
-    const s = new THREE.Mesh(new THREE.SphereGeometry(0.9, 7, 6), sackMat);
+  // cajas decorativas
+  for (const [sx, sz, sc] of [[-2.8, 2.8, 1], [2.6, 2.6, 0.85], [-3.2, -1.2, 0.7]]) {
+    const s = new THREE.Mesh(new THREE.BoxGeometry(1.1 * sc, 1.1 * sc, 1.1 * sc), woodMat);
     s.position.set(sx, 0.7 * sc, sz);
-    s.scale.set(sc, sc * 1.15, sc);
     s.castShadow = true;
     group.add(s);
   }
 
-  let nightF = 0;
-  function setNight(f) {
-    nightF = f;
-    light.intensity = 0.7 + 1.6 * f;
-    glowMat.opacity = 0.2 + 0.45 * f;
+  const colliders = [
+    { x: POS.x, z: POS.z, w: 9, d: 7 },
+  ];
+
+  function setNight(night) {
+    const n = THREE.MathUtils.clamp(Number.isFinite(night) ? night : 0, 0, 1);
+    light.intensity = 0.6 + 1.4 * n;
   }
 
   function update(now) {
-    coin.rotation.z = now * 0.0016;
+    coin.rotation.z = (now || 0) * 0.002;
     coin.position.y = 7.6 + Math.sin(now * 0.002) * 0.18;
-    signMat.color.setScalar(0.85 + 0.15 * Math.sin(now * 0.004) + nightF * 0.1);
-    trim.material.emissiveIntensity = 0.8 + nightF * 1.4;
   }
 
   function dispose() {
     scene.remove(group);
-    signTex.dispose(); signMat.dispose(); glowMat.dispose();
-    group.traverse((o) => {
-      if (o.geometry) o.geometry.dispose();
-      if (o.material && o.material !== signMat && o.material !== glowMat) o.material.dispose();
-    });
+    signTex.dispose();
   }
-
-  // El mostrador y la pared frenan al jugador: se compra desde fuera.
-  const colliders = [{ x: POS.x, z: POS.z - 1.1, w: 8.4, d: 4 }];
 
   return { group, position: POS.clone(), radius: 9, colliders, setNight, update, dispose };
 }
