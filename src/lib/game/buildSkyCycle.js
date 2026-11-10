@@ -62,7 +62,6 @@ export function createSkyCycle(group) {
     const mesh = new THREE.Mesh(geo, mat);
     mesh.renderOrder = -5;
     mesh.frustumCulled = false;
-    // Always face the active camera (billboard) without overlaying geometry
     mesh.onBeforeRender = (_renderer, _scene, camera) => {
       mesh.quaternion.copy(camera.quaternion);
     };
@@ -107,26 +106,26 @@ export function createSkyCycle(group) {
 
   function update(now, night) {
     const t = ((now || 0) % CYCLE_MS) / CYCLE_MS;
-    // Day: sun high near t≈0; night peaks near t≈0.5 (matches city autoNight)
-    const sunAngle = t * Math.PI * 2 + Math.PI * 0.5;
+    // City autoNight peaks near t≈0.5. Place sun on the day arc.
+    const nightAngle = t * Math.PI * 2 - Math.PI * 0.5;
+    const dayAngle = nightAngle + Math.PI;
 
-    const sx = Math.cos(sunAngle) * skyR;
-    const sy = Math.sin(sunAngle) * skyR * arc + baseY;
-    const sz = Math.sin(sunAngle * 0.25) * 50;
-    sun.position.set(sx, sy, sz);
-    sun.visible = sy > 12;
+    const dsx = Math.cos(dayAngle) * skyR;
+    const dsy = Math.sin(dayAngle) * skyR * arc + baseY;
+    const dsz = Math.sin(dayAngle * 0.25) * 50;
+    sun.position.set(dsx, dsy, dsz);
+    sun.visible = dsy > 12;
 
-    const moonAngle = sunAngle + Math.PI;
-    const mx = Math.cos(moonAngle) * skyR;
-    const my = Math.sin(moonAngle) * skyR * arc + baseY;
-    const mz = Math.sin(moonAngle * 0.25) * 50;
-    moon.position.set(mx, my, mz);
-    moon.visible = my > 12;
+    const nsx = Math.cos(nightAngle) * skyR;
+    const nsy = Math.sin(nightAngle) * skyR * arc + baseY;
+    const nsz = Math.sin(nightAngle * 0.25) * 50;
+    moon.position.set(nsx, nsy, nsz);
+    moon.visible = nsy > 12;
 
     const n = Number.isFinite(night) ? THREE.MathUtils.clamp(night, 0, 1) : 0;
     const day = 1 - n;
-    const sunUp = THREE.MathUtils.smoothstep(sy, 18, 70);
-    const moonUp = THREE.MathUtils.smoothstep(my, 18, 70);
+    const sunUp = THREE.MathUtils.smoothstep(dsy, 18, 70);
+    const moonUp = THREE.MathUtils.smoothstep(nsy, 18, 70);
 
     sunMat.opacity = THREE.MathUtils.clamp(day * sunUp, 0, 1);
     moonMat.opacity = THREE.MathUtils.clamp(n * moonUp, 0, 1);
