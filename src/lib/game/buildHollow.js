@@ -99,17 +99,19 @@ function decorateFloor(g, floorIndex, w, d, WALL_T, FLOOR_H) {
   const inset = WALL_T + 1.2;
   const iw = w - inset * 2;
   const id = d - inset * 2;
+  const jx = (Math.random() - 0.5) * 0.15;
+  const jz = (Math.random() - 0.5) * 0.15;
 
   const rug = new THREE.Mesh(new THREE.BoxGeometry(iw * 0.45, 0.04, id * 0.35), S.rugMats[floorIndex % 3]);
-  rug.position.set(-iw * 0.12, baseY + 0.3, id * 0.05);
+  rug.position.set(-iw * 0.12 + jx, baseY + 0.3, id * 0.05 + jz);
   g.add(rug);
 
   const sofa = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 2.0), S.propMats.sofa);
-  sofa.position.set(-iw * 0.28, baseY + 1.15, -id * 0.28);
+  sofa.position.set(-iw * 0.28 + jx, baseY + 1.15, -id * 0.28 + jz);
   g.add(sofa);
 
   const bed = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2.2), S.propMats.cama);
-  bed.position.set(iw * 0.28, baseY + 1.1, -id * 0.22);
+  bed.position.set(iw * 0.28 + jx, baseY + 1.1, -id * 0.22 + jz);
   g.add(bed);
 
   const poster = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.4), S.propMats.poster);
@@ -117,15 +119,15 @@ function decorateFloor(g, floorIndex, w, d, WALL_T, FLOOR_H) {
   g.add(poster);
 
   const drink = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.6), S.propMats.bebedor);
-  drink.position.set(-iw * 0.32, baseY + 1.0, id * 0.25);
+  drink.position.set(-iw * 0.32 + jx, baseY + 1.0, id * 0.25 + jz);
   g.add(drink);
 
   const table = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.12, 1.2), S.tableMat);
-  table.position.set(0, baseY + 0.85, id * 0.15);
+  table.position.set(jx * 2, baseY + 0.85, id * 0.15 + jz);
   g.add(table);
   for (const [lx, lz] of [[-0.9, -0.45], [0.9, -0.45], [-0.9, 0.45], [0.9, 0.45]]) {
     const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.75, 0.12), S.tableMat);
-    leg.position.set(lx, baseY + 0.45, id * 0.15 + lz);
+    leg.position.set(lx + jx * 2, baseY + 0.45, id * 0.15 + lz + jz);
     g.add(leg);
   }
 
@@ -184,7 +186,6 @@ function addRamp(g, px, pz, w, d, level, FLOOR_H, platforms, yaw, stairMat, fram
   landTop.position.set(sx, baseY + FLOOR_H + 0.22, startZ + useLen - 0.35);
   g.add(landTop);
 
-  // Dense platforms (~0.35m steps) for continuous walkable surface
   const steps = Math.max(18, Math.ceil(useLen / 0.35));
   const stepD = useLen / steps + 0.45;
   for (let i = 0; i <= steps; i++) {
@@ -200,17 +201,17 @@ function addRamp(g, px, pz, w, d, level, FLOOR_H, platforms, yaw, stairMat, fram
       yaw,
     });
   }
-  // Extra landing pads at top/bottom
   platforms.push({ x: px + sx, z: pz + startZ + 0.2, w: rampW + 1.0, d: 1.6, y: baseY + 0.28, yaw });
   platforms.push({ x: px + sx, z: pz + startZ + useLen - 0.2, w: rampW + 1.0, d: 1.6, y: baseY + FLOOR_H + 0.28, yaw });
 }
 
 export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, platforms, tvTex, withTv) {
-  const H = 36;
-  const FLOOR_H = 12;
+  const floors = Math.random() < 0.42 ? 2 : 3;
+  const FLOOR_H = floors === 2 ? 11 : 12;
+  const H = floors * FLOOR_H;
   const WALL_T = 0.55;
-  const DOOR_W = 7.2;
-  const DOOR_H = 4.8;
+  const DOOR_W = 6.4 + Math.random() * 1.6;
+  const DOOR_H = 4.4 + Math.random() * 0.8;
   const g = new THREE.Group();
   g.position.set(px, 0, pz);
   g.rotation.y = yaw;
@@ -223,10 +224,10 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
     emissive: 0xffffff,
     emissiveIntensity: mats.emissiveMap ? 0.18 : 0.04,
     flatShading: false,
-    roughness: 0.78,
-    metalness: 0.08,
+    roughness: 0.65 + Math.random() * 0.25,
+    metalness: 0.04 + Math.random() * 0.12,
   });
-  const accent = new THREE.Color(extColor).multiplyScalar(0.72);
+  const accent = new THREE.Color(extColor).multiplyScalar(0.65 + Math.random() * 0.2);
   const trimMat = new THREE.MeshStandardMaterial({
     color: accent.getHex(), roughness: 0.55, metalness: 0.28, flatShading: false,
   });
@@ -238,7 +239,7 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
   const glassMat = S.glassMat;
   const frameMat = S.frameMat;
 
-  for (let f = 0; f < 3; f++) {
+  for (let f = 0; f < floors; f++) {
     const fy = f * FLOOR_H;
     const slab = new THREE.Mesh(new THREE.BoxGeometry(w - WALL_T * 0.5, 0.28, d - WALL_T * 0.5), floorMat);
     slab.position.set(0, fy + 0.14, 0);
@@ -318,12 +319,12 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
     g.add(lintel);
   }
 
-  for (let f = 0; f < 3; f++) {
-    const wy = f * FLOOR_H + 5.0;
+  for (let f = 0; f < floors; f++) {
+    const wy = f * FLOOR_H + Math.min(5.0, FLOOR_H * 0.42);
     for (const [wx, wz, ww, wh, rotY] of [
-      [0, -d / 2 + 0.02, w * 0.55, 3.2, 0],
-      [-w / 2 + 0.02, 0, d * 0.4, 3.2, Math.PI / 2],
-      [w / 2 - 0.02, 0, d * 0.4, 3.2, -Math.PI / 2],
+      [0, -d / 2 + 0.02, w * 0.55, 3.0, 0],
+      [-w / 2 + 0.02, 0, d * 0.4, 3.0, Math.PI / 2],
+      [w / 2 - 0.02, 0, d * 0.4, 3.0, -Math.PI / 2],
     ]) {
       const glass = new THREE.Mesh(new THREE.PlaneGeometry(ww, wh), glassMat);
       glass.position.set(wx, wy, wz);
@@ -336,16 +337,17 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
     }
   }
 
-  for (let f = 1; f < 3; f++) {
+  for (let f = 1; f < floors; f++) {
     const fy = f * FLOOR_H;
     const ceil = new THREE.Mesh(new THREE.BoxGeometry(w - 1.0, 0.12, d - 1.0), ceilMat);
     ceil.position.set(0, fy - 0.06, 0);
     g.add(ceil);
   }
 
+  const colH = H - 0.5;
   for (const [cx, cz] of [[-w * 0.28, -d * 0.2], [w * 0.28, d * 0.15]]) {
-    const col = new THREE.Mesh(S.geo.col, colMat);
-    col.position.set(cx, H / 2 - 0.1, cz);
+    const col = new THREE.Mesh(new THREE.BoxGeometry(0.7, colH, 0.7), colMat);
+    col.position.set(cx, colH / 2, cz);
     g.add(col);
     const cap = new THREE.Mesh(S.geo.colCap, trimMat);
     cap.position.set(cx, H - 0.35, cz);
@@ -353,18 +355,20 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
     colliders.push({ x: px + cx, z: pz + cz, w: 0.85, d: 0.85 });
   }
 
-  addRamp(g, px, pz, w, d, 0, FLOOR_H, platforms, yaw, stairMat, frameMat);
-  addRamp(g, px, pz, w, d, 1, FLOOR_H, platforms, yaw, stairMat, frameMat);
+  for (let lvl = 0; lvl < floors - 1; lvl++) {
+    addRamp(g, px, pz, w, d, lvl, FLOOR_H, platforms, yaw, stairMat, frameMat);
+  }
 
   if (withTv && tvTex) {
+    const tvY = Math.min(floors - 1, 1) * FLOOR_H + 3.5;
     const frame = new THREE.Mesh(new THREE.BoxGeometry(4.2, 2.6, 0.25), frameMat);
-    frame.position.set(0, FLOOR_H + 3.5, -d / 2 + 0.65);
+    frame.position.set(0, tvY, -d / 2 + 0.65);
     g.add(frame);
     const screen = new THREE.Mesh(
       new THREE.PlaneGeometry(3.8, 2.2),
       new THREE.MeshBasicMaterial({ map: tvTex })
     );
-    screen.position.set(0, FLOOR_H + 3.5, -d / 2 + 0.74);
+    screen.position.set(0, tvY, -d / 2 + 0.74);
     g.add(screen);
   }
 
