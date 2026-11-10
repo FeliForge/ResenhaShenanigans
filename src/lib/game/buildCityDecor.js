@@ -16,8 +16,6 @@ const NEON_COLORS = [0xff2d95, 0x00e5ff, 0xd500f9, 0xff6b00, 0x39ff14, 0xffea00,
 export function addCityDecor(group, occ, PLAZA_R) {
   const billboards = [];
 
-  // Far-out curb slots (road midlines) so planes are not buried inside towers
-  // Order: goofyboxy, vitalsmash, tangomayhem, tomatosmash
   const fixedSlots = [
     { x: 154, z: 28 },
     { x: -154, z: 28 },
@@ -28,11 +26,9 @@ export function addCityDecor(group, occ, PLAZA_R) {
     const pos = fixedSlots[i] || { x: 160, z: 0 };
     let bx = pos.x;
     let bz = pos.z;
-    // Nudge off pure road center if needed, but stay in open band
     if (!isOnRoad(bx, bz)) {
       bx += 8;
     }
-    // If occupancy fails, spiral outward until free
     let placed = false;
     for (let ring = 0; ring < 8 && !placed; ring++) {
       const ox = bx + (ring % 2 === 0 ? ring * 12 : -ring * 12);
@@ -50,8 +46,6 @@ export function addCityDecor(group, occ, PLAZA_R) {
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(18, 18), mat);
     mesh.position.set(bx, h, bz);
     mesh.lookAt(0, h, 0);
-    // Keep the support directly behind the billboard plane so it never
-    // cuts through the artwork from the front-facing camera angle.
     const supportOffset = new THREE.Vector3(bx, 0, bz).normalize().multiplyScalar(1.35);
     const supportX = bx + supportOffset.x;
     const supportZ = bz + supportOffset.z;
@@ -84,7 +78,6 @@ export function addCityDecor(group, occ, PLAZA_R) {
     );
   });
 
-  // Street lamps with warm + neon accent bulbs (outside plaza)
   const lampMat = new THREE.MeshStandardMaterial({ color: 0x1e2228, flatShading: true });
   const bulbs = [];
   const streetLights = [];
@@ -127,8 +120,6 @@ export function addCityDecor(group, occ, PLAZA_R) {
         group.add(pole, warm, accent);
         bulbs.push(warm);
 
-        // A small, capped set of real lights illuminates the nearby asphalt
-        // and sidewalks without adding hundreds of expensive dynamic lights.
         if (
           Math.abs(gi) <= 3 &&
           Math.abs(a) <= 3 &&
@@ -215,6 +206,58 @@ export function addCityDecor(group, occ, PLAZA_R) {
     );
     post.position.set(x, (h - 0.4) / 2, z);
     group.add(board, post);
+  }
+
+  // Benches, bins, traffic signs, planters along curb rings
+  const benchMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.9, flatShading: true });
+  const metalMat = new THREE.MeshStandardMaterial({ color: 0x3a4048, metalness: 0.4, roughness: 0.55, flatShading: true });
+  const binMat = new THREE.MeshStandardMaterial({ color: 0x2a6a3a, roughness: 0.8, flatShading: true });
+  const signMat = new THREE.MeshStandardMaterial({ color: 0xc45c26, roughness: 0.7, flatShading: true });
+  const planterMat = new THREE.MeshStandardMaterial({ color: 0x5a4030, roughness: 0.95, flatShading: true });
+  const bushMat = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 1, flatShading: true });
+
+  for (let i = 0; i < 28; i++) {
+    const ang = (i / 28) * Math.PI * 2 + 0.07;
+    const r = 34 + (i % 4) * 18;
+    const x = Math.cos(ang) * r;
+    const z = Math.sin(ang) * r;
+    if (Math.abs(x) < PLAZA_R * 0.55 && Math.abs(z) < PLAZA_R * 0.55) continue;
+    if (isOnRoad(x, z)) continue;
+    if (!occ.tryAdd(x, z, 2.2)) continue;
+    const kind = i % 5;
+
+    if (kind === 0 || kind === 1) {
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.18, 0.7), benchMat);
+      seat.position.set(x, 0.55, z);
+      seat.lookAt(0, 0.55, 0);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 0.12), benchMat);
+      back.position.set(x, 0.95, z);
+      back.lookAt(0, 0.95, 0);
+      back.translateZ(-0.28);
+      const legL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.5, 0.5), metalMat);
+      legL.position.copy(seat.position); legL.position.y = 0.25; legL.translateX(-0.8);
+      const legR = legL.clone(); legR.translateX(1.6);
+      group.add(seat, back, legL, legR);
+    } else if (kind === 2) {
+      const bin = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 1.0, 8), binMat);
+      bin.position.set(x, 0.5, z);
+      const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.08, 8), metalMat);
+      lid.position.set(x, 1.05, z);
+      group.add(bin, lid);
+    } else if (kind === 3) {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 3.2, 6), metalMat);
+      pole.position.set(x, 1.6, z);
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.9, 0.08), signMat);
+      panel.position.set(x, 3.0, z);
+      panel.lookAt(0, 3.0, 0);
+      group.add(pole, panel);
+    } else {
+      const pot = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.55, 1.1), planterMat);
+      pot.position.set(x, 0.28, z);
+      const bush = new THREE.Mesh(new THREE.SphereGeometry(0.55, 6, 5), bushMat);
+      bush.position.set(x, 0.95, z);
+      group.add(pot, bush);
+    }
   }
 
   return { billboards, bulbs, streetLights, bulbMaterial };
