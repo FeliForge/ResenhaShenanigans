@@ -2,8 +2,9 @@
 import * as THREE from "three";
 
 /**
- * Moving sun/moon billboards using /sky/sun.jpg and /sky/moon.jpg.
- * Sun visible by day, moon by night. Depth-tested so buildings occlude them.
+ * Day/night sun & moon as textured planes (polygons) that always face the camera.
+ * depthTest keeps them behind buildings instead of overlaying the city.
+ * Textures: /sky/sun.jpg and /sky/moon.jpg
  */
 export function createSkyCycle(group) {
   const loader = new THREE.TextureLoader();
@@ -46,24 +47,34 @@ export function createSkyCycle(group) {
     return tex;
   }
 
-  const sunMat = new THREE.SpriteMaterial({
-    map: discFallback("sun"),
-    color: 0xffffff,
-    transparent: true,
-    depthWrite: false,
-    depthTest: true, // occluded by buildings
-    opacity: 1,
-    sizeAttenuation: true,
-  });
-  const moonMat = new THREE.SpriteMaterial({
-    map: discFallback("moon"),
-    color: 0xffffff,
-    transparent: true,
-    depthWrite: false,
-    depthTest: true,
-    opacity: 0,
-    sizeAttenuation: true,
-  });
+  function makeBody(size, map, opacity) {
+    const geo = new THREE.PlaneGeometry(size, size);
+    const mat = new THREE.MeshBasicMaterial({
+      map,
+      color: 0xffffff,
+      transparent: true,
+      opacity,
+      depthTest: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      fog: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.renderOrder = -5;
+    mesh.frustumCulled = false;
+    // Always face the active camera (billboard) without overlaying geometry
+    mesh.onBeforeRender = (_renderer, _scene, camera) => {
+      mesh.quaternion.copy(camera.quaternion);
+    };
+    return { mesh, mat, geo };
+  }
+
+  const sunBody = makeBody(64, discFallback("sun"), 1);
+  const moonBody = makeBody(52, discFallback("moon"), 0);
+  const sun = sunBody.mesh;
+  const moon = moonBody.mesh;
+  const sunMat = sunBody.mat;
+  const moonMat = moonBody.mat;
 
   function applyTex(mat, url) {
     loader.load(
@@ -87,62 +98,40 @@ export function createSkyCycle(group) {
   applyTex(sunMat, "/sky/sun.jpg");
   applyTex(moonMat, "/sky/moon.jpg");
 
-  const SUN_SIZE = 72;
-  const MOON_SIZE = 58;
-  const sun = new THREE.Sprite(sunMat);
-  sun.scale.set(SUN_SIZE, SUN_SIZE, 1);
-  sun.renderOrder = -10; // draw before buildings when possible
-  sun.frustumCulled = false;
-
-  const moon = new THREE.Sprite(moonMat);
-  moon.scale.set(MOON_SIZE, MOON_SIZE, 1);
-  moon.renderOrder = -10;
-  moon.frustumCulled = false;
-
   group.add(sun, moon);
 
-  // Must match city day/night period
   const CYCLE_MS = 180000;
+  const skyR = 480;
+  const arc = 0.88;
+  const baseY = 90;
 
   function update(now, night) {
     const t = ((now || 0) % CYCLE_MS) / CYCLE_MS;
-    // Align with city autoNight: night peaks near t≈0.5, day near t≈0 / 1
-    // Sun high in the sky during day (t≈0), low at night (t≈0.5)
+    // Day: sun high near t≈0; night peaks near t≈0.5 (matches city autoNight)
     const sunAngle = t * Math.PI * 2 + Math.PI * 0.5;
-    // Far behind city so it sits in the background, not inside building volumes
-    const skyR = 520;
-    const arc = 0.9;
-    const baseY = 80;
 
     const sx = Math.cos(sunAngle) * skyR;
     const sy = Math.sin(sunAngle) * skyR * arc + baseY;
-    const sz = Math.sin(sunAngle * 0.25) * 60;
-    // Keep at least above rooftops when "up"; hide below horizon when down
+    const sz = Math.sin(sunAngle * 0.25) * 50;
     sun.position.set(sx, sy, sz);
-    sun.visible = sy > 15;
+    sun.visible = sy > 12;
 
     const moonAngle = sunAngle + Math.PI;
     const mx = Math.cos(moonAngle) * skyR;
     const my = Math.sin(moonAngle) * skyR * arc + baseY;
-    const mz = Math.sin(moonAngle * 0.25) * 60;
+    const mz = Math.sin(moonAngle * 0.25) * 50;
     moon.position.set(mx, my, mz);
-    moon.visible = my > 15;
+    moon.visible = my > 12;
 
     const n = Number.isFinite(night) ? THREE.MathUtils.clamp(night, 0, 1) : 0;
-
-    // Sun only by day, moon only by night (cross-fade at twilight)
     const day = 1 - n;
-    const sunUp = THREE.MathUtils.smoothstep(sy, 20, 80);
-    const moonUp = THREE.MathUtils.smoothstep(my, 20, 80);
+    const sunUp = THREE.MathUtils.smoothstep(sy, 18, 70);
+    const moonUp = THREE.MathUtils.smoothstep(my, 18, 70);
 
-    sunMat.opacity = THREE.MathUtils.clamp(day * sunUp * 0.95, 0, 0.95);
-    moonMat.opacity = THREE.MathUtils.clamp(n * moonUp * 0.95, 0, 0.95);
-
-    sun.scale.set(SUN_SIZE, SUN_SIZE, 1);
-    moon.scale.set(MOON_SIZE, MOON_SIZE, 1);
+    sunMat.opacity = THREE.MathUtils.clamp(day * sunUp, 0, 1);
+    moonMat.opacity = THREE.MathUtils.clamp(n * moonUp, 0, 1);
   }
 
-  // Start mid-morning so sun is up
   update(20000, 0.05);
 
   return { sun, moon, sunMat, moonMat, update };
