@@ -119,22 +119,13 @@ export function buildCity(scene) {
   const facadeTrimMat = new THREE.MeshStandardMaterial({ color: 0x1e2228, roughness: 0.7, metalness: 0.2, flatShading: true });
   const facadeEdgeMat = new THREE.MeshStandardMaterial({ color: 0x3a4048, roughness: 0.8, flatShading: true });
 
-  const COUNT = 170;
-  const buildings = new THREE.InstancedMesh(boxGeo, buildingMat, COUNT);
-  const buildingsB = new THREE.InstancedMesh(boxGeo, altMat, Math.floor(COUNT * 0.35));
-  const sidewalks = new THREE.InstancedMesh(boxGeo, sidewalkMat, COUNT + 40);
-  const roofs = new THREE.InstancedMesh(boxGeo, roofMat, COUNT * 2);
-  const facadeBands = new THREE.InstancedMesh(boxGeo, facadeTrimMat, COUNT * 28);
-  const facadeCorners = new THREE.InstancedMesh(boxGeo, facadeEdgeMat, COUNT * 4);
-  buildings.castShadow = buildings.receiveShadow = true;
-  buildingsB.castShadow = buildingsB.receiveShadow = true;
-  sidewalks.receiveShadow = true;
-
+  // All structures are hollow multi-floor buildings (no solid instanced towers)
+  const COUNT = 48;
   const dummy = new THREE.Object3D();
   const placed = [];
   const platforms = [];
   const treeColliders = [];
-  const occ = makeOcc(12);
+  const occ = makeOcc(14);
   const PLAZA_R = 58;
   occ.add(SHOP_ZONE.x, SHOP_ZONE.z, SHOP_ZONE.r);
   occ.add(0, 0, 22);
@@ -152,6 +143,8 @@ export function buildCity(scene) {
     { gx: 0, gz: -3, w: 24, d: 28, withTv: false },
     { gx: 2, gz: 2, w: 24, d: 24, withTv: true },
     { gx: -2, gz: -2, w: 22, d: 26, withTv: false },
+    { gx: 2, gz: -2, w: 24, d: 22, withTv: false },
+    { gx: -2, gz: 2, w: 22, d: 24, withTv: true },
   ];
   let hollowBuilt = 0;
   for (const slot of HOLLOW_SLOTS) {
@@ -160,33 +153,38 @@ export function buildCity(scene) {
     if (Math.hypot(px - SHOP_ZONE.x, pz - SHOP_ZONE.z) < SHOP_ZONE.r + Math.max(slot.w, slot.d) * 0.4) continue;
     if (!occ.tryAdd(px, pz, Math.max(slot.w, slot.d) * 0.55)) continue;
     buildHollowBuilding(group, px, pz, slot.w, slot.d, 0, hollowMats, treeColliders, platforms, tvTex, !!slot.withTv);
+    placed.push({ x: px, z: pz, w: slot.w, d: slot.d, h: 36 });
     hollowBuilt++;
   }
 
-  let idx = 0, idxB = 0, swIdx = 0, roofIdx = 0, facadeBandIdx = 0, facadeCornerIdx = 0;
-
-  const TARGET = COUNT;
-  for (let attempt = 0; attempt < TARGET * 8 && idx + idxB < TARGET; attempt++) {
-    const ang = (attempt / (TARGET * 8)) * Math.PI * 2 + (Math.random() - 0.5) * 0.28;
-    const rad = PLAZA_R + 22 + Math.random() * 200;
+  for (let attempt = 0; attempt < COUNT * 10 && hollowBuilt < COUNT; attempt++) {
+    const ang = (attempt / (COUNT * 10)) * Math.PI * 2 + (Math.random() - 0.5) * 0.25;
+    const rad = PLAZA_R + 24 + Math.random() * 190;
     let px = Math.cos(ang) * rad;
     let pz = Math.sin(ang) * rad;
-    px = Math.round(px / 16) * 16;
-    pz = Math.round(pz / 16) * 16;
-    if (Math.hypot(px, pz) < PLAZA_R + 12) continue;
+    px = Math.round(px / 20) * 20;
+    pz = Math.round(pz / 20) * 20;
+    if (Math.hypot(px, pz) < PLAZA_R + 14) continue;
 
-    const dist = districtAt(px, pz);
-    const w = 8 + Math.floor(Math.random() * 12);
-    const d = 8 + Math.floor(Math.random() * 12);
-    const h = pickHeight(dist);
+    const w = 18 + Math.floor(Math.random() * 12);
+    const d = 16 + Math.floor(Math.random() * 12);
     if (footprintOnRoad(px, pz, w, d)) continue;
     if (Math.hypot(px - SHOP_ZONE.x, pz - SHOP_ZONE.z) < SHOP_ZONE.r + Math.max(w, d) * 0.45) continue;
     if (!occ.tryAdd(px, pz, Math.max(w, d) * 0.55)) continue;
 
-    if (Math.random() > 0.72) {
-      for (let t = 0; t < 2 + Math.floor(Math.random() * 3); t++) {
-        const tx = px + (Math.random() - 0.5) * (w + 8);
-        const tz = pz + (Math.random() - 0.5) * (d + 8);
+    const withTv = hollowBuilt % 3 === 0;
+    try {
+      buildHollowBuilding(group, px, pz, w, d, 0, hollowMats, treeColliders, platforms, tvTex, withTv);
+      placed.push({ x: px, z: pz, w, d, h: 36 });
+      hollowBuilt++;
+    } catch (e) {
+      console.warn("hollow fail", e);
+    }
+
+    if (Math.random() > 0.75) {
+      for (let t = 0; t < 1 + Math.floor(Math.random() * 2); t++) {
+        const tx = px + (Math.random() - 0.5) * (w + 10);
+        const tz = pz + (Math.random() - 0.5) * (d + 10);
         if (!occ.tryAdd(tx, tz, 3)) continue;
         if (isOnRoad(tx, tz)) continue;
         const trunk = new THREE.Mesh(
@@ -203,65 +201,7 @@ export function buildCity(scene) {
         treeColliders.push({ x: tx, z: tz, w: 1.2, d: 1.2 });
       }
     }
-
-    placed.push({ x: px, z: pz, w, d, h });
-
-    dummy.position.set(px, h / 2, pz);
-    dummy.scale.set(w, h, d);
-    dummy.rotation.set(0, 0, 0);
-    dummy.updateMatrix();
-    if (Math.random() > 0.72 && idxB < Math.floor(COUNT * 0.35)) buildingsB.setMatrixAt(idxB++, dummy.matrix);
-    else if (idx < COUNT) buildings.setMatrixAt(idx++, dummy.matrix);
-
-    dummy.position.set(px, 0.12, pz);
-    dummy.scale.set(w + 3.5, 0.24, d + 3.5);
-    dummy.updateMatrix();
-    sidewalks.setMatrixAt(swIdx++, dummy.matrix);
-
-    for (const sx of [-1, 1]) {
-      for (const sz of [-1, 1]) {
-        if (facadeCornerIdx >= COUNT * 4) break;
-        dummy.position.set(px + sx * (w / 2), h / 2, pz + sz * (d / 2));
-        dummy.scale.set(0.35, h, 0.35);
-        dummy.updateMatrix();
-        facadeCorners.setMatrixAt(facadeCornerIdx++, dummy.matrix);
-      }
-    }
-
-    const detailLevels = Math.min(6, Math.floor(h / 5));
-    for (let floor = 1; floor <= detailLevels; floor++) {
-      const by = (h / (detailLevels + 1)) * floor;
-      for (const side of [-1, 1]) {
-        if (facadeBandIdx >= COUNT * 28 - 2) break;
-        dummy.position.set(px, by, pz + side * (d / 2 + 0.05));
-        dummy.scale.set(w * 0.92, 0.22, 0.18);
-        dummy.updateMatrix();
-        facadeBands.setMatrixAt(facadeBandIdx++, dummy.matrix);
-        dummy.position.set(px + side * (w / 2 + 0.05), by, pz);
-        dummy.scale.set(0.18, 0.22, d * 0.92);
-        dummy.updateMatrix();
-        facadeBands.setMatrixAt(facadeBandIdx++, dummy.matrix);
-      }
-    }
-
-    const roofN = 1 + Math.floor(Math.random() * 2);
-    for (let r = 0; r < roofN; r++) {
-      if (roofIdx >= COUNT * 2) break;
-      dummy.position.set(px + (Math.random() - 0.5) * w * 0.3, h + 0.3 + r * 0.5, pz + (Math.random() - 0.5) * d * 0.3);
-      dummy.scale.set(w * (0.4 + Math.random() * 0.3), 0.5 + Math.random() * 1.5, d * (0.4 + Math.random() * 0.3));
-      dummy.updateMatrix();
-      roofs.setMatrixAt(roofIdx++, dummy.matrix);
-    }
   }
-
-  buildings.count = idx; buildings.instanceMatrix.needsUpdate = true;
-  buildingsB.count = idxB; buildingsB.instanceMatrix.needsUpdate = true;
-  sidewalks.count = swIdx; sidewalks.instanceMatrix.needsUpdate = true;
-  roofs.count = roofIdx; roofs.instanceMatrix.needsUpdate = true;
-  facadeBands.count = facadeBandIdx; facadeBands.instanceMatrix.needsUpdate = true;
-  facadeCorners.count = facadeCornerIdx; facadeCorners.instanceMatrix.needsUpdate = true;
-
-  group.add(buildings, buildingsB, sidewalks, roofs, facadeBands, facadeCorners);
 
   try { buildCentralPlaza(group, occ, PLAZA_R); } catch (e) { console.warn(e); }
 
