@@ -50,30 +50,70 @@ function limitZoom(text) {
   return text;
 }
 
+
+// Engancha el pipeline de shaders / perfil gráfico (src/lib/game/gfxProfile.js + postfx.js)
+// en el GameCanvas completo. Todo o nada: si algún anclaje no coincide, se deja el
+// GameCanvas tal cual (el juego sigue funcionando, solo sin shaders).
+const GFX_MARK = "__GFX_POSTFX_V1__";
+const GFX_STEPS = [
+  ["import", 'import * as THREE from "three";',
+    'import * as THREE from "three";\nimport { getGfxProfile } from "@/lib/game/gfxProfile";\nimport { createPostFx } from "@/lib/game/postfx";'],
+  ["renderer", "const renderer = new THREE.WebGLRenderer({ antialias: true });",
+    "const __gp = getGfxProfile();\n    const renderer = new THREE.WebGLRenderer(__gp.rendererOptions);"],
+  ["pixelRatio", "renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));",
+    "renderer.setPixelRatio(__gp.pixelRatio);"],
+  ["shadowType", "renderer.shadowMap.type = THREE.PCFSoftShadowMap;",
+    "renderer.shadowMap.type = __gp.shadowType === \"soft\" ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;"],
+  ["shadowSize", "dir.shadow.mapSize.set(2048, 2048);",
+    "dir.shadow.mapSize.set(__gp.tier.shadowMap, __gp.tier.shadowMap);"],
+  ["create", "scene.add(dir);",
+    "scene.add(dir);\n    const gfx = createPostFx({ renderer, scene, camera, mount, dir, profile: __gp });"],
+  ["resize", "camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h);",
+    "camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h); gfx.setSize(w, h);"],
+  ["render", "renderer.render(scene, camera);",
+    "gfx.render(dt, elapsed, nightFactor);"],
+  ["dispose", "renderer.dispose();",
+    "gfx.dispose();\n      renderer.dispose();"],
+];
+
+function applyGfx(text) {
+  if (text.includes(GFX_MARK)) return text;
+  let out = text;
+  for (const [name, find, rep] of GFX_STEPS) {
+    const first = out.indexOf(find);
+    if (first < 0 || out.indexOf(find, first + find.length) >= 0) {
+      console.warn("[prebuild] gfx patch skipped: anchor '" + name + "' not unique/found");
+      return text;
+    }
+    out = out.slice(0, first) + rep + out.slice(first + find.length);
+  }
+  return out + "\n// " + GFX_MARK + "\n";
+}
+
 async function main() {
   try {
+    let text = null;
+    let source = "";
     if (fs.existsSync(out)) {
       const cur = fs.readFileSync(out, "utf8");
-      if (isGood(cur) && cur.includes("MAX_ZOOM_OUT")) {
-        console.log("[prebuild] GameCanvas already complete", cur.length);
-        return;
-      }
-      if (isGood(cur)) {
-        const text = limitZoom(cur);
-        fs.writeFileSync(out, text);
-        console.log("[prebuild] patched zoom on existing GameCanvas", text.length);
-        return;
-      }
+      if (isGood(cur)) { text = cur; source = "existing"; }
     }
-    let text = loadBaked();
-    if (text) {
-      text = limitZoom(text);
-      fs.mkdirSync(path.dirname(out), { recursive: true });
-      fs.writeFileSync(out, text);
-      console.log("[prebuild] OK decoded baked GameCanvas", text.length);
+    if (!text) {
+      text = loadBaked();
+      source = "baked";
+    }
+    if (!text) {
+      console.warn("[prebuild] no baked GameCanvas — leaving stub");
       return;
     }
-    console.warn("[prebuild] no baked GameCanvas — leaving stub");
+    const before = text;
+    if (!text.includes("MAX_ZOOM_OUT")) text = limitZoom(text);
+    text = applyGfx(text);
+    if (source === "baked" || text !== before) {
+      fs.mkdirSync(path.dirname(out), { recursive: true });
+      fs.writeFileSync(out, text);
+    }
+    console.log("[prebuild] GameCanvas ready (" + source + ")", text.length, text.includes(GFX_MARK) ? "+gfx" : "no-gfx");
   } catch (e) {
     console.error("[prebuild] unexpected", e?.message || e);
   }

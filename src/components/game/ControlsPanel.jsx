@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { ACTIONS, codeToLabel, DEFAULT_BINDS, inputState } from "@/lib/game/input";
 import { useI18n } from "@/lib/i18n";
 import LanguageSelector from "@/components/game/LanguageSelector";
+import GraphicsSelector from "@/components/game/GraphicsSelector";
 
 export default function ControlsPanel({ binds, audioOn, onSave, onToggleAudio, onClose }) {
   const { t } = useI18n();
@@ -53,6 +54,10 @@ export default function ControlsPanel({ binds, audioOn, onSave, onToggleAudio, o
 
         <div className="mb-3 rounded-lg border border-border px-3 py-2">
           <LanguageSelector />
+        </div>
+
+        <div className="mb-3 rounded-lg border border-border px-3 py-2">
+          <GraphicsSelector />
         </div>
 
         <div className="max-h-72 space-y-1 overflow-y-auto">
