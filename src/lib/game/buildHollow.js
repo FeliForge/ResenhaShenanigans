@@ -15,7 +15,6 @@ const INTERIOR_URLS = {
   cama: "/interiors/cama.png",
 };
 
-/** Shared materials/geometries — created once for all hollow buildings */
 const SHARED = {
   ready: false,
   propMats: null,
@@ -149,36 +148,53 @@ function decorateFloor(g, floorIndex, w, d, WALL_T, FLOOR_H) {
   g.add(fixture);
 }
 
-/** Visual ramp + stepped platforms for collision (AABB height). */
+/** Interior ramp fully inside the footprint (no clipping outside walls). */
 function addRamp(g, px, pz, w, d, level, FLOOR_H, platforms, yaw, stairMat, frameMat) {
+  const WALL = 0.7;
   const baseY = level * FLOOR_H;
-  const rampLen = FLOOR_H * 1.15;
-  const rampW = 2.4;
-  const startZ = d * 0.15;
-  const sx = w * 0.28 * (level % 2 === 0 ? 1 : -1);
-  const angle = Math.atan2(FLOOR_H, rampLen);
-  const hyp = Math.sqrt(FLOOR_H * FLOOR_H + rampLen * rampLen);
-  const ramp = new THREE.Mesh(new THREE.BoxGeometry(rampW, 0.2, hyp), stairMat);
-  ramp.position.set(sx, baseY + FLOOR_H / 2, startZ + rampLen / 2);
+  const rampW = Math.min(2.2, w * 0.22);
+  const maxRun = Math.max(4, d - WALL * 2 - 2.5);
+  const rampLen = Math.min(FLOOR_H * 0.95, maxRun * 0.9);
+  const sx = (level % 2 === 0 ? 1 : -1) * Math.min(w * 0.28, w / 2 - rampW / 2 - WALL - 0.4);
+  const startZ = -d / 2 + WALL + 1.2;
+  const zLimit = d / 2 - WALL - 1.0;
+  const useLen = Math.min(rampLen, zLimit - startZ);
+  if (useLen < 3.5) return;
+
+  const angle = Math.atan2(FLOOR_H, useLen);
+  const hyp = Math.sqrt(FLOOR_H * FLOOR_H + useLen * useLen);
+  const midZ = startZ + useLen / 2;
+
+  const ramp = new THREE.Mesh(new THREE.BoxGeometry(rampW, 0.18, hyp), stairMat);
+  ramp.position.set(sx, baseY + FLOOR_H / 2, midZ);
   ramp.rotation.x = -angle;
   g.add(ramp);
+
   for (const side of [-1, 1]) {
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.9, hyp), frameMat);
-    rail.position.set(sx + side * (rampW * 0.48), baseY + FLOOR_H / 2 + 0.55, startZ + rampLen / 2);
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.75, hyp), frameMat);
+    rail.position.set(sx + side * (rampW * 0.48), baseY + FLOOR_H / 2 + 0.45, midZ);
     rail.rotation.x = -angle;
     g.add(rail);
   }
-  const steps = 8;
+
+  const land = new THREE.Mesh(new THREE.BoxGeometry(rampW + 0.5, 0.16, 1.1), stairMat);
+  land.position.set(sx, baseY + 0.2, startZ + 0.3);
+  g.add(land);
+  const landTop = new THREE.Mesh(new THREE.BoxGeometry(rampW + 0.5, 0.16, 1.1), stairMat);
+  landTop.position.set(sx, baseY + FLOOR_H + 0.2, startZ + useLen - 0.3);
+  g.add(landTop);
+
+  const steps = 10;
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     const y = baseY + t * FLOOR_H;
-    const z = startZ + t * rampLen;
+    const z = startZ + t * useLen;
     platforms.push({
       x: px + sx,
       z: pz + z,
-      w: rampW + 0.4,
-      d: rampLen / steps + 0.6,
-      y: y + 0.15,
+      w: rampW + 0.6,
+      d: useLen / steps + 0.55,
+      y: y + 0.2,
       yaw,
     });
   }
@@ -211,7 +227,6 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
   });
 
   const floorMat = S.floorMat;
-  const interiorMat = S.interiorMat;
   const ceilMat = S.ceilMat;
   const colMat = mats.col || S.colMat;
   const stairMat = mats.stair || S.stairMat;
@@ -224,7 +239,7 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
     slab.position.set(0, fy + 0.14, 0);
     slab.receiveShadow = true;
     g.add(slab);
-    platforms.push({ x: px, z: pz, w: w - 1.2, d: d - 1.2, y: fy + 0.28, yaw });
+    platforms.push({ x: px, z: pz, w: w - 2.0, d: d - 2.0, y: fy + 0.28, yaw });
     if (f > 0) {
       const band = new THREE.Mesh(new THREE.BoxGeometry(w + 0.35, 0.22, d + 0.35), trimMat);
       band.position.set(0, fy, 0);
@@ -247,22 +262,21 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, H, WALL_T), wallMat);
     m.position.set(0, H / 2, -d / 2 + WALL_T / 2);
     g.add(m);
-    colliders.push({ x: px, z: pz - d / 2, w: w * 0.92, d: WALL_T + 0.4 });
+    colliders.push({ x: px, z: pz - d / 2, w: w * 0.9, d: WALL_T + 0.3 });
   }
   {
     const m = new THREE.Mesh(new THREE.BoxGeometry(WALL_T, H, d), wallMat);
     m.position.set(-w / 2 + WALL_T / 2, H / 2, 0);
     g.add(m);
-    colliders.push({ x: px - w / 2, z: pz, w: WALL_T + 0.4, d: d * 0.92 });
+    colliders.push({ x: px - w / 2, z: pz, w: WALL_T + 0.3, d: d * 0.88 });
   }
   {
     const m = new THREE.Mesh(new THREE.BoxGeometry(WALL_T, H, d), wallMat);
     m.position.set(w / 2 - WALL_T / 2, H / 2, 0);
     g.add(m);
-    colliders.push({ x: px + w / 2, z: pz, w: WALL_T + 0.4, d: d * 0.92 });
+    colliders.push({ x: px + w / 2, z: pz, w: WALL_T + 0.3, d: d * 0.88 });
   }
   {
-    // Front wall with open entrance
     const sideW = (w - DOOR_W) / 2;
     const fl = new THREE.Mesh(new THREE.BoxGeometry(sideW, H, WALL_T), wallMat);
     fl.position.set(-w / 2 + sideW / 2, H / 2, d / 2 - WALL_T / 2);
@@ -274,7 +288,6 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
     const upper = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W, upperH, WALL_T), wallMat);
     upper.position.set(0, DOOR_H + upperH / 2, d / 2 - WALL_T / 2);
     g.add(upper);
-    // Entrance frame + walkway lip
     const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W + 0.5, 0.28, 0.35), trimMat);
     doorFrame.position.set(0, DOOR_H + 0.1, d / 2 - WALL_T / 2 + 0.1);
     g.add(doorFrame);
@@ -286,9 +299,8 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
     const threshold = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W + 0.2, 0.12, 1.2), frameMat);
     threshold.position.set(0, 0.08, d / 2 + 0.35);
     g.add(threshold);
-    colliders.push({ x: px - w / 2 + sideW / 2, z: pz + d / 2, w: sideW + 0.15, d: WALL_T + 0.25 });
-    colliders.push({ x: px + w / 2 - sideW / 2, z: pz + d / 2, w: sideW + 0.15, d: WALL_T + 0.25 });
-    // No collider in the door opening — player can walk in
+    colliders.push({ x: px - w / 2 + sideW / 2, z: pz + d / 2 + 0.05, w: Math.max(0.8, sideW - 0.1), d: WALL_T + 0.2 });
+    colliders.push({ x: px + w / 2 - sideW / 2, z: pz + d / 2 + 0.05, w: Math.max(0.8, sideW - 0.1), d: WALL_T + 0.2 });
     const ft = 0.22;
     const left = new THREE.Mesh(new THREE.BoxGeometry(ft, DOOR_H, WALL_T + 0.2), frameMat);
     left.position.set(-DOOR_W / 2 + ft / 2, DOOR_H / 2, d / 2 - WALL_T / 2);
@@ -301,7 +313,6 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
     g.add(lintel);
   }
 
-  // Windows on side/back walls
   for (let f = 0; f < 3; f++) {
     const wy = f * FLOOR_H + 5.0;
     for (const [wx, wz, ww, wh, rotY] of [
@@ -334,7 +345,7 @@ export function buildHollowBuilding(group, px, pz, w, d, yaw, mats, colliders, p
     const cap = new THREE.Mesh(S.geo.colCap, trimMat);
     cap.position.set(cx, H - 0.35, cz);
     g.add(cap);
-    colliders.push({ x: px + cx, z: pz + cz, w: 1.0, d: 1.0 });
+    colliders.push({ x: px + cx, z: pz + cz, w: 0.85, d: 0.85 });
   }
 
   addRamp(g, px, pz, w, d, 0, FLOOR_H, platforms, yaw, stairMat, frameMat);
