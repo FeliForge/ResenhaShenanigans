@@ -119,13 +119,13 @@ export function buildCity(scene) {
   const facadeTrimMat = new THREE.MeshStandardMaterial({ color: 0x1e2228, roughness: 0.7, metalness: 0.2, flatShading: true });
   const facadeEdgeMat = new THREE.MeshStandardMaterial({ color: 0x3a4048, roughness: 0.8, flatShading: true });
 
-  // All structures are hollow multi-floor buildings (no solid instanced towers)
-  const COUNT = 48;
+  // Many hollow multi-floor buildings, dispersed in rings around the plaza
+  const COUNT = 130;
   const dummy = new THREE.Object3D();
   const placed = [];
   const platforms = [];
   const treeColliders = [];
-  const occ = makeOcc(14);
+  const occ = makeOcc(12);
   const PLAZA_R = 58;
   occ.add(SHOP_ZONE.x, SHOP_ZONE.z, SHOP_ZONE.r);
   occ.add(0, 0, 22);
@@ -157,17 +157,19 @@ export function buildCity(scene) {
     hollowBuilt++;
   }
 
-  for (let attempt = 0; attempt < COUNT * 10 && hollowBuilt < COUNT; attempt++) {
-    const ang = (attempt / (COUNT * 10)) * Math.PI * 2 + (Math.random() - 0.5) * 0.25;
-    const rad = PLAZA_R + 24 + Math.random() * 190;
+  for (let attempt = 0; attempt < COUNT * 14 && hollowBuilt < COUNT; attempt++) {
+    // Even angular spread + rings so the whole map fills (N/S/E/W)
+    const ang = (attempt / (COUNT * 14)) * Math.PI * 2 + (Math.random() - 0.5) * 0.2;
+    const ring = Math.floor(attempt / 18) % 6;
+    const rad = PLAZA_R + 28 + ring * 32 + Math.random() * 28;
     let px = Math.cos(ang) * rad;
     let pz = Math.sin(ang) * rad;
-    px = Math.round(px / 20) * 20;
-    pz = Math.round(pz / 20) * 20;
-    if (Math.hypot(px, pz) < PLAZA_R + 14) continue;
+    px = Math.round(px / 18) * 18;
+    pz = Math.round(pz / 18) * 18;
+    if (Math.hypot(px, pz) < PLAZA_R + 16) continue;
 
-    const w = 18 + Math.floor(Math.random() * 12);
-    const d = 16 + Math.floor(Math.random() * 12);
+    const w = 16 + Math.floor(Math.random() * 10);
+    const d = 14 + Math.floor(Math.random() * 10);
     if (footprintOnRoad(px, pz, w, d)) continue;
     if (Math.hypot(px - SHOP_ZONE.x, pz - SHOP_ZONE.z) < SHOP_ZONE.r + Math.max(w, d) * 0.45) continue;
     if (!occ.tryAdd(px, pz, Math.max(w, d) * 0.55)) continue;
@@ -181,7 +183,7 @@ export function buildCity(scene) {
       console.warn("hollow fail", e);
     }
 
-    if (Math.random() > 0.75) {
+    if (Math.random() > 0.8) {
       for (let t = 0; t < 1 + Math.floor(Math.random() * 2); t++) {
         const tx = px + (Math.random() - 0.5) * (w + 10);
         const tz = pz + (Math.random() - 0.5) * (d + 10);
