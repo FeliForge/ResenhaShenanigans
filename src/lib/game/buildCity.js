@@ -25,7 +25,6 @@ function pickHeight(dist) {
 }
 
 function isOnRoad(x, z) {
-  // Roads form a grid every 56 units; keep a wider clear band so footprints don't clip the street
   const near = (v) => {
     const m = ((v % 56) + 56) % 56;
     return m < 10 || m > 46;
@@ -34,11 +33,8 @@ function isOnRoad(x, z) {
 }
 
 const PLAZA_PATH = 14;
-
-/** Shop stand in the plaza — buildings must stay clear of this zone. */
 const SHOP_ZONE = { x: 16, z: 20, r: 14 };
 
-/** True if building footprint (center + half-extents) touches a road or plaza cross. */
 function footprintOnRoad(x, z, w, d) {
   const hw = (w || 10) * 0.5 + 1.5;
   const hd = (d || 10) * 0.5 + 1.5;
@@ -51,7 +47,6 @@ function footprintOnRoad(x, z, w, d) {
   for (const [sx, sz] of samples) {
     if (isOnRoad(sx, sz)) return true;
   }
-  // Keep main plaza axes open (cross paths through the plaza)
   if (Math.abs(x) < 8 + hw && Math.abs(z) < PLAZA_PATH + hd) return true;
   if (Math.abs(z) < 8 + hd && Math.abs(x) < PLAZA_PATH + hw) return true;
   return false;
@@ -124,9 +119,9 @@ export function buildCity(scene) {
   const facadeTrimMat = new THREE.MeshStandardMaterial({ color: 0x1e2228, roughness: 0.7, metalness: 0.2, flatShading: true });
   const facadeEdgeMat = new THREE.MeshStandardMaterial({ color: 0x3a4048, roughness: 0.8, flatShading: true });
 
-  const COUNT = 90;
+  const COUNT = 170;
   const buildings = new THREE.InstancedMesh(boxGeo, buildingMat, COUNT);
-  const buildingsB = new THREE.InstancedMesh(boxGeo, altMat, 90);
+  const buildingsB = new THREE.InstancedMesh(boxGeo, altMat, Math.floor(COUNT * 0.35));
   const sidewalks = new THREE.InstancedMesh(boxGeo, sidewalkMat, COUNT + 40);
   const roofs = new THREE.InstancedMesh(boxGeo, roofMat, COUNT * 2);
   const facadeBands = new THREE.InstancedMesh(boxGeo, facadeTrimMat, COUNT * 28);
@@ -141,9 +136,7 @@ export function buildCity(scene) {
   const treeColliders = [];
   const occ = makeOcc(12);
   const PLAZA_R = 58;
-  // Keep shop + approach clear (matches buildShop POS)
   occ.add(SHOP_ZONE.x, SHOP_ZONE.z, SHOP_ZONE.r);
-  // Keep plaza cross open
   occ.add(0, 0, 22);
 
   const hollowMats = {
@@ -152,7 +145,6 @@ export function buildCity(scene) {
   };
   const tvTex = makeTVTexture();
 
-  // Hollow buildings around the plaza in all directions (N/E/S/W)
   const HOLLOW_SLOTS = [
     { gx: 3, gz: 0, w: 28, d: 24, withTv: true },
     { gx: -3, gz: 0, w: 26, d: 26, withTv: false },
@@ -173,11 +165,10 @@ export function buildCity(scene) {
 
   let idx = 0, idxB = 0, swIdx = 0, roofIdx = 0, facadeBandIdx = 0, facadeCornerIdx = 0;
 
-  // Radial placement: spread buildings evenly in all directions (fixes empty south)
   const TARGET = COUNT;
-  for (let attempt = 0; attempt < TARGET * 5 && idx + idxB < TARGET; attempt++) {
-    const ang = (attempt / (TARGET * 5)) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
-    const rad = PLAZA_R + 20 + Math.random() * 150;
+  for (let attempt = 0; attempt < TARGET * 8 && idx + idxB < TARGET; attempt++) {
+    const ang = (attempt / (TARGET * 8)) * Math.PI * 2 + (Math.random() - 0.5) * 0.28;
+    const rad = PLAZA_R + 22 + Math.random() * 200;
     let px = Math.cos(ang) * rad;
     let pz = Math.sin(ang) * rad;
     px = Math.round(px / 16) * 16;
@@ -219,7 +210,7 @@ export function buildCity(scene) {
     dummy.scale.set(w, h, d);
     dummy.rotation.set(0, 0, 0);
     dummy.updateMatrix();
-    if (Math.random() > 0.72 && idxB < 90) buildingsB.setMatrixAt(idxB++, dummy.matrix);
+    if (Math.random() > 0.72 && idxB < Math.floor(COUNT * 0.35)) buildingsB.setMatrixAt(idxB++, dummy.matrix);
     else if (idx < COUNT) buildings.setMatrixAt(idx++, dummy.matrix);
 
     dummy.position.set(px, 0.12, pz);
