@@ -29,7 +29,7 @@ export default function StartMenu({
   onOpenQuests, claimable, savedCharacter, onContinue, quests, coins,
   questsLoading, claimingId, onClaim, binds, audioOn, onSaveBinds,
   onToggleAudio, onOpenWorkshop, shop, shopLoading, shopBusy,
-  onBuyShopItem, onEquipShopItem, onImportMoves, savedMoves,
+  onBuyShopItem, onEquipShopItem, onOpenGoofyBox, onImportMoves, savedMoves,
 }) {
   const { t, character: localChar } = useI18n();
   const [showQuests, setShowQuests] = useState(false);
@@ -338,24 +338,10 @@ export default function StartMenu({
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Local profile
             </div>
           </div>
-
-          {roomCode && (
-            <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-orange-300/20 bg-orange-300/[0.06] px-3 py-2.5">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-white/45">{t("menu.share")}</span>
-              <span className="font-mono text-lg font-black tracking-[0.28em] text-orange-200">{roomCode}</span>
-              <button
-                onClick={() => navigator.clipboard?.writeText(roomCode)}
-                className="grid h-8 w-8 place-items-center rounded-lg bg-white/[0.06] text-white/55 transition hover:bg-orange-300/15 hover:text-orange-100"
-                aria-label={t("menu.copy")}
-              >
-                <Copy size={14} />
-              </button>
-            </div>
-          )}
         </motion.section>
 
         <motion.footer
-          className="col-span-1 flex flex-wrap items-center justify-center gap-x-5 gap-y-3 pb-2 text-[9px] font-bold uppercase tracking-[0.22em] text-white/35 lg:col-span-2"
+          className="flex flex-wrap items-center justify-center gap-4 text-[9px] font-bold uppercase tracking-[0.22em] text-white/35 lg:col-span-2"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.35 }}
@@ -383,10 +369,9 @@ export default function StartMenu({
           emote={shop?.emote || ""}
           loading={shopLoading}
           busyId={shopBusy}
-          moves={savedMoves || {}}
           onBuy={onBuyShopItem}
           onEquip={onEquipShopItem}
-          onImport={onImportMoves}
+          onOpenGoofyBox={onOpenGoofyBox}
           onClose={() => setShowStore(false)}
         />
       )}

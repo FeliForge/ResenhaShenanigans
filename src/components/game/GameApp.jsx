@@ -17,7 +17,7 @@ import MusicPlayer from "@/components/game/MusicPlayer";
 import ControlsPanel from "@/components/game/ControlsPanel";
 import BoomboxPanel from "@/components/game/BoomboxPanel";
 import { loadQuests, sendProgress, claimReward } from "@/lib/game/quests";
-import { loadShop, buyItem, equipItem } from "@/lib/game/shop";
+import { loadShop, buyItem, equipItem, openGoofyBox } from "@/lib/game/shop";
 import { getShopItem } from "@/data/shop";
 import { CHARACTERS } from "@/data/characters";
 import { loadBinds, saveBinds, inputState, DEFAULT_BINDS } from "@/lib/game/input";
@@ -221,6 +221,38 @@ export default function GameApp() {
     } catch {}
   }
 
+  async function handleBuyShopItem(id) {
+    setShopBusy(id);
+    try {
+      const next = await buyItem(id);
+      setShop(next);
+      if (typeof next.coins === "number") setCoins(next.coins);
+    } catch {}
+    setShopBusy(null);
+  }
+
+  async function handleEquipShopItem(id) {
+    try { setShop(await equipItem(id)); } catch {}
+  }
+
+  async function handleOpenGoofyBox() {
+    setShopBusy("goofy_box");
+    try {
+      const result = await openGoofyBox();
+      setShop({
+        owned: result.owned,
+        dash: result.dash,
+        emote: result.emote,
+      });
+      if (typeof result.coins === "number") setCoins(result.coins);
+      return result;
+    } catch (e) {
+      return null;
+    } finally {
+      setShopBusy(null);
+    }
+  }
+
   if (screen === "intro") return <IntroSplash onDone={() => setScreen("menu")} />;
 
   if (screen === "menu") {
@@ -234,6 +266,9 @@ export default function GameApp() {
           savedCharacter={savedCharacter} onContinue={() => startPlay(savedCharacter)}
           quests={quests} coins={coins} questsLoading={questsLoading} claimingId={claimingId} onClaim={handleClaim}
           binds={binds} onSaveBinds={handleSaveBinds} audioOn={audioOn} onToggleAudio={toggleAudio}
+          shop={shop} shopLoading={shopLoading} shopBusy={shopBusy}
+          onBuyShopItem={handleBuyShopItem} onEquipShopItem={handleEquipShopItem}
+          onOpenGoofyBox={handleOpenGoofyBox}
         />
       </>
     );
@@ -317,10 +352,9 @@ export default function GameApp() {
         {showShop && (
           <ShopPanel
             coins={coins} owned={shop.owned} dash={shop.dash} emote={shop.emote} loading={shopLoading} busyId={shopBusy}
-            onBuy={async (id) => { setShopBusy(id); try { const next = await buyItem(id); setShop(next); if (typeof next.coins === "number") setCoins(next.coins); } catch {} setShopBusy(null); }}
-            onEquip={async (id) => { try { setShop(await equipItem(id)); } catch {} }}
-            moves={character?.moves || {}}
-            onImport={(moves) => setCharacter((current) => current ? { ...current, moves } : current)}
+            onBuy={handleBuyShopItem}
+            onEquip={handleEquipShopItem}
+            onOpenGoofyBox={handleOpenGoofyBox}
             onClose={() => setShowShop(false)}
           />
         )}
