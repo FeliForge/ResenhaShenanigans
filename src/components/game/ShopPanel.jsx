@@ -1,9 +1,19 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
-import { ArrowUp, Check, Coins, Dumbbell, Gift, Hand, KeyRound, Loader2, Music, RotateCw, Smile, Sparkles, X, Zap } from "lucide-react";
+import { ArrowUp, Check, Coins, Dumbbell, Gift, Hand, KeyRound, Loader2, Music, RotateCw, Smile, Sparkles, X, Zap, Bird, Wind } from "lucide-react";
 import { DASH_EFFECTS, EMOTES, GOOFY_BOX } from "@/data/shop";
 import { useI18n } from "@/lib/i18n";
 import { inputState } from "@/lib/game/input";
+
+const CODES_UNLOCK_KEY = "resenha_codes_unlocked";
+
+function readCodesUnlocked() {
+  try {
+    return localStorage.getItem(CODES_UNLOCK_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 const ANIM_ICONS = {
   dance: Music,
@@ -19,23 +29,45 @@ const ANIM_ICONS = {
   cheer: ArrowUp,
   sneak: Hand,
   explode: Sparkles,
+  floss: Music,
+  chicken: Bird,
+  dab: Hand,
+  panic: Wind,
+  vibe: Smile,
+  yeet: ArrowUp,
 };
 
 export default function ShopPanel({
   coins, owned, dash, emote, loading, busyId,
   onBuy, onEquip, onOpenGoofyBox, onRedeemCode, onClose,
+  initialTab, codesUnlocked: codesUnlockedProp,
 }) {
   const { t } = useI18n();
-  const [tab, setTab] = useState("dash");
+  const [codesUnlocked, setCodesUnlocked] = useState(() => codesUnlockedProp || readCodesUnlocked());
+  const [tab, setTab] = useState(() => {
+    if (initialTab === "codes" && (codesUnlockedProp || readCodesUnlocked())) return "codes";
+    return initialTab && initialTab !== "codes" ? initialTab : "dash";
+  });
   const [lastReward, setLastReward] = useState(null);
   const [codeInput, setCodeInput] = useState("");
   const [codeMsg, setCodeMsg] = useState(null);
   const [codeErr, setCodeErr] = useState(null);
+
+  useEffect(() => {
+    if (codesUnlockedProp) setCodesUnlocked(true);
+  }, [codesUnlockedProp]);
+
+  useEffect(() => {
+    if (initialTab === "codes" && codesUnlocked) setTab("codes");
+  }, [initialTab, codesUnlocked]);
+
   const tabs = [
     { id: "dash", label: t("shop.tab.dash"), icon: Zap },
     { id: "emote", label: t("shop.tab.emotes"), icon: Smile },
     { id: "box", label: t("shop.tab.box"), icon: Gift },
-    { id: "codes", label: t("shop.tab.codes") || "Códigos", icon: KeyRound },
+    ...(codesUnlocked
+      ? [{ id: "codes", label: t("shop.tab.codes") || "Códigos", icon: KeyRound }]
+      : []),
   ];
   const mine = owned || [];
   const items =
@@ -118,7 +150,7 @@ export default function ShopPanel({
             </div>
           )}
 
-          {!loading && tab === "codes" && (
+          {!loading && tab === "codes" && codesUnlocked && (
             <div className="mx-auto max-w-md space-y-4">
               <div className="rounded-2xl border border-cyan-400/25 bg-gradient-to-br from-cyan-500/10 via-slate-900/40 to-violet-500/10 p-5">
                 <div className="mb-3 flex items-center gap-2">
