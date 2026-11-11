@@ -16,6 +16,8 @@ import { Suspense, lazy, useState } from "react";
 
 const SecretRoom = lazy(() => import("@/components/game/SecretRoom"));
 
+const CODES_UNLOCK_KEY = "resenha_codes_unlocked";
+
 const EMBERS = Array.from({ length: 18 }, (_, i) => ({
   left: String((i * 137) % 100) + "%",
   bottom: String((i * 61) % 100) + "%",
@@ -39,6 +41,11 @@ export default function StartMenu({
   const [showSecret, setShowSecret] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
   const [secretHits, setSecretHits] = useState(0);
+  const [forgeHits, setForgeHits] = useState(0);
+  const [codesUnlocked, setCodesUnlocked] = useState(() => {
+    try { return localStorage.getItem(CODES_UNLOCK_KEY) === "1"; } catch { return false; }
+  });
+  const [shopInitialTab, setShopInitialTab] = useState(undefined);
 
   function tapVersion() {
     const next = secretHits + 1;
@@ -46,6 +53,23 @@ export default function StartMenu({
     if (next >= 5) {
       setShowSecret(true);
       setSecretHits(0);
+    }
+  }
+
+  function tapFeliForge() {
+    if (codesUnlocked) {
+      setShopInitialTab("codes");
+      setShowStore(true);
+      return;
+    }
+    const next = forgeHits + 1;
+    setForgeHits(next);
+    if (next >= 5) {
+      try { localStorage.setItem(CODES_UNLOCK_KEY, "1"); } catch {}
+      setCodesUnlocked(true);
+      setForgeHits(0);
+      setShopInitialTab("codes");
+      setShowStore(true);
     }
   }
 
@@ -90,7 +114,13 @@ export default function StartMenu({
               <Flame size={22} />
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-orange-200">FeliForge Studios</p>
+              <button
+                type="button"
+                onClick={tapFeliForge}
+                className="text-[10px] font-black uppercase tracking-[0.28em] text-orange-200 transition hover:text-orange-100"
+              >
+                FeliForge Studios
+              </button>
               <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.22em] text-white/35">Independent game division</p>
             </div>
             <button type="button" onClick={tapVersion} aria-label="v1.4" className="ml-auto rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-[10px] text-white/45 transition hover:border-orange-300/40 hover:text-orange-200">BUILD 1.4</button>
@@ -172,7 +202,7 @@ export default function StartMenu({
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-cyan-300/10 text-cyan-200"><Wrench size={17} /></span>
               <span className="min-w-0"><span className="block text-[10px] font-black uppercase tracking-wider text-cyan-100">Custom Moveset</span></span>
             </button>
-            <button onClick={() => setShowStore(true)} className="group flex min-h-[76px] items-center gap-2.5 rounded-xl border border-amber-300/20 bg-amber-300/[0.045] p-3 text-left transition hover:border-amber-200/45">
+            <button onClick={() => { setShopInitialTab(undefined); setShowStore(true); }} className="group flex min-h-[76px] items-center gap-2.5 rounded-xl border border-amber-300/20 bg-amber-300/[0.045] p-3 text-left transition hover:border-amber-200/45">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber-300/10 text-amber-200"><Store size={17} /></span>
               <span className="min-w-0"><span className="block text-[10px] font-black uppercase tracking-wider text-amber-100">Tienda</span></span>
             </button>
@@ -204,7 +234,9 @@ export default function StartMenu({
         </motion.section>
 
         <motion.footer className="flex flex-wrap items-center justify-center gap-4 text-[9px] font-bold uppercase tracking-[0.22em] text-white/35 lg:col-span-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.35 }}>
-          <span className="flex items-center gap-2"><Swords size={13} className="text-orange-300" /> FeliForge Studios</span>
+          <button type="button" onClick={tapFeliForge} className="flex items-center gap-2 transition hover:text-orange-200">
+            <Swords size={13} className="text-orange-300" /> FeliForge Studios
+          </button>
           <span className="flex items-center gap-2 text-amber-200/80"><Coins size={13} /> {coins ?? 0} credits</span>
           <button type="button" onClick={() => setShowBoombox(true)} className="flex items-center gap-2 transition hover:text-orange-200"><Radio size={13} className="text-orange-300" /> Boombox</button>
         </motion.footer>
@@ -224,7 +256,9 @@ export default function StartMenu({
           onEquip={onEquipShopItem}
           onOpenGoofyBox={onOpenGoofyBox}
           onRedeemCode={onRedeemCode}
-          onClose={() => setShowStore(false)}
+          onClose={() => { setShowStore(false); setShopInitialTab(undefined); }}
+          initialTab={shopInitialTab}
+          codesUnlocked={codesUnlocked}
         />
       )}
 
