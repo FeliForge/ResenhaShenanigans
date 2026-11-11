@@ -30,6 +30,13 @@ export const EMOTES = [
   { id: "emote_cheer", kind: "emote", name: "Porra", price: 0, anim: "cheer", hint: "Salta de alegría", lootOnly: true },
   { id: "emote_sneak", kind: "emote", name: "Furtivo", price: 0, anim: "sneak", hint: "Se agacha y se desliza", lootOnly: true },
   { id: "emote_explode", kind: "emote", name: "Explosión", price: 0, anim: "explode", hint: "Pulsa como bomba", lootOnly: true },
+  // More fun loot-only emotes
+  { id: "emote_floss", kind: "emote", name: "Floss", price: 0, anim: "floss", hint: "Baile de lado a lado", lootOnly: true },
+  { id: "emote_chicken", kind: "emote", name: "Pollo", price: 0, anim: "chicken", hint: "Aletea como gallina", lootOnly: true },
+  { id: "emote_dab", kind: "emote", name: "Dab", price: 0, anim: "dab", hint: "Pose dab clásica", lootOnly: true },
+  { id: "emote_panic", kind: "emote", name: "Pánico", price: 0, anim: "panic", hint: "Tiembla de pánico", lootOnly: true },
+  { id: "emote_vibe", kind: "emote", name: "Vibe", price: 0, anim: "vibe", hint: "Se mece tranquilo", lootOnly: true },
+  { id: "emote_yeet", kind: "emote", name: "Yeet", price: 0, anim: "yeet", hint: "Lanza el cuerpo hacia adelante", lootOnly: true },
 ];
 
 export const SHOP_ITEMS = [...DASH_EFFECTS, ...EMOTES];
