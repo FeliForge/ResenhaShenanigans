@@ -38,7 +38,6 @@ function loadBaked() {
 }
 
 function limitZoom(text) {
-  // Reduce max orbit distance (was ~26)
   text = text.replace(
     /camState\.dist = THREE\.MathUtils\.clamp\(camState\.dist \+ delta \* 0\.012, 1\.65, 26\)/g,
     "camState.dist = THREE.MathUtils.clamp(camState.dist + delta * 0.012, 1.65, 12) // MAX_ZOOM_OUT"
@@ -50,10 +49,6 @@ function limitZoom(text) {
   return text;
 }
 
-
-// Engancha el pipeline de shaders / perfil gráfico (src/lib/game/gfxProfile.js + postfx.js)
-// en el GameCanvas completo. Todo o nada: si algún anclaje no coincide, se deja el
-// GameCanvas tal cual (el juego sigue funcionando, solo sin shaders).
 const GFX_MARK = "__GFX_POSTFX_V1__";
 const GFX_STEPS = [
   ["import", 'import * as THREE from "three";',
@@ -90,8 +85,7 @@ function applyGfx(text) {
   return out + "\n// " + GFX_MARK + "\n";
 }
 
-// Unique Goofy Box emote anims (local player + remotes)
-const EMOTE_MARK = "__GOOFY_EMOTES_V1__";
+const EMOTE_MARK = "__GOOFY_EMOTES_V2__";
 const LOCAL_EMOTE_FIND = `        } else if (anim === "hop") {
           const p = Math.abs(Math.sin(et * 8));
           sprite.position.y = bob + p * 1.2;
@@ -103,23 +97,43 @@ const LOCAL_EMOTE_REP = `        } else if (anim === "hop") {
           sprite.position.y = bob + p * 1.2;
           sprite.scale.set(sx * (1 - p * 0.1), sy * (1 + p * 0.1), 1);
         } else if (anim === "goofy") {
-          // wobble + slapstick bounce
           sprite.position.y = bob + Math.abs(Math.sin(et * 11)) * 0.55;
           sprite.rotation.z = Math.sin(et * 14) * 0.45;
           sprite.scale.set(sx * (1 + Math.sin(et * 22) * 0.18), sy * (1 - Math.abs(Math.sin(et * 11)) * 0.12), 1);
         } else if (anim === "troll") {
-          // exaggerate stretch + lean
           const p = Math.abs(Math.sin(et * 5));
           sprite.scale.set(sx * (1 + p * 0.45), sy * (0.85 + p * 0.35), 1);
           sprite.rotation.z = Math.sin(et * 3) * 0.15;
           sprite.position.y = bob + p * 0.35;
         } else if (anim === "moonwalk") {
-          // slide + lean back while spinning slowly
           sprite.position.x += Math.sin(et * 2.2) * 0.35;
           sprite.position.y = bob + Math.abs(Math.sin(et * 4)) * 0.08;
           sprite.rotation.z = -0.18 + Math.sin(et * 6) * 0.05;
           sprite.rotation.y = ang - et * Math.PI * 0.9;
           sprite.scale.set(sx * 0.95, sy * 1.05, 1);
+        } else if (anim === "robot") {
+          const step = Math.floor(et * 6) % 2;
+          sprite.rotation.z = step ? 0.12 : -0.12;
+          sprite.position.y = bob + (step ? 0.08 : 0);
+          sprite.scale.set(sx * 1.05, sy * 0.95, 1);
+        } else if (anim === "dizzy") {
+          sprite.rotation.y = ang + et * Math.PI * 4;
+          sprite.rotation.z = Math.sin(et * 10) * 0.35;
+          sprite.position.y = bob + Math.abs(Math.sin(et * 7)) * 0.15;
+        } else if (anim === "cheer") {
+          const p = Math.abs(Math.sin(et * 7));
+          sprite.position.y = bob + p * 0.9;
+          sprite.scale.set(sx * (1 + p * 0.15), sy * (1 + p * 0.2), 1);
+          sprite.rotation.z = Math.sin(et * 14) * 0.1;
+        } else if (anim === "sneak") {
+          sprite.position.y = bob - 0.45 + Math.abs(Math.sin(et * 5)) * 0.1;
+          sprite.scale.set(sx * 1.1, sy * 0.7, 1);
+          sprite.position.x += Math.sin(et * 3) * 0.25;
+        } else if (anim === "explode") {
+          const p = Math.abs(Math.sin(et * 9));
+          sprite.scale.set(sx * (1 + p * 0.55), sy * (1 + p * 0.55), 1);
+          sprite.rotation.z = Math.sin(et * 20) * 0.2;
+          sprite.position.y = bob + p * 0.2;
         }
       }`;
 
@@ -147,6 +161,21 @@ const REMOTE_EMOTE_REP = `          if (r.emoteUntil > now) {
               r.sprite.position.x += Math.sin(et * 2.2) * 0.3;
               r.sprite.rotation.y += -et * Math.PI * 0.9;
               r.sprite.rotation.z = -0.15;
+            } else if (r.emoteAnim === "robot") {
+              const step = Math.floor(et * 6) % 2;
+              r.sprite.rotation.z = step ? 0.12 : -0.12;
+            } else if (r.emoteAnim === "dizzy") {
+              r.sprite.rotation.y += et * Math.PI * 4;
+              r.sprite.rotation.z = Math.sin(et * 10) * 0.3;
+            } else if (r.emoteAnim === "cheer") {
+              r.sprite.position.y += Math.abs(Math.sin(et * 7)) * 0.85;
+            } else if (r.emoteAnim === "sneak") {
+              r.sprite.position.y -= 0.4;
+              r.sprite.scale.set(1.1, 0.7, 1);
+              r.sprite.position.x += Math.sin(et * 3) * 0.2;
+            } else if (r.emoteAnim === "explode") {
+              const p = Math.abs(Math.sin(et * 9));
+              r.sprite.scale.set(1 + p * 0.5, 1 + p * 0.5, 1);
             } else {
               r.sprite.position.y += Math.abs(Math.sin(et * 9)) * 0.3;
               r.sprite.rotation.z = Math.sin(et * 9) * 0.2;
@@ -154,6 +183,8 @@ const REMOTE_EMOTE_REP = `          if (r.emoteUntil > now) {
           }`;
 
 function applyUniqueEmotes(text) {
+  // Strip older mark so V2 can re-apply on fresh bake
+  text = text.replace(/\n\/\/ __GOOFY_EMOTES_V1__\n?/g, "");
   if (text.includes(EMOTE_MARK)) return text;
   if (!text.includes(LOCAL_EMOTE_FIND) || !text.includes(REMOTE_EMOTE_FIND)) {
     console.warn("[prebuild] unique emote patch skipped: anchors not found");

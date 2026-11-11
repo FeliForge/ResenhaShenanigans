@@ -1,11 +1,25 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
-import { ArrowUp, Check, Coins, Dumbbell, Gift, Hand, Loader2, Music, RotateCw, Smile, X, Zap } from "lucide-react";
+import { ArrowUp, Check, Coins, Dumbbell, Gift, Hand, Loader2, Music, RotateCw, Smile, Sparkles, X, Zap } from "lucide-react";
 import { DASH_EFFECTS, EMOTES, GOOFY_BOX } from "@/data/shop";
 import { useI18n } from "@/lib/i18n";
 import { inputState } from "@/lib/game/input";
 
-const ANIM_ICONS = { dance: Music, wave: Hand, spin: RotateCw, flex: Dumbbell, hop: ArrowUp };
+const ANIM_ICONS = {
+  dance: Music,
+  wave: Hand,
+  spin: RotateCw,
+  flex: Dumbbell,
+  hop: ArrowUp,
+  goofy: Smile,
+  troll: Smile,
+  moonwalk: RotateCw,
+  robot: Zap,
+  dizzy: RotateCw,
+  cheer: ArrowUp,
+  sneak: Hand,
+  explode: Sparkles,
+};
 
 export default function ShopPanel({ coins, owned, dash, emote, loading, busyId, onBuy, onEquip, onOpenGoofyBox, onClose }) {
   const { t } = useI18n();
@@ -16,9 +30,15 @@ export default function ShopPanel({ coins, owned, dash, emote, loading, busyId, 
     { id: "emote", label: t("shop.tab.emotes"), icon: Smile },
     { id: "box", label: t("shop.tab.box"), icon: Gift },
   ];
-  const items = tab === "dash" ? DASH_EFFECTS.filter((i) => !i.lootOnly) : tab === "emote" ? EMOTES.filter((i) => !i.lootOnly) : [];
-  const equipped = tab === "dash" ? dash : emote;
   const mine = owned || [];
+  // Tienda normal + drops de la box que ya tenés
+  const items =
+    tab === "dash"
+      ? DASH_EFFECTS.filter((i) => !i.lootOnly || mine.includes(i.id))
+      : tab === "emote"
+        ? EMOTES.filter((i) => !i.lootOnly || mine.includes(i.id))
+        : [];
+  const equipped = tab === "dash" ? dash : emote;
   const lootOwned = [...DASH_EFFECTS, ...EMOTES].filter((i) => i.lootOnly && mine.includes(i.id));
 
   useEffect(() => {
@@ -149,22 +169,36 @@ export default function ShopPanel({ coins, owned, dash, emote, loading, busyId, 
                 const busy = busyId === item.id;
                 const AnimIcon = item.kind === "emote" ? ANIM_ICONS[item.anim] || Smile : null;
                 return (
-                  <div key={item.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0f0f18] p-3">
+                  <div
+                    key={item.id}
+                    className={`flex items-center gap-3 rounded-xl border p-3 ${
+                      item.lootOnly ? "border-pink-400/30 bg-[#1a1220]" : "border-white/10 bg-[#0f0f18]"
+                    }`}
+                  >
                     <span
                       className="grid h-14 w-14 shrink-0 place-items-center rounded-lg text-2xl"
                       style={{
                         background:
                           item.kind === "dash"
                             ? `linear-gradient(135deg, ${item.a}, ${item.b})`
-                            : "radial-gradient(circle at 50% 40%, #2a2a3a, #0f0f18)",
+                            : item.lootOnly
+                              ? "radial-gradient(circle at 50% 40%, #3a2040, #0f0f18)"
+                              : "radial-gradient(circle at 50% 40%, #2a2a3a, #0f0f18)",
                         boxShadow: item.kind === "dash" ? `0 0 18px -6px ${item.a}` : "none",
                       }}
                     >
-                      {item.kind === "dash" ? item.emoji : <AnimIcon size={22} className="text-[#ff9620]" />}
+                      {item.kind === "dash" ? item.emoji : <AnimIcon size={22} className={item.lootOnly ? "text-pink-400" : "text-[#ff9620]"} />}
                     </span>
 
                     <div className="min-w-0 flex-1">
-                      <h3 className="truncate text-sm font-semibold">{t(`shop.item.${item.id}`)}</h3>
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="truncate text-sm font-semibold">{t(`shop.item.${item.id}`)}</h3>
+                        {item.lootOnly && (
+                          <span className="shrink-0 rounded bg-pink-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-pink-300">
+                            Box
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[11px] text-white/50">
                         {item.kind === "dash" ? t("shop.dashDesc") : t(`shop.hint.${item.id}`)}
                       </p>

@@ -21,10 +21,15 @@ export const EMOTES = [
   { id: "emote_spin", kind: "emote", name: "Giro", price: 110, anim: "spin", hint: "Gira sobre sí mismo" },
   { id: "emote_flex", kind: "emote", name: "Flexión", price: 150, anim: "flex", hint: "Presume de músculo" },
   { id: "emote_hop", kind: "emote", name: "Saltitos", price: 200, anim: "hop", hint: "Salta sin parar" },
-  // Unique / Goofy Box exclusives — anim ids propios (no se venden en la tienda)
+  // Unique / Goofy Box exclusives — solo loot
   { id: "emote_goofy", kind: "emote", name: "Goofy", price: 0, anim: "goofy", hint: "Baile goofy exclusivo", lootOnly: true },
   { id: "emote_troll", kind: "emote", name: "Troll", price: 0, anim: "troll", hint: "Pose troll exclusiva", lootOnly: true },
   { id: "emote_moonwalk", kind: "emote", name: "Moonwalk", price: 0, anim: "moonwalk", hint: "Camina hacia atrás", lootOnly: true },
+  { id: "emote_robot", kind: "emote", name: "Robot", price: 0, anim: "robot", hint: "Movimiento robótico", lootOnly: true },
+  { id: "emote_dizzy", kind: "emote", name: "Mareado", price: 0, anim: "dizzy", hint: "Gira mareado", lootOnly: true },
+  { id: "emote_cheer", kind: "emote", name: "Porra", price: 0, anim: "cheer", hint: "Salta de alegría", lootOnly: true },
+  { id: "emote_sneak", kind: "emote", name: "Furtivo", price: 0, anim: "sneak", hint: "Se agacha y se desliza", lootOnly: true },
+  { id: "emote_explode", kind: "emote", name: "Explosión", price: 0, anim: "explode", hint: "Pulsa como bomba", lootOnly: true },
 ];
 
 export const SHOP_ITEMS = [...DASH_EFFECTS, ...EMOTES];
