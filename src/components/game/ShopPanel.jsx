@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
-import { ArrowUp, Check, Coins, Dumbbell, Gift, Hand, Loader2, Music, RotateCw, Smile, Sparkles, X, Zap } from "lucide-react";
+import { ArrowUp, Check, Coins, Dumbbell, Gift, Hand, KeyRound, Loader2, Music, RotateCw, Smile, Sparkles, X, Zap } from "lucide-react";
 import { DASH_EFFECTS, EMOTES, GOOFY_BOX } from "@/data/shop";
 import { useI18n } from "@/lib/i18n";
 import { inputState } from "@/lib/game/input";
@@ -21,17 +21,23 @@ const ANIM_ICONS = {
   explode: Sparkles,
 };
 
-export default function ShopPanel({ coins, owned, dash, emote, loading, busyId, onBuy, onEquip, onOpenGoofyBox, onClose }) {
+export default function ShopPanel({
+  coins, owned, dash, emote, loading, busyId,
+  onBuy, onEquip, onOpenGoofyBox, onRedeemCode, onClose,
+}) {
   const { t } = useI18n();
   const [tab, setTab] = useState("dash");
   const [lastReward, setLastReward] = useState(null);
+  const [codeInput, setCodeInput] = useState("");
+  const [codeMsg, setCodeMsg] = useState(null);
+  const [codeErr, setCodeErr] = useState(null);
   const tabs = [
     { id: "dash", label: t("shop.tab.dash"), icon: Zap },
     { id: "emote", label: t("shop.tab.emotes"), icon: Smile },
     { id: "box", label: t("shop.tab.box"), icon: Gift },
+    { id: "codes", label: t("shop.tab.codes") || "Códigos", icon: KeyRound },
   ];
   const mine = owned || [];
-  // Tienda normal + drops de la box que ya tenés
   const items =
     tab === "dash"
       ? DASH_EFFECTS.filter((i) => !i.lootOnly || mine.includes(i.id))
@@ -55,6 +61,20 @@ export default function ShopPanel({ coins, owned, dash, emote, loading, busyId, 
     } catch {}
   }
 
+  async function handleRedeem(e) {
+    e?.preventDefault?.();
+    if (!onRedeemCode || busyId === "redeem_code") return;
+    setCodeMsg(null);
+    setCodeErr(null);
+    try {
+      const result = await onRedeemCode(codeInput);
+      if (result?.message) setCodeMsg(result.message);
+      setCodeInput("");
+    } catch (err) {
+      setCodeErr(err?.message || "Error");
+    }
+  }
+
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm">
       <div className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#151523] text-white shadow-2xl">
@@ -73,7 +93,7 @@ export default function ShopPanel({ coins, owned, dash, emote, loading, busyId, 
           </div>
         </header>
 
-        <div className="flex gap-2 border-b border-white/10 px-4 py-2">
+        <div className="flex flex-wrap gap-2 border-b border-white/10 px-4 py-2">
           {tabs.map((tabItem) => {
             const Icon = tabItem.icon;
             const active = tab === tabItem.id;
@@ -95,6 +115,50 @@ export default function ShopPanel({ coins, owned, dash, emote, loading, busyId, 
           {loading && (
             <div className="flex items-center justify-center gap-2 py-10 text-sm text-white/60">
               <Loader2 size={16} className="animate-spin" /> {t("shop.loading")}
+            </div>
+          )}
+
+          {!loading && tab === "codes" && (
+            <div className="mx-auto max-w-md space-y-4">
+              <div className="rounded-2xl border border-cyan-400/25 bg-gradient-to-br from-cyan-500/10 via-slate-900/40 to-violet-500/10 p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <KeyRound size={18} className="text-cyan-300" />
+                  <h3 className="text-sm font-black uppercase tracking-wider text-white">
+                    {t("shop.codes.title") || "Códigos secretos"}
+                  </h3>
+                </div>
+                <p className="mb-4 text-xs text-white/55">
+                  {t("shop.codes.desc") || "Ingresá un código para recibir recompensas. Cada código solo se puede usar una vez."}
+                </p>
+                <form onSubmit={handleRedeem} className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    value={codeInput}
+                    onChange={(e) => { setCodeInput(e.target.value); setCodeErr(null); setCodeMsg(null); }}
+                    placeholder={t("shop.codes.placeholder") || "XXXX-XXXX"}
+                    className="flex-1 rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 font-mono text-sm uppercase tracking-wider text-white outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-white/30 focus:border-cyan-300/50"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                  />
+                  <button
+                    type="submit"
+                    disabled={busyId === "redeem_code" || !codeInput.trim()}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 to-violet-500 px-4 py-2.5 text-sm font-black text-[#0a0a14] hover:brightness-110 disabled:opacity-50"
+                  >
+                    {busyId === "redeem_code" ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
+                    {t("shop.codes.redeem") || "Canjear"}
+                  </button>
+                </form>
+                {codeMsg && (
+                  <p className="mt-3 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-center text-sm font-semibold text-emerald-300">
+                    {t("shop.codes.ok") || "¡Listo!"} {codeMsg}
+                  </p>
+                )}
+                {codeErr && (
+                  <p className="mt-3 rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-center text-sm font-semibold text-red-300">
+                    {codeErr}
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -161,7 +225,7 @@ export default function ShopPanel({ coins, owned, dash, emote, loading, busyId, 
             </div>
           )}
 
-          {!loading && tab !== "box" && (
+          {!loading && tab !== "box" && tab !== "codes" && (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {items.map((item) => {
                 const isOwned = mine.includes(item.id);

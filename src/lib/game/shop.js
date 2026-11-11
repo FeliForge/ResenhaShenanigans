@@ -1,11 +1,13 @@
 // @ts-nocheck
 import { getShopItem, getLootPool, GOOFY_BOX } from "@/data/shop";
+import { REDEEM_CODES, normalizeCode } from "@/data/codes";
 
 // Tienda local: monedas e inventario viven en este navegador.
 // El precio se valida aquí, no en un servidor externo.
 
 const WALLET_KEY = "resenha_wallet";
 const INV_KEY = "resenha_inventory";
+const CODES_KEY = "resenha_redeemed_codes";
 
 function readJson(key, fallback) {
   try {
@@ -34,6 +36,17 @@ function ensureInventory() {
   const next = { item_ids: [], dash: "", emote: "" };
   writeJson(INV_KEY, next);
   return next;
+}
+
+function redeemedSet() {
+  const list = readJson(CODES_KEY, []);
+  return new Set(Array.isArray(list) ? list : []);
+}
+
+function markRedeemed(code) {
+  const set = redeemedSet();
+  set.add(code);
+  writeJson(CODES_KEY, [...set]);
 }
 
 function snapshot(wallet, inventory) {
@@ -93,7 +106,7 @@ export async function openGoofyBox() {
   const pool = getLootPool();
   const owned = new Set(inventory.item_ids || []);
   let candidates = pool.filter((item) => !owned.has(item.id));
-  if (candidates.length === 0) candidates = pool; // already have all → still give a random one (no duplicate add)
+  if (candidates.length === 0) candidates = pool;
 
   const pick = candidates[Math.floor(Math.random() * candidates.length)];
   const coins = (wallet.coins || 0) - price;
@@ -107,7 +120,7 @@ export async function openGoofyBox() {
   const updated = {
     ...inventory,
     item_ids,
-    [pick.kind]: pick.id, // auto-equip the new drop
+    [pick.kind]: pick.id,
   };
   writeJson(INV_KEY, updated);
 
@@ -116,4 +129,54 @@ export async function openGoofyBox() {
     reward: pick,
     duplicate: alreadyOwned,
   };
+}
+
+/** Canjear código secreto (una vez por navegador). */
+export async function redeemCode(raw) {
+  const code = normalizeCode(raw);
+  if (!code) throw new Error("Código vacío");
+  const def = REDEEM_CODES[code];
+  if (!def) throw new Error("Código inválido");
+  if (redeemedSet().has(code)) throw new Error("Código ya canjeado");
+
+  const wallet = ensureWallet();
+  const inventory = ensureInventory();
+
+  if (def.type === "coins") {
+    const amount = Math.max(0, Number(def.amount) || 0);
+    const coins = (wallet.coins || 0) + amount;
+    const total_earned = (wallet.total_earned || 0) + amount;
+    writeJson(WALLET_KEY, { ...wallet, coins, total_earned });
+    markRedeemed(code);
+    return {
+      ...snapshot({ ...wallet, coins, total_earned }, inventory),
+      message: `+${amount} monedas`,
+      kind: "coins",
+      amount,
+    };
+  }
+
+  if (def.type === "item") {
+    const item = getShopItem(def.itemId);
+    if (!item) throw new Error("Recompensa no encontrada");
+    const owned = inventory.item_ids || [];
+    const already = owned.includes(item.id);
+    const item_ids = already ? owned : [...owned, item.id];
+    const updated = {
+      ...inventory,
+      item_ids,
+      [item.kind]: item.id,
+    };
+    writeJson(INV_KEY, updated);
+    markRedeemed(code);
+    return {
+      ...snapshot(wallet, updated),
+      message: item.name || item.id,
+      kind: "item",
+      reward: item,
+      duplicate: already,
+    };
+  }
+
+  throw new Error("Tipo de código desconocido");
 }
