@@ -31,7 +31,7 @@ export const SHOP_ITEMS = [...DASH_EFFECTS, ...EMOTES];
 
 export const GOOFY_BOX = {
   id: "goofy_box",
-  price: 120,
+  price: 60,
   name: "Goofy Box",
 };
 
