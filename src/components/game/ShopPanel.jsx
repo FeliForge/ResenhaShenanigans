@@ -1,28 +1,39 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
-import { ArrowUp, Check, Coins, Dumbbell, Hand, Loader2, Music, RotateCw, Smile, X, Zap } from "lucide-react";
-import { DASH_EFFECTS, EMOTES } from "@/data/shop";
+import { ArrowUp, Check, Coins, Dumbbell, Gift, Hand, Loader2, Music, RotateCw, Smile, X, Zap } from "lucide-react";
+import { DASH_EFFECTS, EMOTES, GOOFY_BOX } from "@/data/shop";
 import { useI18n } from "@/lib/i18n";
 import { inputState } from "@/lib/game/input";
 
 const ANIM_ICONS = { dance: Music, wave: Hand, spin: RotateCw, flex: Dumbbell, hop: ArrowUp };
 
-export default function ShopPanel({ coins, owned, dash, emote, loading, busyId, onBuy, onEquip, onClose }) {
+export default function ShopPanel({ coins, owned, dash, emote, loading, busyId, onBuy, onEquip, onOpenGoofyBox, onClose }) {
   const { t } = useI18n();
   const [tab, setTab] = useState("dash");
+  const [lastReward, setLastReward] = useState(null);
   const tabs = [
     { id: "dash", label: t("shop.tab.dash"), icon: Zap },
     { id: "emote", label: t("shop.tab.emotes"), icon: Smile },
+    { id: "box", label: t("shop.tab.box"), icon: Gift },
   ];
-  const items = tab === "dash" ? DASH_EFFECTS : EMOTES;
+  const items = tab === "dash" ? DASH_EFFECTS.filter((i) => !i.lootOnly) : tab === "emote" ? EMOTES.filter((i) => !i.lootOnly) : [];
   const equipped = tab === "dash" ? dash : emote;
   const mine = owned || [];
+  const lootOwned = [...DASH_EFFECTS, ...EMOTES].filter((i) => i.lootOnly && mine.includes(i.id));
 
   useEffect(() => {
     inputState.blocked = true;
     try { document.exitPointerLock?.(); } catch {}
     return () => { inputState.blocked = false; };
   }, []);
+
+  async function handleOpenBox() {
+    if (!onOpenGoofyBox || busyId === "goofy_box") return;
+    try {
+      const result = await onOpenGoofyBox();
+      if (result?.reward) setLastReward(result);
+    } catch {}
+  }
 
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm">
@@ -67,7 +78,70 @@ export default function ShopPanel({ coins, owned, dash, emote, loading, busyId, 
             </div>
           )}
 
-          {!loading && (
+          {!loading && tab === "box" && (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-pink-400/30 bg-gradient-to-br from-pink-500/15 via-purple-500/10 to-orange-500/10 p-5 text-center">
+                <div className="mx-auto mb-3 grid h-20 w-20 place-items-center rounded-2xl bg-gradient-to-br from-pink-400 to-orange-400 text-4xl shadow-lg">
+                  🎁
+                </div>
+                <h3 className="text-lg font-black uppercase tracking-wide text-white">{t("shop.goofy.title")}</h3>
+                <p className="mt-1 text-xs text-white/60">{t("shop.goofy.desc")}</p>
+                <button
+                  onClick={handleOpenBox}
+                  disabled={busyId === "goofy_box" || (coins ?? 0) < GOOFY_BOX.price}
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-pink-500 to-orange-400 px-5 py-2.5 text-sm font-black text-[#0a0a14] hover:brightness-110 disabled:opacity-50"
+                >
+                  {busyId === "goofy_box" ? <Loader2 size={16} className="animate-spin" /> : <Gift size={16} />}
+                  {t("shop.goofy.open")} · {GOOFY_BOX.price}
+                  <Coins size={14} />
+                </button>
+              </div>
+
+              {lastReward?.reward && (
+                <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 p-4 text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">{t("shop.goofy.got")}</p>
+                  <p className="mt-1 text-base font-bold text-white">{t(`shop.item.${lastReward.reward.id}`)}</p>
+                  {lastReward.duplicate && <p className="mt-1 text-[11px] text-white/50">{t("shop.goofy.dup")}</p>}
+                </div>
+              )}
+
+              {lootOwned.length > 0 && (
+                <div>
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/40">{t("shop.goofy.owned")}</p>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {lootOwned.map((item) => {
+                      const isEquipped = (item.kind === "dash" ? dash : emote) === item.id;
+                      const AnimIcon = item.kind === "emote" ? ANIM_ICONS[item.anim] || Smile : null;
+                      return (
+                        <div key={item.id} className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#0f0f18] p-2.5">
+                          <span
+                            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-lg"
+                            style={{
+                              background: item.kind === "dash" ? `linear-gradient(135deg, ${item.a}, ${item.b})` : "#1a1a28",
+                            }}
+                          >
+                            {item.kind === "dash" ? item.emoji : <AnimIcon size={16} className="text-pink-400" />}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-semibold">{t(`shop.item.${item.id}`)}</p>
+                            {isEquipped ? (
+                              <span className="text-[10px] text-emerald-400">{t("shop.equipped")}</span>
+                            ) : (
+                              <button onClick={() => onEquip(item.id)} className="text-[10px] font-semibold text-[#ff9620] hover:underline">
+                                {t("shop.equip")}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!loading && tab !== "box" && (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {items.map((item) => {
                 const isOwned = mine.includes(item.id);
