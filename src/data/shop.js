@@ -21,10 +21,10 @@ export const EMOTES = [
   { id: "emote_spin", kind: "emote", name: "Giro", price: 110, anim: "spin", hint: "Gira sobre sí mismo" },
   { id: "emote_flex", kind: "emote", name: "Flexión", price: 150, anim: "flex", hint: "Presume de músculo" },
   { id: "emote_hop", kind: "emote", name: "Saltitos", price: 200, anim: "hop", hint: "Salta sin parar" },
-  // Unique / Goofy Box exclusives
-  { id: "emote_goofy", kind: "emote", name: "Goofy", price: 0, anim: "dance", hint: "Baile goofy exclusivo", lootOnly: true },
-  { id: "emote_troll", kind: "emote", name: "Troll", price: 0, anim: "flex", hint: "Pose troll exclusiva", lootOnly: true },
-  { id: "emote_moonwalk", kind: "emote", name: "Moonwalk", price: 0, anim: "spin", hint: "Camina hacia atrás", lootOnly: true },
+  // Unique / Goofy Box exclusives — anim ids propios (no se venden en la tienda)
+  { id: "emote_goofy", kind: "emote", name: "Goofy", price: 0, anim: "goofy", hint: "Baile goofy exclusivo", lootOnly: true },
+  { id: "emote_troll", kind: "emote", name: "Troll", price: 0, anim: "troll", hint: "Pose troll exclusiva", lootOnly: true },
+  { id: "emote_moonwalk", kind: "emote", name: "Moonwalk", price: 0, anim: "moonwalk", hint: "Camina hacia atrás", lootOnly: true },
 ];
 
 export const SHOP_ITEMS = [...DASH_EFFECTS, ...EMOTES];

@@ -90,6 +90,80 @@ function applyGfx(text) {
   return out + "\n// " + GFX_MARK + "\n";
 }
 
+// Unique Goofy Box emote anims (local player + remotes)
+const EMOTE_MARK = "__GOOFY_EMOTES_V1__";
+const LOCAL_EMOTE_FIND = `        } else if (anim === "hop") {
+          const p = Math.abs(Math.sin(et * 8));
+          sprite.position.y = bob + p * 1.2;
+          sprite.scale.set(sx * (1 - p * 0.1), sy * (1 + p * 0.1), 1);
+        }
+      }`;
+const LOCAL_EMOTE_REP = `        } else if (anim === "hop") {
+          const p = Math.abs(Math.sin(et * 8));
+          sprite.position.y = bob + p * 1.2;
+          sprite.scale.set(sx * (1 - p * 0.1), sy * (1 + p * 0.1), 1);
+        } else if (anim === "goofy") {
+          // wobble + slapstick bounce
+          sprite.position.y = bob + Math.abs(Math.sin(et * 11)) * 0.55;
+          sprite.rotation.z = Math.sin(et * 14) * 0.45;
+          sprite.scale.set(sx * (1 + Math.sin(et * 22) * 0.18), sy * (1 - Math.abs(Math.sin(et * 11)) * 0.12), 1);
+        } else if (anim === "troll") {
+          // exaggerate stretch + lean
+          const p = Math.abs(Math.sin(et * 5));
+          sprite.scale.set(sx * (1 + p * 0.45), sy * (0.85 + p * 0.35), 1);
+          sprite.rotation.z = Math.sin(et * 3) * 0.15;
+          sprite.position.y = bob + p * 0.35;
+        } else if (anim === "moonwalk") {
+          // slide + lean back while spinning slowly
+          sprite.position.x += Math.sin(et * 2.2) * 0.35;
+          sprite.position.y = bob + Math.abs(Math.sin(et * 4)) * 0.08;
+          sprite.rotation.z = -0.18 + Math.sin(et * 6) * 0.05;
+          sprite.rotation.y = ang - et * Math.PI * 0.9;
+          sprite.scale.set(sx * 0.95, sy * 1.05, 1);
+        }
+      }`;
+
+const REMOTE_EMOTE_FIND = `          if (r.emoteUntil > now) {
+            const et = (now - r.emoteStart) / 1000;
+            if (r.emoteAnim === "spin") r.sprite.rotation.y = r.sprite.rotation.y + et * Math.PI * 3;
+            else if (r.emoteAnim === "hop") r.sprite.position.y += Math.abs(Math.sin(et * 8)) * 1.1;
+            else {
+              r.sprite.position.y += Math.abs(Math.sin(et * 9)) * 0.3;
+              r.sprite.rotation.z = Math.sin(et * 9) * 0.2;
+            }
+          }`;
+const REMOTE_EMOTE_REP = `          if (r.emoteUntil > now) {
+            const et = (now - r.emoteStart) / 1000;
+            if (r.emoteAnim === "spin") r.sprite.rotation.y = r.sprite.rotation.y + et * Math.PI * 3;
+            else if (r.emoteAnim === "hop") r.sprite.position.y += Math.abs(Math.sin(et * 8)) * 1.1;
+            else if (r.emoteAnim === "goofy") {
+              r.sprite.position.y += Math.abs(Math.sin(et * 11)) * 0.5;
+              r.sprite.rotation.z = Math.sin(et * 14) * 0.4;
+            } else if (r.emoteAnim === "troll") {
+              const p = Math.abs(Math.sin(et * 5));
+              r.sprite.scale.set(1 + p * 0.4, 0.9 + p * 0.3, 1);
+              r.sprite.position.y += p * 0.3;
+            } else if (r.emoteAnim === "moonwalk") {
+              r.sprite.position.x += Math.sin(et * 2.2) * 0.3;
+              r.sprite.rotation.y += -et * Math.PI * 0.9;
+              r.sprite.rotation.z = -0.15;
+            } else {
+              r.sprite.position.y += Math.abs(Math.sin(et * 9)) * 0.3;
+              r.sprite.rotation.z = Math.sin(et * 9) * 0.2;
+            }
+          }`;
+
+function applyUniqueEmotes(text) {
+  if (text.includes(EMOTE_MARK)) return text;
+  if (!text.includes(LOCAL_EMOTE_FIND) || !text.includes(REMOTE_EMOTE_FIND)) {
+    console.warn("[prebuild] unique emote patch skipped: anchors not found");
+    return text;
+  }
+  let out = text.replace(LOCAL_EMOTE_FIND, LOCAL_EMOTE_REP);
+  out = out.replace(REMOTE_EMOTE_FIND, REMOTE_EMOTE_REP);
+  return out + "\n// " + EMOTE_MARK + "\n";
+}
+
 async function main() {
   try {
     let text = null;
@@ -109,11 +183,12 @@ async function main() {
     const before = text;
     if (!text.includes("MAX_ZOOM_OUT")) text = limitZoom(text);
     text = applyGfx(text);
+    text = applyUniqueEmotes(text);
     if (source === "baked" || text !== before) {
       fs.mkdirSync(path.dirname(out), { recursive: true });
       fs.writeFileSync(out, text);
     }
-    console.log("[prebuild] GameCanvas ready (" + source + ")", text.length, text.includes(GFX_MARK) ? "+gfx" : "no-gfx");
+    console.log("[prebuild] GameCanvas ready (" + source + ")", text.length, text.includes(GFX_MARK) ? "+gfx" : "no-gfx", text.includes(EMOTE_MARK) ? "+emotes" : "no-emotes");
   } catch (e) {
     console.error("[prebuild] unexpected", e?.message || e);
   }
