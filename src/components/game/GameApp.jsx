@@ -1,1 +1,402 @@
-// PLACEHOLDER
+// @ts-nocheck
+import { useEffect, useRef, useState, useCallback } from "react";
+import { countMatches, recordMatch } from "@/lib/game/records";
+import GameCanvas from "@/components/game/GameCanvas";
+import CharacterSelect from "@/components/game/CharacterSelect";
+import HUD from "@/components/game/HUD";
+import QuickChat from "@/components/game/QuickChat";
+import MobileControls from "@/components/game/MobileControls";
+import ShopPanel from "@/components/game/ShopPanel";
+import IntroSplash from "@/components/game/IntroSplash";
+import StartMenu from "@/components/game/StartMenu";
+import CharacterWorkshop from "@/components/game/CharacterWorkshop";
+import DefeatOverlay from "@/components/game/DefeatOverlay";
+import KillFeed from "@/components/game/KillFeed";
+import RoomMusicPlayer from "@/components/game/RoomMusicPlayer";
+import MusicPlayer from "@/components/game/MusicPlayer";
+import ControlsPanel from "@/components/game/ControlsPanel";
+import BoomboxPanel from "@/components/game/BoomboxPanel";
+import { loadQuests, sendProgress, claimReward } from "@/lib/game/quests";
+import { loadShop, buyItem, equipItem, openGoofyBox, redeemCode } from "@/lib/game/shop";
+import { getShopItem } from "@/data/shop";
+import { CHARACTERS } from "@/data/characters";
+import { loadBinds, saveBinds, inputState, DEFAULT_BINDS } from "@/lib/game/input";
+import { audio } from "@/lib/game/audio";
+import { loadRoomMusic, saveRoomMusic } from "@/lib/game/roomMusic";
+import { loadMyLoadout, saveMyLoadout, toLoadout, characterFromLoadout } from "@/lib/game/loadout";
+import { supabase } from "@/integrations/supabase/client";
+
+const zeroCooldowns = { m1: 0, special1: 0, special2: 0, special3: 0, ultimate: 0, dash: 0 };
+const OWNER_EMAIL = "felipejerezgatti@gmail.com";
+
+export default function GameApp() {
+  const [screen, setScreen] = useState("intro");
+  const [character, setCharacter] = useState(null);
+  const [roomCode, setRoomCode] = useState("");
+  const [musicUrl, setMusicUrl] = useState("");
+  const [roomMuted, setRoomMuted] = useState(false);
+  const [stats, setStats] = useState({ health: 1000, meter: 0, cooldowns: zeroCooldowns, hits: 0, meterPeak: 0, kills: 0, deaths: 0, combo: 0, invuln: 0, dead: false, heading: 0 });
+  const [defeat, setDefeat] = useState(null);
+  const [feed, setFeed] = useState([]);
+  const feedIdRef = useRef(0);
+  const [binds, setBinds] = useState(DEFAULT_BINDS);
+  const [audioOn, setAudioOn] = useState(true);
+  const [matches, setMatches] = useState(null);
+  const [isTouch, setIsTouch] = useState(false);
+  const [billboardUrl, setBillboardUrl] = useState("");
+  const [savedCharacter, setSavedCharacter] = useState(null);
+  const [quests, setQuests] = useState(null);
+  const [coins, setCoins] = useState(0);
+  const [questsLoading, setQuestsLoading] = useState(false);
+  const [showQuests, setShowQuests] = useState(false);
+  const [claimingId, setClaimingId] = useState(null);
+  const [shop, setShop] = useState({ owned: [], dash: "", emote: "" });
+  const [showShop, setShowShop] = useState(false);
+  const [shopLoading, setShopLoading] = useState(false);
+  const [shopBusy, setShopBusy] = useState(null);
+  const [nearShop, setNearShop] = useState(false);
+  const [nearHub, setNearHub] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showBoombox, setShowBoombox] = useState(false);
+  const [showCharacterHub, setShowCharacterHub] = useState(false);
+  const [accountUsername, setAccountUsername] = useState("");
+  const [accountVerified, setAccountVerified] = useState(false);
+  const countersRef = useRef(null);
+  const reportedRef = useRef({});
+  const canvasRef = useRef(null);
+  const claimable = (quests || []).filter((q) => !q.claimed && (q.progress || 0) >= q.target).length;
+  const dashItem = getShopItem(shop.dash);
+  const emoteItem = getShopItem(shop.emote);
+  const displayName = accountUsername || character?.displayName || "Tú";
+
+  const getHeading = useCallback(() => {
+    try {
+      const h = canvasRef.current?.getHeading?.();
+      return typeof h === "number" ? h : (stats.heading || 0);
+    } catch {
+      return stats.heading || 0;
+    }
+  }, [stats.heading]);
+
+  useEffect(() => {
+    setBinds(loadBinds());
+    try {
+      const cached = localStorage.getItem("rs_username");
+      if (cached) setAccountUsername(cached);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function refreshAccount() {
+      try {
+        const { data } = await supabase.auth.getUser();
+        const u = data?.user;
+        if (!u || !active) return;
+        const owner = String(u.email || "").toLowerCase() === OWNER_EMAIL;
+        setAccountVerified(owner);
+        const { data: profile } = await supabase.from("profiles").select("username, is_verified").eq("user_id", u.id).maybeSingle();
+        if (!active) return;
+        if (profile?.username) {
+          setAccountUsername(profile.username);
+          try { localStorage.setItem("rs_username", profile.username); } catch {}
+        }
+        if (profile?.is_verified || owner) setAccountVerified(true);
+      } catch {}
+    }
+    refreshAccount();
+    const { data: listener } = supabase.auth.onAuthStateChange(() => { refreshAccount(); });
+    return () => { active = false; listener?.subscription?.unsubscribe?.(); };
+  }, []);
+
+  useEffect(() => {
+    const open = showShop || showSettings || showBoombox || showCharacterHub;
+    if (open) { try { document.exitPointerLock?.(); } catch {} }
+    if (showCharacterHub) {
+      inputState.blocked = true;
+      return () => { inputState.blocked = false; };
+    }
+  }, [showShop, showSettings, showBoombox, showCharacterHub]);
+
+  useEffect(() => {
+    setIsTouch("ontouchstart" in window || navigator.maxTouchPoints > 0);
+    try { setMatches(countMatches()); } catch {}
+    const lo = loadMyLoadout();
+    if (lo) {
+      try {
+        setSavedCharacter(characterFromLoadout(lo));
+        setBillboardUrl(lo.billboard || "");
+      } catch {}
+    }
+    loadQuests().then((q) => { setQuests(q.quests); setCoins(q.coins); }).catch(() => {});
+    loadShop().then(setShop).catch(() => {});
+  }, []);
+
+  useEffect(() => { audio.init(); audio.setMuted(!audioOn); }, [audioOn]);
+
+  useEffect(() => {
+    if (screen !== "play") return;
+    reportedRef.current = {};
+    const id = setInterval(() => {
+      const c = countersRef.current;
+      if (!c) return;
+      const prev = reportedRef.current || {};
+      const deltas = {};
+      for (const k of Object.keys(c)) {
+        const v = Math.floor(c[k] || 0);
+        const p = prev[k] || 0;
+        if (v > p) deltas[k] = v - p;
+      }
+      if (Object.keys(deltas).length === 0) return;
+      reportedRef.current = { ...c };
+      flushQuests(deltas);
+    }, 4000);
+    return () => clearInterval(id);
+  }, [screen]);
+
+  function createPrivateRoom() {
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    setRoomCode(code);
+    setMusicUrl(loadRoomMusic(code) || musicUrl);
+  }
+  function handleRoomCode(code) {
+    const c = String(code || "");
+    setRoomCode(c);
+    setMusicUrl(loadRoomMusic(c) || "");
+  }
+  function handleMusicUrl(url) {
+    setMusicUrl(url);
+    if (roomCode) saveRoomMusic(roomCode, url);
+  }
+  function toggleAudio() {
+    const v = !audioOn;
+    setAudioOn(v);
+    audio.setMuted(!v);
+  }
+  function startPlay(char) {
+    setCharacter(char);
+    setDefeat(null);
+    setFeed([]);
+    setStats({ health: char.stats?.health || 1000, meter: 0, cooldowns: { ...zeroCooldowns }, hits: 0, meterPeak: 0, kills: 0, deaths: 0, combo: 0, invuln: 0, dead: false, heading: 0 });
+    setScreen("play");
+    try { saveMyLoadout(toLoadout(char, billboardUrl)); setSavedCharacter(char); } catch {}
+  }
+  function exitToSelect() {
+    const c = countersRef.current;
+    if (c) {
+      const prev = reportedRef.current || {};
+      const deltas = {};
+      for (const k of Object.keys(c)) {
+        const v = Math.floor(c[k] || 0);
+        const p = prev[k] || 0;
+        if (v > p) deltas[k] = v - p;
+      }
+      if (Object.keys(deltas).length) flushQuests(deltas);
+    }
+    setScreen("select");
+    setCharacter(null);
+  }
+  function handleStats(s) { setStats(s); countersRef.current = s.counters; }
+  function handleDefeat(info) { setDefeat(info); }
+  function handleRespawn() { setDefeat(null); }
+  function handleFeed(entry) {
+    const id = ++feedIdRef.current;
+    setFeed((f) => [...f.slice(-8), { ...entry, id }]);
+  }
+  function handleSaveBinds(b) { setBinds(b); saveBinds(b); }
+  async function handleSaveBillboard(url) {
+    setBillboardUrl(url);
+    if (character) saveMyLoadout(toLoadout(character, url));
+  }
+  async function handleClaim(id) {
+    setClaimingId(id);
+    try { const r = await claimReward(id); setQuests(r.quests); setCoins(r.coins); } catch {}
+    setClaimingId(null);
+  }
+  async function flushQuests(extra) {
+    try {
+      await sendProgress(extra || {});
+      const q = await loadQuests();
+      setQuests(q.quests); setCoins(q.coins);
+    } catch {}
+  }
+
+  async function handleBuyShopItem(id) {
+    setShopBusy(id);
+    try {
+      const next = await buyItem(id);
+      setShop(next);
+      if (typeof next.coins === "number") setCoins(next.coins);
+    } catch {}
+    setShopBusy(null);
+  }
+
+  async function handleEquipShopItem(id) {
+    try { setShop(await equipItem(id)); } catch {}
+  }
+
+  async function handleRedeemCode(code) {
+    setShopBusy("redeem_code");
+    try {
+      const result = await redeemCode(code);
+      setShop({
+        owned: result.owned,
+        dash: result.dash,
+        emote: result.emote,
+      });
+      if (typeof result.coins === "number") setCoins(result.coins);
+      return result;
+    } finally {
+      setShopBusy(null);
+    }
+  }
+
+  async function handleOpenGoofyBox() {
+    setShopBusy("goofy_box");
+    try {
+      const result = await openGoofyBox();
+      setShop({
+        owned: result.owned,
+        dash: result.dash,
+        emote: result.emote,
+      });
+      if (typeof result.coins === "number") setCoins(result.coins);
+      return result;
+    } catch (e) {
+      return null;
+    } finally {
+      setShopBusy(null);
+    }
+  }
+
+  if (screen === "intro") return <IntroSplash onDone={() => setScreen("menu")} />;
+
+  if (screen === "menu") {
+    return (
+      <>
+        <MusicPlayer screen="menu" suspended={!audioOn} roomMusicUrl={musicUrl} roomMuted={roomMuted} onToggleRoomMute={() => setRoomMuted((v) => !v)} />
+        <StartMenu
+          matches={matches} roomCode={roomCode} onRoomCode={handleRoomCode} onCreateRoom={createPrivateRoom}
+          musicUrl={musicUrl} onMusicUrl={handleMusicUrl} onPlay={() => setScreen("select")}
+          onOpenWorkshop={() => setScreen("workshop")} onOpenQuests={() => setShowQuests(true)} claimable={claimable}
+          savedCharacter={savedCharacter} onContinue={() => startPlay(savedCharacter)}
+          quests={quests} coins={coins} questsLoading={questsLoading} claimingId={claimingId} onClaim={handleClaim}
+          binds={binds} onSaveBinds={handleSaveBinds} audioOn={audioOn} onToggleAudio={toggleAudio}
+          shop={shop} shopLoading={shopLoading} shopBusy={shopBusy}
+          onBuyShopItem={handleBuyShopItem} onEquipShopItem={handleEquipShopItem}
+          onOpenGoofyBox={handleOpenGoofyBox}
+          onRedeemCode={handleRedeemCode}
+        />
+      </>
+    );
+  }
+
+  if (screen === "workshop") {
+    return (
+      <CharacterWorkshop
+        onConfirm={(char) => { try { saveMyLoadout(toLoadout(char, billboardUrl)); } catch {} setSavedCharacter(char); setScreen("menu"); }}
+        onCancel={() => setScreen("menu")}
+      />
+    );
+  }
+
+  if (screen === "select") {
+    return (
+      <>
+        <MusicPlayer screen="select" suspended={!audioOn} />
+        <CharacterSelect onConfirm={startPlay} onBack={() => setScreen("menu")} />
+      </>
+    );
+  }
+
+  if (screen === "play" && character) {
+    return (
+      <div className="absolute inset-0 overflow-hidden bg-background">
+        <RoomMusicPlayer url={musicUrl} enabled={audioOn} muted={roomMuted} />
+        <MusicPlayer screen="play" suspended={!audioOn || (!!musicUrl && !roomMuted)} roomMusicUrl={musicUrl} roomMuted={roomMuted} onToggleRoomMute={() => setRoomMuted((v) => !v)} />
+        <GameCanvas
+          ref={canvasRef} character={character} binds={binds} onStats={handleStats}
+          roomCode={roomCode.trim() || null} musicUrl={musicUrl}
+          onRoomMusic={(url) => { if (url) { setMusicUrl(url); if (roomCode) saveRoomMusic(roomCode, url); } }}
+          playerName={accountVerified ? `${displayName} ✓` : displayName}
+          billboardUrl={billboardUrl} dashStyle={dashItem} emote={emoteItem}
+          onNearShop={setNearShop} onRequestShop={() => setShowShop(true)}
+          onNearHub={setNearHub}
+          onRequestHub={(kind) => {
+            if (kind === "settings") setShowSettings(true);
+            else if (kind === "music") setShowBoombox(true);
+            else if (kind === "character") setShowCharacterHub(true);
+          }}
+          onDefeat={handleDefeat} onRespawn={handleRespawn} onFeed={handleFeed}
+        />
+        <HUD
+          character={character} stats={stats} binds={binds} audioOn={audioOn} isTouch={isTouch}
+          onMove={(cat) => canvasRef.current?.triggerMove(cat)}
+          onDash={() => canvasRef.current?.triggerDash()} onBack={exitToSelect}
+          onSaveBinds={handleSaveBinds} onToggleAudio={toggleAudio} onSaveBillboard={handleSaveBillboard}
+          emote={emoteItem} onEmote={() => canvasRef.current?.showEmote()} getHeading={getHeading}
+        />
+        {isTouch && (
+          <MobileControls
+            onMove={(x, y) => canvasRef.current?.setMobileMove(x, y)}
+            onJump={() => canvasRef.current?.triggerJump()}
+            onDash={() => canvasRef.current?.triggerDash()}
+            onMoveKey={(cat) => canvasRef.current?.triggerMove(cat)}
+          />
+        )}
+        <QuickChat onPhrase={(p) => canvasRef.current?.showQuickChat(p)} />
+        <KillFeed entries={feed} />
+        <DefeatOverlay open={!!defeat} info={defeat} onRespawn={handleRespawn} />
+        {(nearShop || nearHub) && !showShop && !showSettings && !showBoombox && !showCharacterHub && (
+          <div className="pointer-events-none absolute bottom-[11.5rem] left-1/2 z-30 w-[min(92vw,22rem)] -translate-x-1/2 rounded-xl border border-white/20 bg-black/75 px-3 py-2 text-center text-xs text-white shadow-lg backdrop-blur sm:bottom-28 sm:text-sm">
+            {isTouch ? (
+              <>
+                {nearHub === "settings" && <span>Acércate al hub — Configuración</span>}
+                {nearHub === "music" && <span>Acércate al hub — Música</span>}
+                {nearHub === "character" && <span>Acércate al hub — Personaje</span>}
+                {nearShop && !nearHub && <span>Acércate a la tienda</span>}
+              </>
+            ) : (
+              <>
+                {nearHub === "settings" && <span>Presiona <b>E</b> — Configuración</span>}
+                {nearHub === "music" && <span>Presiona <b>E</b> — Música</span>}
+                {nearHub === "character" && <span>Presiona <b>E</b> — Personaje</span>}
+                {nearShop && !nearHub && <span>Presiona <b>E</b> — Tienda</span>}
+              </>
+            )}
+          </div>
+        )}
+        {showShop && (
+          <ShopPanel
+            coins={coins} owned={shop.owned} dash={shop.dash} emote={shop.emote} loading={shopLoading} busyId={shopBusy}
+            onBuy={handleBuyShopItem}
+            onEquip={handleEquipShopItem}
+            onOpenGoofyBox={handleOpenGoofyBox}
+            onRedeemCode={handleRedeemCode}
+            onClose={() => setShowShop(false)}
+          />
+        )}
+        {showSettings && (
+          <ControlsPanel binds={binds} audioOn={audioOn} onSave={handleSaveBinds} onToggleAudio={toggleAudio} onClose={() => setShowSettings(false)} />
+        )}
+        {showBoombox && (
+          <BoomboxPanel
+            roomCode={roomCode}
+            onUseInRoom={(url) => { if (url) { setMusicUrl(url); if (roomCode) saveRoomMusic(roomCode, url); } setShowBoombox(false); }}
+            onClose={() => setShowBoombox(false)}
+          />
+        )}
+        {showCharacterHub && (
+          <div className="absolute inset-0 z-50">
+            <CharacterSelect
+              onConfirm={(char) => { setCharacter(char); setSavedCharacter(char); saveMyLoadout(toLoadout(char, billboardUrl)); setShowCharacterHub(false); }}
+              onBack={() => setShowCharacterHub(false)}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
