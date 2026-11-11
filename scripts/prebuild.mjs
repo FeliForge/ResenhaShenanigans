@@ -85,7 +85,7 @@ function applyGfx(text) {
   return out + "\n// " + GFX_MARK + "\n";
 }
 
-const EMOTE_MARK = "__GOOFY_EMOTES_V2__";
+const EMOTE_MARK = "__GOOFY_EMOTES_V3__";
 const LOCAL_EMOTE_FIND = `        } else if (anim === "hop") {
           const p = Math.abs(Math.sin(et * 8));
           sprite.position.y = bob + p * 1.2;
@@ -134,6 +134,36 @@ const LOCAL_EMOTE_REP = `        } else if (anim === "hop") {
           sprite.scale.set(sx * (1 + p * 0.55), sy * (1 + p * 0.55), 1);
           sprite.rotation.z = Math.sin(et * 20) * 0.2;
           sprite.position.y = bob + p * 0.2;
+        } else if (anim === "floss") {
+          sprite.position.x += Math.sin(et * 10) * 0.4;
+          sprite.rotation.z = Math.sin(et * 10) * 0.35;
+          sprite.scale.set(sx * (1 + Math.abs(Math.sin(et * 10)) * 0.08), sy, 1);
+          sprite.position.y = bob + Math.abs(Math.sin(et * 5)) * 0.12;
+        } else if (anim === "chicken") {
+          const p = Math.abs(Math.sin(et * 12));
+          sprite.position.y = bob + p * 0.7;
+          sprite.scale.set(sx * (1 + p * 0.25), sy * (1 - p * 0.15), 1);
+          sprite.rotation.z = Math.sin(et * 12) * 0.25;
+        } else if (anim === "dab") {
+          sprite.rotation.z = -0.55;
+          sprite.rotation.y = ang + 0.4;
+          sprite.position.y = bob + 0.15;
+          sprite.scale.set(sx * 1.05, sy * 0.95, 1);
+        } else if (anim === "panic") {
+          sprite.position.x += Math.sin(et * 28) * 0.22;
+          sprite.rotation.z = Math.sin(et * 30) * 0.28;
+          sprite.position.y = bob + Math.abs(Math.sin(et * 18)) * 0.18;
+          sprite.scale.set(sx * (1 + Math.sin(et * 20) * 0.06), sy * (1 - Math.abs(Math.sin(et * 20)) * 0.05), 1);
+        } else if (anim === "vibe") {
+          sprite.position.y = bob + Math.sin(et * 3) * 0.2;
+          sprite.rotation.z = Math.sin(et * 2.2) * 0.18;
+          sprite.scale.set(sx * (1 + Math.sin(et * 2.5) * 0.06), sy * (1 + Math.sin(et * 2.5 + 1) * 0.04), 1);
+        } else if (anim === "yeet") {
+          const p = Math.min(1, et * 2.2);
+          sprite.position.y = bob + p * 1.4;
+          sprite.position.x += Math.sin(et * 4) * 0.15;
+          sprite.rotation.z = -0.3 + p * 0.5;
+          sprite.scale.set(sx * (1 - p * 0.1), sy * (1 + p * 0.2), 1);
         }
       }`;
 
@@ -176,6 +206,25 @@ const REMOTE_EMOTE_REP = `          if (r.emoteUntil > now) {
             } else if (r.emoteAnim === "explode") {
               const p = Math.abs(Math.sin(et * 9));
               r.sprite.scale.set(1 + p * 0.5, 1 + p * 0.5, 1);
+            } else if (r.emoteAnim === "floss") {
+              r.sprite.position.x += Math.sin(et * 10) * 0.35;
+              r.sprite.rotation.z = Math.sin(et * 10) * 0.3;
+            } else if (r.emoteAnim === "chicken") {
+              r.sprite.position.y += Math.abs(Math.sin(et * 12)) * 0.65;
+              r.sprite.rotation.z = Math.sin(et * 12) * 0.22;
+            } else if (r.emoteAnim === "dab") {
+              r.sprite.rotation.z = -0.5;
+              r.sprite.position.y += 0.12;
+            } else if (r.emoteAnim === "panic") {
+              r.sprite.position.x += Math.sin(et * 28) * 0.2;
+              r.sprite.rotation.z = Math.sin(et * 30) * 0.25;
+            } else if (r.emoteAnim === "vibe") {
+              r.sprite.position.y += Math.sin(et * 3) * 0.18;
+              r.sprite.rotation.z = Math.sin(et * 2.2) * 0.15;
+            } else if (r.emoteAnim === "yeet") {
+              const p = Math.min(1, et * 2.2);
+              r.sprite.position.y += p * 1.3;
+              r.sprite.rotation.z = -0.25 + p * 0.45;
             } else {
               r.sprite.position.y += Math.abs(Math.sin(et * 9)) * 0.3;
               r.sprite.rotation.z = Math.sin(et * 9) * 0.2;
@@ -183,8 +232,9 @@ const REMOTE_EMOTE_REP = `          if (r.emoteUntil > now) {
           }`;
 
 function applyUniqueEmotes(text) {
-  // Strip older mark so V2 can re-apply on fresh bake
+  // Strip older marks so V3 can re-apply on fresh bake
   text = text.replace(/\n\/\/ __GOOFY_EMOTES_V1__\n?/g, "");
+  text = text.replace(/\n\/\/ __GOOFY_EMOTES_V2__\n?/g, "");
   if (text.includes(EMOTE_MARK)) return text;
   if (!text.includes(LOCAL_EMOTE_FIND) || !text.includes(REMOTE_EMOTE_FIND)) {
     console.warn("[prebuild] unique emote patch skipped: anchors not found");
