@@ -18,7 +18,7 @@ export const LANGS = ["pt", "en", "es", "fr", "de", "zh"];
 const I18nContext = createContext({ lang: "pt", setLang: () => {}, t: (k) => k });
 
 /* Legacy JSX literals: [source aliases, pt, en, es, fr, de, zh]. */
-const UI_TEXT = [...UI_TEXT_A, ...UI_TEXT_B, ...UI_TEXT_C];;
+const UI_TEXT = [...UI_TEXT_A, ...UI_TEXT_B, ...UI_TEXT_C];
 
 const textOriginals = new WeakMap();
 const textOutputs = new WeakMap();

@@ -1,7 +1,7 @@
 export const UI_TEXT_C = [
-["Matches||Partidas", "Partidas", "Matches", "Partidas", "Matchs", "Matches", "比赛"],
-["Credits||Créditos", "Créditos", "Credits", "Créditos", "Crédits", "Credits", "点数"],
-[
+  ["Matches||Partidas", "Partidas", "Matches", "Partidas", "Matchs", "Matches", "比赛"],
+  ["Credits||Créditos", "Créditos", "Credits", "Créditos", "Crédits", "Credits", "点数"],
+  [
     "Main terminal||Terminal principal",
     "Terminal principal",
     "Main terminal",
@@ -10,8 +10,8 @@ export const UI_TEXT_C = [
     "Hauptterminal",
     "主终端",
   ],
-["Workshop||Taller", "Oficina", "Workshop", "Taller", "Atelier", "Werkstatt", "工坊"],
-[
+  ["Workshop||Taller", "Oficina", "Workshop", "Taller", "Atelier", "Werkstatt", "工坊"],
+  [
     "Create · Customize · Battle",
     "Criar · Personalizar · Batalhar",
     "Create · Customize · Battle",
@@ -20,7 +20,7 @@ export const UI_TEXT_C = [
     "Erstellen · Anpassen · Kämpfen",
     "创建 · 自定义 · 战斗",
   ],
-[
+  [
     "Usar preset||Use preset",
     "Usar predefinição",
     "Use preset",
@@ -29,7 +29,7 @@ export const UI_TEXT_C = [
     "Voreinstellung verwenden",
     "使用预设",
   ],
-[
+  [
     "Personaje base (skin)||Base character (skin)",
     "Personagem base (skin)",
     "Base character (skin)",
@@ -38,7 +38,7 @@ export const UI_TEXT_C = [
     "Basischarakter (Skin)",
     "基础角色（皮肤）",
   ],
-[
+  [
     "Tu cuenta||Cuenta",
     "Sua conta",
     "Your account",
@@ -47,7 +47,7 @@ export const UI_TEXT_C = [
     "Dein Konto",
     "你的账户",
   ],
-[
+  [
     "Crear cuenta",
     "Criar conta",
     "Create account",
@@ -56,7 +56,7 @@ export const UI_TEXT_C = [
     "Konto erstellen",
     "创建账户",
   ],
-[
+  [
     "Correo electrónico||Tu correo",
     "E-mail",
     "Email address",
@@ -65,8 +65,8 @@ export const UI_TEXT_C = [
     "E-Mail-Adresse",
     "电子邮箱",
   ],
-["Verificado", "Verificado", "Verified", "Verificado", "Vérifié", "Verifiziert", "已验证"],
-[
+  ["Verificado", "Verificado", "Verified", "Verificado", "Vérifié", "Verifiziert", "已验证"],
+  [
     "Nombre de usuario único",
     "Nome de usuário único",
     "Unique username",
@@ -75,7 +75,7 @@ export const UI_TEXT_C = [
     "Eindeutiger Benutzername",
     "唯一用户名",
   ],
-[
+  [
     "Guarda, comparte e importa configuraciones.",
     "Salve, compartilhe e importe configurações.",
     "Save, share and import setups.",
@@ -84,7 +84,7 @@ export const UI_TEXT_C = [
     "Speichere, teile und importiere Konfigurationen.",
     "保存、分享并导入配置。",
   ],
-[
+  [
     "Nombre del moveset",
     "Nome do moveset",
     "Moveset name",
@@ -93,7 +93,7 @@ export const UI_TEXT_C = [
     "Moveset-Name",
     "招式配置名称",
   ],
-[
+  [
     "Importar (MP3 / WAV / OGG)",
     "Importar (MP3 / WAV / OGG)",
     "Import (MP3 / WAV / OGG)",
@@ -102,7 +102,7 @@ export const UI_TEXT_C = [
     "Importieren (MP3 / WAV / OGG)",
     "导入（MP3 / WAV / OGG）",
   ],
-[
+  [
     "Nueva playlist",
     "Nova playlist",
     "New playlist",
@@ -111,9 +111,9 @@ export const UI_TEXT_C = [
     "Neue Wiedergabeliste",
     "新建播放列表",
   ],
-["Personal", "Pessoal", "Personal", "Personal", "Personnel", "Persönlich", "个人"],
-["Servidor", "Servidor", "Server", "Servidor", "Serveur", "Server", "服务器"],
-[
+  ["Personal", "Pessoal", "Personal", "Personal", "Personnel", "Persönlich", "个人"],
+  ["Servidor", "Servidor", "Server", "Servidor", "Serveur", "Server", "服务器"],
+  [
     "Toca para activar la música",
     "Toque para ativar a música",
     "Tap to enable music",
@@ -122,7 +122,7 @@ export const UI_TEXT_C = [
     "Tippen, um Musik zu aktivieren",
     "点击启用音乐",
   ],
-[
+  [
     "Sin playlist",
     "Sem playlist",
     "No playlist",
@@ -131,7 +131,7 @@ export const UI_TEXT_C = [
     "Keine Wiedergabeliste",
     "暂无播放列表",
   ],
-[
+  [
     "Local profile",
     "Perfil local",
     "Local profile",
@@ -140,7 +140,7 @@ export const UI_TEXT_C = [
     "Lokales Profil",
     "本地档案",
   ],
-[
+  [
     "Acércate a la tienda",
     "Chegue perto da loja",
     "Approach the shop",
@@ -149,7 +149,7 @@ export const UI_TEXT_C = [
     "Geh zum Shop",
     "靠近商店",
   ],
-[
+  [
     "Acércate al hub — Personaje",
     "Chegue ao hub — Personagem",
     "Approach the hub — Character",
@@ -158,14 +158,14 @@ export const UI_TEXT_C = [
     "Geh zum Hub — Charakter",
     "靠近中心区域 — 角色",
   ],
-["Anterior", "Anterior", "Previous", "Anterior", "Précédent", "Zurück", "上一首"],
-["Música", "Música", "Music", "Música", "Musique", "Musik", "音乐"],
-["Reproducir", "Reproduzir", "Play", "Reproducir", "Lire", "Wiedergabe", "播放"],
-["Repetir", "Repetir", "Repeat", "Repetir", "Répéter", "Wiederholen", "循环播放"],
-["Attack 1", "Ataque 1", "Attack 1", "Ataque 1", "Attaque 1", "Angriff 1", "攻击 1"],
-["Attack 4", "Ataque 4", "Attack 4", "Ataque 4", "Attaque 4", "Angriff 4", "攻击 4"],
-["Dash", "Dash", "Dash", "Dash", "Dash", "Dash", "冲刺"],
-[
+  ["Anterior", "Anterior", "Previous", "Anterior", "Précédent", "Zurück", "上一首"],
+  ["Música", "Música", "Music", "Música", "Musique", "Musik", "音乐"],
+  ["Reproducir", "Reproduzir", "Play", "Reproducir", "Lire", "Wiedergabe", "播放"],
+  ["Repetir", "Repetir", "Repeat", "Repetir", "Répéter", "Wiederholen", "循环播放"],
+  ["Attack 1", "Ataque 1", "Attack 1", "Ataque 1", "Attaque 1", "Angriff 1", "攻击 1"],
+  ["Attack 4", "Ataque 4", "Attack 4", "Ataque 4", "Attaque 4", "Angriff 4", "攻击 4"],
+  ["Dash", "Dash", "Dash", "Dash", "Dash", "Dash", "冲刺"],
+  [
     "Doble clic para jugar||Doble clic para iniciar partida",
     "Clique duas vezes para jogar",
     "Double-click to play",
@@ -174,8 +174,8 @@ export const UI_TEXT_C = [
     "Doppelklicken zum Spielen",
     "双击开始游戏",
   ],
-["Tienda", "Loja", "Shop", "Tienda", "Boutique", "Shop", "商店"],
-[
+  ["Tienda", "Loja", "Shop", "Tienda", "Boutique", "Shop", "商店"],
+  [
     "PNG / JPG · se guarda solo en este dispositivo",
     "PNG / JPG · salvo apenas neste dispositivo",
     "PNG / JPG · saved only on this device",
@@ -184,7 +184,7 @@ export const UI_TEXT_C = [
     "PNG / JPG · wird nur auf diesem Gerät gespeichert",
     "PNG / JPG · 仅保存在此设备上",
   ],
-[
+  [
     "Solo en este navegador.",
     "Somente neste navegador.",
     "This browser only.",
@@ -193,7 +193,7 @@ export const UI_TEXT_C = [
     "Nur in diesem Browser.",
     "仅限此浏览器。",
   ],
-[
+  [
     "Playlist menú",
     "Playlist do menu",
     "Menu playlist",
@@ -202,8 +202,8 @@ export const UI_TEXT_C = [
     "Menü-Playlist",
     "菜单播放列表",
   ],
-["Público", "Público", "Public", "Público", "Public", "Öffentlich", "公开"],
-[
+  ["Público", "Público", "Public", "Público", "Public", "Öffentlich", "公开"],
+  [
     "Revisa tu correo para confirmar la cuenta.",
     "Confira seu e-mail para confirmar a conta.",
     "Check your email to confirm your account.",
@@ -212,7 +212,7 @@ export const UI_TEXT_C = [
     "Prüfe deine E-Mail, um dein Konto zu bestätigen.",
     "请检查电子邮箱以确认账户。",
   ],
-[
+  [
     "No se pudo iniciar sesión",
     "Não foi possível entrar",
     "Could not sign in",
@@ -221,7 +221,7 @@ export const UI_TEXT_C = [
     "Anmeldung fehlgeschlagen",
     "无法登录",
   ],
-[
+  [
     "Moveset publicado en la comunidad",
     "Moveset publicado na comunidade",
     "Moveset published to the community",
@@ -230,7 +230,7 @@ export const UI_TEXT_C = [
     "Moveset in der Community veröffentlicht",
     "招式配置已发布到社区",
   ],
-[
+  [
     "No se pudo cargar la biblioteca pública",
     "Não foi possível carregar a biblioteca pública",
     "Could not load the public library",
@@ -239,7 +239,7 @@ export const UI_TEXT_C = [
     "Die öffentliche Bibliothek konnte nicht geladen werden",
     "无法加载公共库",
   ],
-[
+  [
     "Usa de 3 a 20 caracteres: letras, números o _.",
     "Use de 3 a 20 caracteres: letras, números ou _.",
     "Use 3 to 20 characters: letters, numbers or _.",
@@ -248,7 +248,7 @@ export const UI_TEXT_C = [
     "Verwende 3 bis 20 Zeichen: Buchstaben, Zahlen oder _.",
     "请使用3到20个字符：字母、数字或下划线。",
   ],
-[
+  [
     "URL inválida (usa http/https o data:image)",
     "URL inválida (use http/https ou data:image)",
     "Invalid URL (use http/https or data:image)",
@@ -257,7 +257,7 @@ export const UI_TEXT_C = [
     "Ungültige URL (http/https oder data:image verwenden)",
     "URL无效（请使用http/https或data:image）",
   ],
-[
+  [
     "La imagen debe pesar 512 KB o menos",
     "A imagem deve ter 512 KB ou menos",
     "The image must be 512 KB or smaller",
@@ -266,7 +266,7 @@ export const UI_TEXT_C = [
     "Das Bild darf höchstens 512 KB groß sein",
     "图片大小必须不超过512 KB",
   ],
-[
+  [
     "Moveset inválido",
     "Moveset inválido",
     "Invalid moveset",
@@ -275,7 +275,7 @@ export const UI_TEXT_C = [
     "Ungültiges Moveset",
     "招式配置无效",
   ],
-[
+  [
     "No se pudo subir la imagen",
     "Não foi possível enviar a imagem",
     "Could not upload the image",
@@ -284,7 +284,7 @@ export const UI_TEXT_C = [
     "Bild konnte nicht hochgeladen werden",
     "无法上传图片",
   ],
-[
+  [
     "No se pudo guardar el nombre.",
     "Não foi possível salvar o nome.",
     "Could not save the name.",
@@ -293,5 +293,5 @@ export const UI_TEXT_C = [
     "Name konnte nicht gespeichert werden.",
     "无法保存名称。",
   ],
-["por", "por", "by", "por", "par", "von", "作者"]
+  ["por", "por", "by", "por", "par", "von", "作者"],
 ];

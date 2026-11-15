@@ -1,5 +1,5 @@
 export const UI_TEXT_B = [
-[
+  [
     "BUILD 1.4||VERSIÓN 1.4",
     "VERSÃO 1.4",
     "BUILD 1.4",
@@ -8,7 +8,7 @@ export const UI_TEXT_B = [
     "BUILD 1.4",
     "版本 1.4",
   ],
-[
+  [
     "Rewards||Recompensas",
     "Recompensas",
     "Rewards",
@@ -17,7 +17,7 @@ export const UI_TEXT_B = [
     "Belohnungen",
     "奖励",
   ],
-[
+  [
     "Private room code||Código de sala privada",
     "Código da sala privada",
     "Private room code",
@@ -26,10 +26,10 @@ export const UI_TEXT_B = [
     "Privater Raumcode",
     "私人房间代码",
   ],
-["Base", "Base", "Base", "Base", "Base", "Basis", "基础"],
-["Vista previa||Preview", "Prévia", "Preview", "Vista previa", "Aperçu", "Vorschau", "预览"],
-["Nombre||Name", "Nome", "Name", "Nombre", "Nom", "Name", "名称"],
-[
+  ["Base", "Base", "Base", "Base", "Base", "Basis", "基础"],
+  ["Vista previa||Preview", "Prévia", "Preview", "Vista previa", "Aperçu", "Vorschau", "预览"],
+  ["Nombre||Name", "Nome", "Name", "Nombre", "Nom", "Name", "名称"],
+  [
     "Imagen personalizada||Custom image",
     "Imagem personalizada",
     "Custom image",
@@ -38,7 +38,7 @@ export const UI_TEXT_B = [
     "Eigenes Bild",
     "自定义图片",
   ],
-[
+  [
     "Personaje personalizado||Custom fighter",
     "Personagem personalizado",
     "Custom fighter",
@@ -47,7 +47,7 @@ export const UI_TEXT_B = [
     "Eigener Kämpfer",
     "自定义斗士",
   ],
-[
+  [
     "Elige 5 movimientos (uno por categoría)||Choose 5 moves (one per category)",
     "Escolha 5 golpes (um por categoria)",
     "Choose 5 moves (one per category)",
@@ -56,7 +56,7 @@ export const UI_TEXT_B = [
     "Wähle 5 Fähigkeiten (eine pro Kategorie)",
     "选择5个招式（每类一个）",
   ],
-[
+  [
     "Contraseña (mín. 8 caracteres)",
     "Senha (mín. 8 caracteres)",
     "Password (min. 8 characters)",
@@ -65,8 +65,8 @@ export const UI_TEXT_B = [
     "Passwort (mind. 8 Zeichen)",
     "密码（至少8个字符）",
   ],
-["Iniciar sesión", "Entrar", "Sign in", "Iniciar sesión", "Se connecter", "Anmelden", "登录"],
-[
+  ["Iniciar sesión", "Entrar", "Sign in", "Iniciar sesión", "Se connecter", "Anmelden", "登录"],
+  [
     "Moveset Cloud",
     "Moveset na nuvem",
     "Moveset Cloud",
@@ -75,7 +75,7 @@ export const UI_TEXT_B = [
     "Moveset-Cloud",
     "招式配置云端",
   ],
-[
+  [
     "Guardar en mi cuenta",
     "Salvar na minha conta",
     "Save to my account",
@@ -84,7 +84,7 @@ export const UI_TEXT_B = [
     "In meinem Konto speichern",
     "保存到我的账户",
   ],
-[
+  [
     "La cuenta sirve para sincronizar tus movesets entre dispositivos.",
     "A conta sincroniza seus movesets entre dispositivos.",
     "Your account syncs movesets across devices.",
@@ -93,7 +93,7 @@ export const UI_TEXT_B = [
     "Dein Konto synchronisiert Movesets zwischen Geräten.",
     "账户可在不同设备间同步招式配置。",
   ],
-[
+  [
     "Playlists",
     "Listas de reprodução",
     "Playlists",
@@ -102,7 +102,7 @@ export const UI_TEXT_B = [
     "Wiedergabelisten",
     "播放列表",
   ],
-[
+  [
     "Nombre visible (opcional)",
     "Nome visível (opcional)",
     "Display name (optional)",
@@ -111,7 +111,7 @@ export const UI_TEXT_B = [
     "Anzeigename (optional)",
     "显示名称（可选）",
   ],
-[
+  [
     "Música activada",
     "Música ativada",
     "Music enabled",
@@ -120,8 +120,8 @@ export const UI_TEXT_B = [
     "Musik aktiviert",
     "音乐已开启",
   ],
-["Boombox", "Boombox", "Boombox", "Boombox", "Boombox", "Boombox", "音乐播放器"],
-[
+  ["Boombox", "Boombox", "Boombox", "Boombox", "Boombox", "Boombox", "音乐播放器"],
+  [
     "Biblioteca pública",
     "Biblioteca pública",
     "Public library",
@@ -130,7 +130,7 @@ export const UI_TEXT_B = [
     "Öffentliche Bibliothek",
     "公共曲库",
   ],
-[
+  [
     "Server music · YouTube",
     "Música do servidor · YouTube",
     "Server music · YouTube",
@@ -139,7 +139,7 @@ export const UI_TEXT_B = [
     "Server-Musik · YouTube",
     "服务器音乐 · YouTube",
   ],
-[
+  [
     "Acércate al hub — Música",
     "Chegue ao hub — Música",
     "Approach the hub — Music",
@@ -148,9 +148,9 @@ export const UI_TEXT_B = [
     "Geh zum Hub — Musik",
     "靠近中心区域 — 音乐",
   ],
-["Canciones", "Músicas", "Songs", "Canciones", "Morceaux", "Songs", "歌曲"],
-["Siguiente", "Próxima", "Next", "Siguiente", "Suivant", "Weiter", "下一首"],
-[
+  ["Canciones", "Músicas", "Songs", "Canciones", "Morceaux", "Songs", "歌曲"],
+  ["Siguiente", "Próxima", "Next", "Siguiente", "Suivant", "Weiter", "下一首"],
+  [
     "Abrir música",
     "Abrir música",
     "Open music",
@@ -159,16 +159,16 @@ export const UI_TEXT_B = [
     "Musik öffnen",
     "打开音乐",
   ],
-["Pausar", "Pausar", "Pause", "Pausar", "Pause", "Pause", "暂停"],
-["Volumen", "Volume", "Volume", "Volumen", "Volume", "Lautstärke", "音量"],
-["Attack 2", "Ataque 2", "Attack 2", "Ataque 2", "Attaque 2", "Angriff 2", "攻击 2"],
-["Jump", "Pular", "Jump", "Saltar", "Sauter", "Springen", "跳跃"],
-["Cerrar", "Fechar", "Close", "Cerrar", "Fermer", "Schließen", "关闭"],
-["Heading", "Direção", "Heading", "Rumbo", "Cap", "Ausrichtung", "朝向"],
-["K / D", "K / D", "K / D", "B / M", "É / M", "K / T", "击倒 / 死亡"],
-["Presiona", "Pressione", "Press", "Presiona", "Appuyez", "Drücke", "按下"],
-["Usar", "Usar", "Use", "Usar", "Utiliser", "Verwenden", "使用"],
-[
+  ["Pausar", "Pausar", "Pause", "Pausar", "Pause", "Pause", "暂停"],
+  ["Volumen", "Volume", "Volume", "Volumen", "Volume", "Lautstärke", "音量"],
+  ["Attack 2", "Ataque 2", "Attack 2", "Ataque 2", "Attaque 2", "Angriff 2", "攻击 2"],
+  ["Jump", "Pular", "Jump", "Saltar", "Sauter", "Springen", "跳跃"],
+  ["Cerrar", "Fechar", "Close", "Cerrar", "Fermer", "Schließen", "关闭"],
+  ["Heading", "Direção", "Heading", "Rumbo", "Cap", "Ausrichtung", "朝向"],
+  ["K / D", "K / D", "K / D", "B / M", "É / M", "K / T", "击倒 / 死亡"],
+  ["Presiona", "Pressione", "Press", "Presiona", "Appuyez", "Drücke", "按下"],
+  ["Usar", "Usar", "Use", "Usar", "Utiliser", "Verwenden", "使用"],
+  [
     "3–20 caracteres. Solo letras minúsculas, números y guion bajo. No se permiten nombres repetidos.",
     "3–20 caracteres. Apenas letras minúsculas, números e sublinhado. Não são permitidos nomes repetidos.",
     "3–20 characters. Lowercase letters, numbers and underscores only. Duplicate names are not allowed.",
@@ -177,9 +177,9 @@ export const UI_TEXT_B = [
     "3–20 Zeichen. Nur Kleinbuchstaben, Zahlen und Unterstriche. Doppelte Namen sind nicht erlaubt.",
     "3–20个字符。仅允许小写字母、数字和下划线。不允许重复名称。",
   ],
-["Customize", "Personalizar", "Customize", "Personalizar", "Personnaliser", "Anpassen", "自定义"],
-["Privado", "Privado", "Private", "Privado", "Privé", "Privat", "私密"],
-[
+  ["Customize", "Personalizar", "Customize", "Personalizar", "Personnaliser", "Anpassen", "自定义"],
+  ["Privado", "Privado", "Private", "Privado", "Privé", "Privat", "私密"],
+  [
     "Cuenta creada",
     "Conta criada",
     "Account created",
@@ -188,7 +188,7 @@ export const UI_TEXT_B = [
     "Konto erstellt",
     "账户已创建",
   ],
-[
+  [
     "Sesión iniciada",
     "Sessão iniciada",
     "Signed in",
@@ -197,7 +197,7 @@ export const UI_TEXT_B = [
     "Angemeldet",
     "已登录",
   ],
-[
+  [
     "Inicia sesión para guardar movesets",
     "Entre para salvar movesets",
     "Sign in to save movesets",
@@ -206,7 +206,7 @@ export const UI_TEXT_B = [
     "Melde dich an, um Movesets zu speichern",
     "登录后才能保存招式配置",
   ],
-[
+  [
     "No se pudo guardar. Comprueba que la tabla de movesets esté instalada.",
     "Não foi possível salvar. Verifique se a tabela de movesets foi instalada.",
     "Could not save. Check that the movesets table is installed.",
@@ -215,7 +215,7 @@ export const UI_TEXT_B = [
     "Speichern fehlgeschlagen. Prüfe, ob die Moveset-Tabelle installiert ist.",
     "保存失败。请检查招式配置数据表是否已安装。",
   ],
-[
+  [
     "Moveset eliminado",
     "Moveset excluído",
     "Moveset deleted",
@@ -224,7 +224,7 @@ export const UI_TEXT_B = [
     "Moveset gelöscht",
     "招式配置已删除",
   ],
-[
+  [
     "Inicia sesión primero.",
     "Entre primeiro.",
     "Sign in first.",
@@ -233,7 +233,7 @@ export const UI_TEXT_B = [
     "Melde dich zuerst an.",
     "请先登录。",
   ],
-[
+  [
     "Sesión cerrada.",
     "Sessão encerrada.",
     "Signed out.",
@@ -242,7 +242,7 @@ export const UI_TEXT_B = [
     "Abgemeldet.",
     "已退出登录。",
   ],
-[
+  [
     "Selecciona una imagen PNG, JPG o WebP",
     "Selecione uma imagem PNG, JPG ou WebP",
     "Choose a PNG, JPG or WebP image",
@@ -251,7 +251,7 @@ export const UI_TEXT_B = [
     "Wähle ein PNG-, JPG- oder WebP-Bild",
     "请选择PNG、JPG或WebP图片",
   ],
-[
+  [
     "Sprite FX personalizado cargado",
     "Sprite FX personalizado carregado",
     "Custom FX sprite loaded",
@@ -260,7 +260,7 @@ export const UI_TEXT_B = [
     "Benutzerdefiniertes FX-Sprite geladen",
     "自定义特效精灵图已加载",
   ],
-[
+  [
     "Moveset importado al taller",
     "Moveset importado para a oficina",
     "Moveset imported into the workshop",
@@ -269,7 +269,7 @@ export const UI_TEXT_B = [
     "Moveset in die Werkstatt importiert",
     "招式配置已导入工坊",
   ],
-[
+  [
     "Sube un archivo de imagen",
     "Envie um arquivo de imagem",
     "Upload an image file",
@@ -278,7 +278,7 @@ export const UI_TEXT_B = [
     "Lade eine Bilddatei hoch",
     "请上传图片文件",
   ],
-[
+  [
     "URL inválida",
     "URL inválida",
     "Invalid URL",
@@ -287,6 +287,6 @@ export const UI_TEXT_B = [
     "Ungültige URL",
     "URL无效",
   ],
-["Tecla:", "Tecla:", "Key:", "Tecla:", "Touche :", "Taste:", "按键："],
-["E", "E", "E", "E", "E", "E", "E"]
+  ["Tecla:", "Tecla:", "Key:", "Tecla:", "Touche :", "Taste:", "按键："],
+  ["E", "E", "E", "E", "E", "E", "E"],
 ];

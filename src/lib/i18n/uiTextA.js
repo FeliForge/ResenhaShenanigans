@@ -1,5 +1,5 @@
 export const UI_TEXT_A = [
-[
+  [
     "Independent game division||División independiente de juegos",
     "Divisão independente de jogos",
     "Independent game division",
@@ -8,7 +8,7 @@ export const UI_TEXT_A = [
     "Unabhängige Spieleabteilung",
     "独立游戏部门",
   ],
-[
+  [
     "Ready up||Prepárate",
     "Preparar",
     "Ready up",
@@ -17,7 +17,7 @@ export const UI_TEXT_A = [
     "Mach dich bereit",
     "准备就绪",
   ],
-[
+  [
     "Character Workshop",
     "Oficina de personagens",
     "Character Workshop",
@@ -26,7 +26,7 @@ export const UI_TEXT_A = [
     "Charakterwerkstatt",
     "角色工坊",
   ],
-[
+  [
     "Sin vista previa||No preview",
     "Sem prévia",
     "No preview",
@@ -35,7 +35,7 @@ export const UI_TEXT_A = [
     "Keine Vorschau",
     "无预览",
   ],
-[
+  [
     "Color de armadura por partes||Armor color by parts",
     "Cor da armadura por partes",
     "Armor color by parts",
@@ -44,7 +44,7 @@ export const UI_TEXT_A = [
     "Rüstungsfarbe je Teil",
     "分部位盔甲颜色",
   ],
-[
+  [
     "Imagen del personaje||Character image",
     "Imagem do personagem",
     "Character image",
@@ -53,7 +53,7 @@ export const UI_TEXT_A = [
     "Charakterbild",
     "角色图片",
   ],
-[
+  [
     "Perfil y nombre de usuario único",
     "Perfil e nome de usuário único",
     "Profile and unique username",
@@ -62,7 +62,7 @@ export const UI_TEXT_A = [
     "Profil und eindeutiger Benutzername",
     "个人资料和唯一用户名",
   ],
-[
+  [
     "Conectado como",
     "Conectado como",
     "Signed in as",
@@ -71,7 +71,7 @@ export const UI_TEXT_A = [
     "Angemeldet als",
     "当前登录为",
   ],
-[
+  [
     "Guardar nombre",
     "Salvar nome",
     "Save name",
@@ -80,8 +80,8 @@ export const UI_TEXT_A = [
     "Namen speichern",
     "保存名称",
   ],
-["Cerrar sesión", "Sair", "Sign out", "Cerrar sesión", "Se déconnecter", "Abmelden", "退出登录"],
-[
+  ["Cerrar sesión", "Sair", "Sign out", "Cerrar sesión", "Se déconnecter", "Abmelden", "退出登录"],
+  [
     "Mis movesets",
     "Meus movesets",
     "My movesets",
@@ -90,7 +90,7 @@ export const UI_TEXT_A = [
     "Meine Movesets",
     "我的招式配置",
   ],
-[
+  [
     "Publicar en la nube",
     "Publicar na nuvem",
     "Publish to cloud",
@@ -99,9 +99,9 @@ export const UI_TEXT_A = [
     "In der Cloud veröffentlichen",
     "发布到云端",
   ],
-["Guardar", "Salvar", "Save", "Guardar", "Enregistrer", "Speichern", "保存"],
-["Importar", "Importar", "Import", "Importar", "Importer", "Importieren", "导入"],
-[
+  ["Guardar", "Salvar", "Save", "Guardar", "Enregistrer", "Speichern", "保存"],
+  ["Importar", "Importar", "Import", "Importar", "Importer", "Importieren", "导入"],
+  [
     "Importando…||Processing...",
     "Importando…",
     "Processing...",
@@ -110,7 +110,7 @@ export const UI_TEXT_A = [
     "Wird verarbeitet…",
     "正在导入…",
   ],
-[
+  [
     "Now playing||Reproduciendo",
     "Tocando agora",
     "Now playing",
@@ -119,7 +119,7 @@ export const UI_TEXT_A = [
     "Jetzt läuft",
     "正在播放",
   ],
-[
+  [
     "Nombre de playlist",
     "Nome da playlist",
     "Playlist name",
@@ -128,7 +128,7 @@ export const UI_TEXT_A = [
     "Name der Wiedergabeliste",
     "播放列表名称",
   ],
-[
+  [
     "Sala (YouTube): todos oyen. Silencia solo para ti.",
     "Sala (YouTube): todos escutam. Silencie apenas para você.",
     "Room (YouTube): everyone hears it. Mute only for yourself.",
@@ -137,7 +137,7 @@ export const UI_TEXT_A = [
     "Raum (YouTube): Alle hören es. Stummschalten gilt nur für dich.",
     "房间（YouTube）：所有人都能听到。静音仅对你生效。",
   ],
-[
+  [
     "Saved fighter",
     "Lutador salvo",
     "Saved fighter",
@@ -146,7 +146,7 @@ export const UI_TEXT_A = [
     "Gespeicherter Kämpfer",
     "已保存的斗士",
   ],
-[
+  [
     "Acércate al hub — Configuración",
     "Chegue ao hub — Configurações",
     "Approach the hub — Settings",
@@ -155,7 +155,7 @@ export const UI_TEXT_A = [
     "Geh zum Hub — Einstellungen",
     "靠近中心区域 — 设置",
   ],
-[
+  [
     "Aún no importaste canciones.",
     "Você ainda não importou músicas.",
     "You haven't imported any songs yet.",
@@ -164,13 +164,13 @@ export const UI_TEXT_A = [
     "Du hast noch keine Songs importiert.",
     "你还没有导入歌曲。",
   ],
-["Silenciar", "Silenciar", "Mute", "Silenciar", "Couper le son", "Stummschalten", "静音"],
-["Aleatorio", "Aleatório", "Shuffle", "Aleatorio", "Aléatoire", "Zufällig", "随机播放"],
-["Progreso", "Progresso", "Progress", "Progreso", "Progression", "Fortschritt", "进度"],
-["Attack 3", "Ataque 3", "Attack 3", "Ataque 3", "Attaque 3", "Angriff 3", "攻击 3"],
-["Back", "Voltar", "Back", "Volver", "Retour", "Zurück", "返回"],
-["Navigation", "Navegação", "Navigation", "Navegación", "Navigation", "Navigation", "导航"],
-[
+  ["Silenciar", "Silenciar", "Mute", "Silenciar", "Couper le son", "Stummschalten", "静音"],
+  ["Aleatorio", "Aleatório", "Shuffle", "Aleatorio", "Aléatoire", "Zufällig", "随机播放"],
+  ["Progreso", "Progresso", "Progress", "Progreso", "Progression", "Fortschritt", "进度"],
+  ["Attack 3", "Ataque 3", "Attack 3", "Ataque 3", "Attaque 3", "Angriff 3", "攻击 3"],
+  ["Back", "Voltar", "Back", "Volver", "Retour", "Zurück", "返回"],
+  ["Navigation", "Navegação", "Navigation", "Navegación", "Navigation", "Navigation", "导航"],
+  [
     "Tu usuario",
     "Seu usuário",
     "Your username",
@@ -179,7 +179,7 @@ export const UI_TEXT_A = [
     "Dein Benutzername",
     "你的用户名",
   ],
-[
+  [
     "Custom Moveset",
     "Moveset personalizado",
     "Custom Moveset",
@@ -188,7 +188,7 @@ export const UI_TEXT_A = [
     "Eigenes Moveset",
     "自定义招式配置",
   ],
-[
+  [
     "PNG / JPG · solo en este dispositivo",
     "PNG / JPG · apenas neste dispositivo",
     "PNG / JPG · this device only",
@@ -197,7 +197,7 @@ export const UI_TEXT_A = [
     "PNG / JPG · nur auf diesem Gerät",
     "PNG / JPG · 仅限此设备",
   ],
-[
+  [
     "Playlist combate",
     "Playlist de combate",
     "Combat playlist",
@@ -206,10 +206,10 @@ export const UI_TEXT_A = [
     "Kampf-Playlist",
     "战斗播放列表",
   ],
-["CLOUD", "NUVEM", "CLOUD", "NUBE", "CLOUD", "CLOUD", "云端"],
-["MUSIC", "MÚSICA", "MUSIC", "MÚSICA", "MUSIQUE", "MUSIK", "音乐"],
-["Cuánto...", "Quanto...", "How much...", "Cuánto...", "Combien...", "Wie viel...", "多少..."],
-[
+  ["CLOUD", "NUVEM", "CLOUD", "NUBE", "CLOUD", "CLOUD", "云端"],
+  ["MUSIC", "MÚSICA", "MUSIC", "MÚSICA", "MUSIQUE", "MUSIK", "音乐"],
+  ["Cuánto...", "Quanto...", "How much...", "Cuánto...", "Combien...", "Wie viel...", "多少..."],
+  [
     "Introduce email y contraseña (mínimo 8 caracteres)",
     "Informe e-mail e senha (mínimo de 8 caracteres)",
     "Enter email and password (at least 8 characters)",
@@ -218,7 +218,7 @@ export const UI_TEXT_A = [
     "E-Mail und Passwort eingeben (mindestens 8 Zeichen)",
     "请输入电子邮箱和密码（至少8个字符）",
   ],
-[
+  [
     "Ponle un nombre al moveset",
     "Dê um nome ao moveset",
     "Give the moveset a name",
@@ -227,7 +227,7 @@ export const UI_TEXT_A = [
     "Gib dem Moveset einen Namen",
     "请为招式配置命名",
   ],
-[
+  [
     "Moveset guardado en tu cuenta",
     "Moveset salvo na sua conta",
     "Moveset saved to your account",
@@ -236,7 +236,7 @@ export const UI_TEXT_A = [
     "Moveset in deinem Konto gespeichert",
     "招式配置已保存到你的账户",
   ],
-[
+  [
     "No se pudieron cargar tus movesets",
     "Não foi possível carregar seus movesets",
     "Could not load your movesets",
@@ -245,7 +245,7 @@ export const UI_TEXT_A = [
     "Deine Movesets konnten nicht geladen werden",
     "无法加载你的招式配置",
   ],
-[
+  [
     "No se pudo eliminar",
     "Não foi possível excluir",
     "Could not delete",
@@ -254,7 +254,7 @@ export const UI_TEXT_A = [
     "Löschen fehlgeschlagen",
     "无法删除",
   ],
-[
+  [
     "Nombre de usuario actualizado.",
     "Nome de usuário atualizado.",
     "Username updated.",
@@ -263,7 +263,7 @@ export const UI_TEXT_A = [
     "Benutzername aktualisiert.",
     "用户名已更新。",
   ],
-[
+  [
     "No se pudo cargar la URL (CORS o enlace roto)",
     "Não foi possível carregar a URL (CORS ou link quebrado)",
     "Could not load URL (CORS or broken link)",
@@ -272,7 +272,7 @@ export const UI_TEXT_A = [
     "URL konnte nicht geladen werden (CORS oder fehlerhafter Link)",
     "无法加载URL（CORS限制或链接失效）",
   ],
-[
+  [
     "No se pudo cargar el Sprite FX",
     "Não foi possível carregar o Sprite FX",
     "Could not load the FX sprite",
@@ -281,7 +281,7 @@ export const UI_TEXT_A = [
     "FX-Sprite konnte nicht geladen werden",
     "无法加载特效精灵图",
   ],
-[
+  [
     "Sube una imagen o cambia a Custom Skin",
     "Envie uma imagem ou mude para Custom Skin",
     "Upload an image or switch to Custom Skin",
@@ -290,7 +290,7 @@ export const UI_TEXT_A = [
     "Lade ein Bild hoch oder wechsle zu Custom Skin",
     "上传图片或切换到自定义皮肤",
   ],
-[
+  [
     "No se pudo cargar la imagen",
     "Não foi possível carregar a imagem",
     "Could not load the image",
@@ -299,5 +299,5 @@ export const UI_TEXT_A = [
     "Bild konnte nicht geladen werden",
     "无法加载图片",
   ],
-["Conectado:", "Conectado:", "Signed in:", "Conectado:", "Connecté :", "Angemeldet:", "已登录："]
+  ["Conectado:", "Conectado:", "Signed in:", "Conectado:", "Connecté :", "Angemeldet:", "已登录："],
 ];
