@@ -248,6 +248,455 @@ export const CHARACTER_I18N = {
       },
     },
   },
+
+  es: {
+    "iron-fist": {
+      bio: "Púgil urbano con guantes de chatarra reforjada.",
+      moves: {
+        m1: ["", "Ráfaga rápida de golpes rectos."],
+        s1: ["", "Gancho cargado que empuja al rival."],
+        s2: ["", "Placaje defensivo con hiperarmadura."],
+        s3: ["", "Remate de tres golpes."],
+        ult: ["", "Ráfaga ardiente a corta distancia."],
+      },
+    },
+    "neon-stride": {
+      bio: "Corredora urbana con botas de pulso magnético.",
+      moves: {
+        m1: ["", "Golpe de energía rápido y corto."],
+        s1: ["", "Embiste con un dash."],
+        s2: ["", "Campo eléctrico de área."],
+        s3: ["", "Patada que rebota."],
+        ult: ["", "Tormenta de sobrecarga neón."],
+      },
+    },
+    "brick-maul": {
+      bio: "Demoledor con un mazo de hormigón armado.",
+      moves: {
+        m1: ["", "Giro lento del mazo."],
+        s1: ["", "Aplastamiento sísmico."],
+        s2: ["", "Bloqueo con contraempuje."],
+        s3: ["", "Lanzamiento de escombros."],
+        ult: ["", "Terremoto demoledor."],
+      },
+    },
+    "volt-jav": {
+      bio: "Lanzadora de jabalinas de corriente alterna.",
+      moves: {
+        m1: ["", "Piquetazo de chispas."],
+        s1: ["", "Jabalina de medio alcance."],
+        s2: ["", "Corriente que salta entre enemigos."],
+        s3: ["", "Salto con jabalina."],
+        ult: ["", "Cascada de rayos."],
+      },
+    },
+    "smoke-veil": {
+      bio: "Especialista sigilosa en humo que aparece y desaparece por los callejones.",
+      moves: {
+        m1: ["", "Corte de humo afilado."],
+        s1: ["", "Teletransporte corto con golpe."],
+        s2: ["", "Nube que asfixia en área."],
+        s3: ["", "Garra desde las sombras."],
+        ult: ["", "Oscuridad que lo devora todo."],
+      },
+    },
+    "cinder-roar": {
+      bio: "Pirómano de la acería con brazos de brasas.",
+      moves: {
+        m1: ["", "Puño ardiente."],
+        s1: ["", "Columna vertical de fuego."],
+        s2: ["", "Explosión de brasas."],
+        s3: ["", "Lazo de magma."],
+        ult: ["", "Rugido incinerador."],
+      },
+    },
+    "frost-bite": {
+      bio: "Guardiana de la nieve con cadenas de hielo reciclado.",
+      moves: {
+        m1: ["", "Tajo helado."],
+        s1: ["", "Lanza de hielo a distancia."],
+        s2: ["", "Muro que ralentiza."],
+        s3: ["", "Aplastamiento congelante."],
+        ult: ["", "Tumba de ventisca."],
+      },
+    },
+    "quartz-golem": {
+      bio: "Coloso de cristal de cantera con núcleo de cuarzo.",
+      moves: {
+        m1: ["", "Golpe de cristal."],
+        s1: ["", "Pico que emerge del suelo."],
+        s2: ["", "Escudo que devuelve el daño."],
+        s3: ["", "Lanzamiento de roca."],
+        ult: ["", "Estallido tectónico."],
+      },
+    },
+    "pulse-dash": {
+      bio: "Acróbata de pulso con zapatillas de resonancia.",
+      moves: {
+        m1: ["", "Toque rápido de pulso."],
+        s1: ["", "Dash resonante."],
+        s2: ["", "Trampa que hace rebotar a los enemigos."],
+        s3: ["", "Giro aéreo en picada."],
+        ult: ["", "Ráfaga de hiperpulso."],
+      },
+    },
+    "rust-reaper": {
+      bio: "Segadora de chatarra con una guadaña oxidada.",
+      moves: {
+        m1: ["", "Corte corto de guadaña."],
+        s1: ["", "Guadaña que sale y regresa como un bumerán."],
+        s2: ["", "Nube de óxido que corroe y ralentiza."],
+        s3: ["", "Barrido cosechador."],
+        ult: ["", "Réquiem de chatarra."],
+      },
+    },
+    "echo-wraith": {
+      bio: "Espectro de eco que repite cada golpe dos veces.",
+      moves: {
+        m1: ["", "Toque corto que prepara el eco."],
+        s1: ["", "Dos proyectiles fantasma."],
+        s2: ["", "Onda sonora que golpea dos veces."],
+        s3: ["", "Golpe espejo que deja un eco."],
+        ult: ["", "Cuatro pulsos de eco."],
+      },
+    },
+  },
+  fr: {
+    "iron-fist": {
+      bio: "Boxeur urbain aux gants forgés à partir de ferraille.",
+      moves: {
+        m1: ["", "Rafale rapide de coups directs."],
+        s1: ["", "Crochet chargé qui repousse l'adversaire."],
+        s2: ["", "Plaquage défensif avec hyperarmure."],
+        s3: ["", "Enchaînement final de trois coups."],
+        ult: ["", "Rafale brûlante à courte portée."],
+      },
+    },
+    "neon-stride": {
+      bio: "Coureuse urbaine équipée de bottes à impulsion magnétique.",
+      moves: {
+        m1: ["", "Coup d'énergie rapide et court."],
+        s1: ["", "Charge en dash."],
+        s2: ["", "Champ électrique de zone."],
+        s3: ["", "Coup de pied ricochet."],
+        ult: ["", "Tempête de surcharge néon."],
+      },
+    },
+    "brick-maul": {
+      bio: "Démolisseur armé d'une masse en béton armé.",
+      moves: {
+        m1: ["", "Large mouvement lent de la masse."],
+        s1: ["", "Impact sismique."],
+        s2: ["", "Blocage avec contre-poussée."],
+        s3: ["", "Lancer de gravats."],
+        ult: ["", "Séisme de démolition."],
+      },
+    },
+    "volt-jav": {
+      bio: "Lanceuse de javelots à courant alternatif.",
+      moves: {
+        m1: ["", "Pique chargée d'étincelles."],
+        s1: ["", "Javelot à moyenne portée."],
+        s2: ["", "Décharge qui saute d'un ennemi à l'autre."],
+        s3: ["", "Saut avec javelot."],
+        ult: ["", "Cascade de foudre."],
+      },
+    },
+    "smoke-veil": {
+      bio: "Infiltratrice de fumée qui apparaît et disparaît dans les ruelles.",
+      moves: {
+        m1: ["", "Entaille voilée de fumée."],
+        s1: ["", "Téléportation courte suivie d'un coup."],
+        s2: ["", "Nuage suffocant de zone."],
+        s3: ["", "Griffe surgissant de l'ombre."],
+        ult: ["", "Une obscurité dévorante."],
+      },
+    },
+    "cinder-roar": {
+      bio: "Pyromane de l'aciérie aux bras remplis de braises.",
+      moves: {
+        m1: ["", "Poing brûlant."],
+        s1: ["", "Colonne de feu verticale."],
+        s2: ["", "Explosion de braises."],
+        s3: ["", "Lariat de magma."],
+        ult: ["", "Rugissement incinérateur."],
+      },
+    },
+    "frost-bite": {
+      bio: "Gardienne des neiges aux chaînes de glace recyclée.",
+      moves: {
+        m1: ["", "Tranchant glacé."],
+        s1: ["", "Lance de glace à distance."],
+        s2: ["", "Mur qui ralentit."],
+        s3: ["", "Écrasement gelé."],
+        ult: ["", "Tombeau de blizzard."],
+      },
+    },
+    "quartz-golem": {
+      bio: "Colosse de cristal de carrière au cœur de quartz.",
+      moves: {
+        m1: ["", "Frappe de cristal."],
+        s1: ["", "Pointe jaillissant du sol."],
+        s2: ["", "Bouclier qui renvoie les dégâts."],
+        s3: ["", "Lancer de rocher."],
+        ult: ["", "Fracas tectonique."],
+      },
+    },
+    "pulse-dash": {
+      bio: "Acrobate à impulsion chaussé de baskets résonantes.",
+      moves: {
+        m1: ["", "Impulsion rapide du bout des doigts."],
+        s1: ["", "Dash de résonance."],
+        s2: ["", "Piège qui fait rebondir les ennemis."],
+        s3: ["", "Rotation aérienne plongeante."],
+        ult: ["", "Rafale d'hyperimpulsions."],
+      },
+    },
+    "rust-reaper": {
+      bio: "Faucheuse de ferraille armée d'une faux rouillée.",
+      moves: {
+        m1: ["", "Petit coup de faux."],
+        s1: ["", "Faux qui part et revient comme un boomerang."],
+        s2: ["", "Nuage de rouille qui corrode et ralentit."],
+        s3: ["", "Large balayage moissonneur."],
+        ult: ["", "Requiem de ferraille."],
+      },
+    },
+    "echo-wraith": {
+      bio: "Spectre d'écho qui répète chaque frappe deux fois.",
+      moves: {
+        m1: ["", "Petite frappe qui prépare l'écho."],
+        s1: ["", "Deux projectiles fantômes."],
+        s2: ["", "Onde sonore qui frappe deux fois."],
+        s3: ["", "Frappe miroir suivie d'un écho."],
+        ult: ["", "Quatre pulsations d'écho."],
+      },
+    },
+  },
+  de: {
+    "iron-fist": {
+      bio: "Stadtboxer mit neu geschmiedeten Schrott-Handschuhen.",
+      moves: {
+        m1: ["", "Schnelle Serie gerader Schläge."],
+        s1: ["", "Aufgeladener Haken, der Gegner zurückstößt."],
+        s2: ["", "Defensives Tackling mit Hyperrüstung."],
+        s3: ["", "Abschlusskombo aus drei Schlägen."],
+        ult: ["", "Brennende Schlagserie aus nächster Nähe."],
+      },
+    },
+    "neon-stride": {
+      bio: "Stadtrennläuferin mit magnetischen Impulsstiefeln.",
+      moves: {
+        m1: ["", "Schneller, kurzer Energieschlag."],
+        s1: ["", "Dash-Angriff."],
+        s2: ["", "Elektrisches Flächenfeld."],
+        s3: ["", "Abprallender Tritt."],
+        ult: ["", "Neon-Überladungsturm."],
+      },
+    },
+    "brick-maul": {
+      bio: "Abrisskämpfer mit einem Vorschlaghammer aus Stahlbeton.",
+      moves: {
+        m1: ["", "Langsamer Schwung mit dem Hammer."],
+        s1: ["", "Seismischer Einschlag."],
+        s2: ["", "Blocken mit Gegenstoß."],
+        s3: ["", "Trümmerwurf."],
+        ult: ["", "Abriss-Erdbeben."],
+      },
+    },
+    "volt-jav": {
+      bio: "Speerwerferin mit Wechselstrom-Javelins.",
+      moves: {
+        m1: ["", "Funkenstoß."],
+        s1: ["", "Speerwurf auf mittlere Distanz."],
+        s2: ["", "Strom springt zwischen Gegnern über."],
+        s3: ["", "Sprung mit Speer."],
+        ult: ["", "Blitzkaskade."],
+      },
+    },
+    "smoke-veil": {
+      bio: "Rauch-Ninja, der in Gassen auftaucht und verschwindet.",
+      moves: {
+        m1: ["", "Scharfer Rauchschleier-Schnitt."],
+        s1: ["", "Kurze Teleportation mit Treffer."],
+        s2: ["", "Würgende Rauchwolke im Gebiet."],
+        s3: ["", "Klaue aus dem Schatten."],
+        ult: ["", "Verschlingende Dunkelheit."],
+      },
+    },
+    "cinder-roar": {
+      bio: "Stahlwerks-Pyromane mit Armen voller Glut.",
+      moves: {
+        m1: ["", "Brennender Faustschlag."],
+        s1: ["", "Senkrechte Feuersäule."],
+        s2: ["", "Glutexplosion."],
+        s3: ["", "Magma-Lariat."],
+        ult: ["", "Verbrennendes Brüllen."],
+      },
+    },
+    "frost-bite": {
+      bio: "Schneewächterin mit Ketten aus recyceltem Eis.",
+      moves: {
+        m1: ["", "Eiskalter Hieb."],
+        s1: ["", "Eisspeer aus der Ferne."],
+        s2: ["", "Verlangsamende Eiswand."],
+        s3: ["", "Eisiger Schlag."],
+        ult: ["", "Blizzard-Grab."],
+      },
+    },
+    "quartz-golem": {
+      bio: "Steinbruch-Kristallkoloss mit Quarzkern.",
+      moves: {
+        m1: ["", "Kristallschlag."],
+        s1: ["", "Aus dem Boden schießender Stachel."],
+        s2: ["", "Schild, der Schaden zurückwirft."],
+        s3: ["", "Felswurf."],
+        ult: ["", "Tektonischer Splittersturm."],
+      },
+    },
+    "pulse-dash": {
+      bio: "Impuls-Akrobat mit Resonanz-Sneakern.",
+      moves: {
+        m1: ["", "Schneller Impulsstoß."],
+        s1: ["", "Resonanz-Dash."],
+        s2: ["", "Falle, die Gegner abprallen lässt."],
+        s3: ["", "Sturzflug-Drehung in der Luft."],
+        ult: ["", "Hyperimpuls-Salve."],
+      },
+    },
+    "rust-reaper": {
+      bio: "Schrott-Schnitterin mit einer rostigen Sense.",
+      moves: {
+        m1: ["", "Kurzer Sensenschlag."],
+        s1: ["", "Sense fliegt hinaus und kehrt wie ein Bumerang zurück."],
+        s2: ["", "Rostwolke, die zersetzt und verlangsamt."],
+        s3: ["", "Breiter Ernteeinsatz."],
+        ult: ["", "Schrott-Requiem."],
+      },
+    },
+    "echo-wraith": {
+      bio: "Echospektrum, das jeden Schlag zweimal wiederholt.",
+      moves: {
+        m1: ["", "Kurzer Schlag, der das Echo vorbereitet."],
+        s1: ["", "Zwei Phantomgeschosse."],
+        s2: ["", "Schallwelle, die zweimal trifft."],
+        s3: ["", "Spiegelschlag mit anschließendem Echo."],
+        ult: ["", "Vier Echo-Impulse."],
+      },
+    },
+  },
+  zh: {
+    "iron-fist": {
+      bio: "城市拳击手，戴着用废铁重新锻造的拳套。",
+      moves: {
+        m1: ["", "快速连续的直拳。"],
+        s1: ["", "蓄力勾拳，将对手击退。"],
+        s2: ["", "带有霸体的防御冲撞。"],
+        s3: ["", "三连击终结技。"],
+        ult: ["", "近距离烈焰连击。"],
+      },
+    },
+    "neon-stride": {
+      bio: "穿着磁力脉冲靴的城市竞速跑者。",
+      moves: {
+        m1: ["", "快速短促的能量拳。"],
+        s1: ["", "冲刺突击。"],
+        s2: ["", "范围电场。"],
+        s3: ["", "反弹踢击。"],
+        ult: ["", "霓虹超频风暴。"],
+      },
+    },
+    "brick-maul": {
+      bio: "挥舞钢筋混凝土巨锤的拆除专家。",
+      moves: {
+        m1: ["", "缓慢挥动巨锤。"],
+        s1: ["", "地震重击。"],
+        s2: ["", "格挡并反推敌人。"],
+        s3: ["", "投掷碎石。"],
+        ult: ["", "拆毁级地震。"],
+      },
+    },
+    "volt-jav": {
+      bio: "投掷交流电标枪的战士。",
+      moves: {
+        m1: ["", "火花突刺。"],
+        s1: ["", "中距离标枪投掷。"],
+        s2: ["", "电流在敌人之间跳跃。"],
+        s3: ["", "标枪撑杆跃击。"],
+        ult: ["", "雷霆瀑布。"],
+      },
+    },
+    "smoke-veil": {
+      bio: "在街巷间若隐若现的烟雾潜行者。",
+      moves: {
+        m1: ["", "烟幕斩击。"],
+        s1: ["", "短距离传送并攻击。"],
+        s2: ["", "范围窒息烟云。"],
+        s3: ["", "从阴影中发动利爪攻击。"],
+        ult: ["", "吞噬一切的黑暗。"],
+      },
+    },
+    "cinder-roar": {
+      bio: "钢铁厂纵火者，双臂燃烧着余烬。",
+      moves: {
+        m1: ["", "烈焰重拳。"],
+        s1: ["", "垂直火柱。"],
+        s2: ["", "余烬爆发。"],
+        s3: ["", "熔岩套索。"],
+        ult: ["", "焚尽一切的咆哮。"],
+      },
+    },
+    "frost-bite": {
+      bio: "使用再生冰链的雪原守护者。",
+      moves: {
+        m1: ["", "寒冰斩击。"],
+        s1: ["", "远程冰矛。"],
+        s2: ["", "减速冰墙。"],
+        s3: ["", "冻结重击。"],
+        ult: ["", "暴风雪之墓。"],
+      },
+    },
+    "quartz-golem": {
+      bio: "核心由石英构成的采石场水晶巨像。",
+      moves: {
+        m1: ["", "水晶重击。"],
+        s1: ["", "从地面突起的尖刺。"],
+        s2: ["", "反弹伤害的护盾。"],
+        s3: ["", "投掷巨石。"],
+        ult: ["", "构造震裂。"],
+      },
+    },
+    "pulse-dash": {
+      bio: "穿着共振运动鞋的脉冲杂技高手。",
+      moves: {
+        m1: ["", "快速脉冲点击。"],
+        s1: ["", "共振冲刺。"],
+        s2: ["", "使敌人弹开的陷阱。"],
+        s3: ["", "空中俯冲旋转。"],
+        ult: ["", "超脉冲连袭。"],
+      },
+    },
+    "rust-reaper": {
+      bio: "挥舞生锈镰刀的废铁收割者。",
+      moves: {
+        m1: ["", "短距离镰刀斩。"],
+        s1: ["", "镰刀飞出后像回旋镖一样返回。"],
+        s2: ["", "腐蚀并减速的锈蚀云。"],
+        s3: ["", "横扫收割。"],
+        ult: ["", "废铁安魂曲。"],
+      },
+    },
+    "echo-wraith": {
+      bio: "会将每次攻击重复两遍的回声幽灵。",
+      moves: {
+        m1: ["", "为回声做准备的轻击。"],
+        s1: ["", "两个幻影弹体。"],
+        s2: ["", "造成两次命中的声波。"],
+        s3: ["", "随后产生回响的镜像攻击。"],
+        ult: ["", "四次回声脉冲。"],
+      },
+    },
+  },
 };
 
 const MOVE_CAT_KEY = { m1: "m1", special1: "s1", special2: "s2", special3: "s3", ultimate: "ult" };
