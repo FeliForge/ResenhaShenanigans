@@ -78,7 +78,7 @@ export default function GameApp() {
   useEffect(() => {
     loadQuests().then((q) => { setQuests(q.quests); setCoins(q.coins); }).catch(() => {});
     loadShop().then(setShop).catch(() => {});
-    countMatches().then(setMatches).catch(() => {});
+    try { setMatches(countMatches()); } catch {}
   }, []);
 
   const handleStats = useCallback((s) => setStats((prev) => ({ ...prev, ...s })), []);
@@ -181,15 +181,15 @@ export default function GameApp() {
           setCharacter(ch);
           setRoomCode("");
           setScreen("play");
-          recordMatch().catch(() => {});
+          try { recordMatch(); } catch {}
         }}
         onPlayMulti={(code) => {
           const ch = savedCharacter || CHARACTERS[0];
           setCharacter(ch);
           setRoomCode(code || "");
-          if (code) loadRoomMusic(code).then((u) => u && setMusicUrl(u)).catch(() => {});
+          if (code) { const u = loadRoomMusic(code); if (u) setMusicUrl(u); }
           setScreen("play");
-          recordMatch().catch(() => {});
+          try { recordMatch(); } catch {}
         }}
         onSelectCharacter={() => setScreen("select")}
         onOpenWorkshop={() => setScreen("workshop")}
