@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Dicionário Português (Brasil).
+// Dicionario Portugues (Brasil) - core keys + shop/cosmetics.
 export const PT = {
   "app.name": "Resenha Shenanigans",
   "common.back": "Voltar",
@@ -76,20 +76,6 @@ export const PT = {
   "shop.item.cosmo_angel": "Anjinho",
   "shop.item.cosmo_cool": "Óculos Cool",
   "shop.item.cosmo_party": "Festa Total",
-  "shop.hint.cosmo_star": "Badge brilhante acima da cabeça",
-  "shop.hint.cosmo_heart": "Coração neon flutuante",
-  "shop.hint.cosmo_fire": "Chama animada sobre o lutador",
-  "shop.hint.cosmo_ghost": "Fantasminha companheiro",
-  "shop.hint.cosmo_robot": "Ícone robótico high-tech",
-  "shop.hint.cosmo_skull": "Caveira com brilho tóxico",
-  "shop.hint.cosmo_alien": "Badge alienígena misterioso",
-  "shop.hint.cosmo_crown": "Coroa dourada de campeão",
-  "shop.hint.cosmo_goofy": "Face exclusiva da Goofy Box",
-  "shop.hint.cosmo_rainbow": "Aura colorida exclusiva",
-  "shop.hint.cosmo_devil": "Travessura da Goofy Box",
-  "shop.hint.cosmo_angel": "Aura angelical exclusiva",
-  "shop.hint.cosmo_cool": "Estilo cool da box",
-  "shop.hint.cosmo_party": "Modo festa exclusivo",
   "intro.skip": "PULAR",
   "intro.presents": "Apresenta",
 };
