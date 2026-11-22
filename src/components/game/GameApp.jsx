@@ -67,18 +67,20 @@ export default function GameApp() {
   useEffect(() => {
     setBinds(loadBinds());
     setIsTouch("ontouchstart" in window || navigator.maxTouchPoints > 0);
-    const lo = loadMyLoadout();
-    if (lo) {
-      const ch = characterFromLoadout(lo);
-      if (ch) setSavedCharacter(ch);
-      if (lo.billboard) setBillboardUrl(lo.billboard);
-    }
+    try {
+      const lo = loadMyLoadout();
+      if (lo) {
+        const ch = characterFromLoadout(lo);
+        if (ch) setSavedCharacter(ch);
+        if (lo.billboard) setBillboardUrl(lo.billboard);
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {
+    try { setMatches(countMatches()); } catch {}
     loadQuests().then((q) => { setQuests(q.quests); setCoins(q.coins); }).catch(() => {});
     loadShop().then(setShop).catch(() => {});
-    try { setMatches(countMatches()); } catch {}
   }, []);
 
   const handleStats = useCallback((s) => setStats((prev) => ({ ...prev, ...s })), []);
@@ -92,6 +94,51 @@ export default function GameApp() {
     setFeed((f) => [...f.slice(-8), { ...entry, id }]);
     setTimeout(() => setFeed((f) => f.filter((x) => x.id !== id)), 4000);
   }, []);
+
+  function createPrivateRoom() {
+    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+    setRoomCode(code);
+    setMusicUrl(loadRoomMusic(code) || musicUrl);
+  }
+
+  function handleRoomCode(code) {
+    const c = String(code || "").trim().toUpperCase();
+    setRoomCode(c);
+    setMusicUrl(loadRoomMusic(c) || "");
+  }
+
+  function handleMusicUrl(url) {
+    setMusicUrl(url || "");
+    if (roomCode) saveRoomMusic(roomCode, url || "");
+  }
+
+  function startPlay(char) {
+    if (!char) return;
+    setCharacter(char);
+    setScreen("play");
+    try { recordMatch(); } catch {}
+  }
+
+  function handleSaveBinds(next) {
+    setBinds(next);
+    saveBinds(next);
+  }
+
+  function toggleAudio() {
+    const next = !audioOn;
+    setAudioOn(next);
+    audio.setMuted?.(!next);
+  }
+
+  async function handleClaim(id) {
+    setClaimingId(id);
+    try {
+      const r = await claimReward(id);
+      setQuests(r.quests);
+      setCoins(r.coins);
+    } catch {}
+    setClaimingId(null);
+  }
 
   async function handleBuyShopItem(id) {
     setShopBusy(id);
@@ -120,7 +167,7 @@ export default function GameApp() {
         owned: result.owned,
         dash: result.dash,
         emote: result.emote,
-        cosmetic: result.cosmetic,
+        cosmetic: result.cosmetic || "",
       });
       if (typeof result.coins === "number") setCoins(result.coins);
       return result;
@@ -137,7 +184,7 @@ export default function GameApp() {
         owned: result.owned,
         dash: result.dash,
         emote: result.emote,
-        cosmetic: result.cosmetic,
+        cosmetic: result.cosmetic || "",
       });
       if (typeof result.coins === "number") setCoins(result.coins);
       return result;
@@ -146,106 +193,58 @@ export default function GameApp() {
     }
   }
 
-  async function handleClaim(id) {
-    setClaimingId(id);
-    try { const r = await claimReward(id); setQuests(r.quests); setCoins(r.coins); } catch {}
-    setClaimingId(null);
-  }
+  const claimable = quests.filter((q) => q.done && !q.claimed).length;
 
-  function handleSaveBinds(next) {
-    setBinds(next);
-    saveBinds(next);
-  }
-
-  function toggleAudio() {
-    const next = !audioOn;
-    setAudioOn(next);
-    audio.setMuted?.(!next);
-  }
-
-  function getHeading() {
-    return canvasRef.current?.getHeading?.() ?? 0;
-  }
-
-  if (screen === "intro") {
-    return <IntroSplash onDone={() => setScreen("menu")} />;
-  }
+  if (screen === "intro") return <IntroSplash onDone={() => setScreen("menu")} />;
 
   if (screen === "menu") {
     return (
-      <StartMenu
-        matches={matches}
-        savedCharacter={savedCharacter}
-        onPlaySolo={() => {
-          const ch = savedCharacter || CHARACTERS[0];
-          setCharacter(ch);
-          setRoomCode("");
-          setScreen("play");
-          try { recordMatch(); } catch {}
-        }}
-        onPlayMulti={(code) => {
-          const ch = savedCharacter || CHARACTERS[0];
-          setCharacter(ch);
-          setRoomCode(code || "");
-          if (code) { const u = loadRoomMusic(code); if (u) setMusicUrl(u); }
-          setScreen("play");
-          try { recordMatch(); } catch {}
-        }}
-        onSelectCharacter={() => setScreen("select")}
-        onOpenWorkshop={() => setScreen("workshop")}
-        onOpenQuests={() => setShowQuests(true)}
-        claimable={quests.filter((q) => q.done && !q.claimed).length}
-        shop={shop}
-        shopLoading={shopLoading}
-        shopBusy={shopBusy}
-        coins={coins}
-        onOpenShop={() => setShowShop(true)}
-      />
-    );
-  }
-
-  if (screen === "select") {
-    return (
-      <CharacterSelect
-        onConfirm={(char) => {
-          setCharacter(char);
-          setSavedCharacter(char);
-          saveMyLoadout(toLoadout(char, billboardUrl));
-          setScreen("menu");
-        }}
-        onBack={() => setScreen("menu")}
-      />
+      <>
+        <MusicPlayer screen="menu" suspended={!audioOn} roomMusicUrl={musicUrl} roomMuted={roomMuted} onToggleRoomMute={() => setRoomMuted((v) => !v)} />
+        <StartMenu
+          matches={matches} roomCode={roomCode} onRoomCode={handleRoomCode} onCreateRoom={createPrivateRoom}
+          musicUrl={musicUrl} onMusicUrl={handleMusicUrl} onPlay={() => setScreen("select")}
+          onOpenWorkshop={() => setScreen("workshop")} onOpenQuests={() => setShowQuests(true)} claimable={claimable}
+          savedCharacter={savedCharacter} onContinue={() => startPlay(savedCharacter)}
+          quests={quests} coins={coins} questsLoading={questsLoading} claimingId={claimingId} onClaim={handleClaim}
+          binds={binds} onSaveBinds={handleSaveBinds} audioOn={audioOn} onToggleAudio={toggleAudio}
+          shop={shop} shopLoading={shopLoading} shopBusy={shopBusy}
+          onBuyShopItem={handleBuyShopItem} onEquipShopItem={handleEquipShopItem}
+          onOpenGoofyBox={handleOpenGoofyBox}
+          onRedeemCode={handleRedeemCode}
+        />
+      </>
     );
   }
 
   if (screen === "workshop") {
     return (
       <CharacterWorkshop
-        onBack={() => setScreen("menu")}
-        onSave={(char, url) => {
-          setSavedCharacter(char);
-          if (url) setBillboardUrl(url);
-          saveMyLoadout(toLoadout(char, url || billboardUrl));
-          setScreen("menu");
-        }}
+        onConfirm={(char) => { try { saveMyLoadout(toLoadout(char, billboardUrl)); } catch {} setSavedCharacter(char); setScreen("menu"); }}
+        onCancel={() => setScreen("menu")}
       />
+    );
+  }
+
+  if (screen === "select") {
+    return (
+      <>
+        <MusicPlayer screen="select" suspended={!audioOn} />
+        <CharacterSelect onConfirm={startPlay} onBack={() => setScreen("menu")} />
+      </>
     );
   }
 
   if (screen === "play" && character) {
     return (
-      <div className="relative h-[100dvh] w-full overflow-hidden bg-black">
+      <div className="absolute inset-0 overflow-hidden bg-background">
+        <RoomMusicPlayer url={musicUrl} enabled={audioOn} muted={roomMuted} />
+        <MusicPlayer screen="play" suspended={!audioOn || (!!musicUrl && !roomMuted)} roomMusicUrl={musicUrl} roomMuted={roomMuted} onToggleRoomMute={() => setRoomMuted((v) => !v)} />
         <GameCanvas
-          ref={canvasRef}
-          character={character}
-          binds={binds}
-          onStats={handleStats}
-          roomCode={roomCode}
-          playerName={character.name}
-          billboardUrl={billboardUrl}
-          dashStyle={dashItem}
-          emote={emoteItem}
-          cosmetic={cosmeticItem}
+          ref={canvasRef} character={character} binds={binds} onStats={handleStats}
+          roomCode={roomCode.trim() || null} musicUrl={musicUrl}
+          onRoomMusic={(url) => { if (url) { setMusicUrl(url); if (roomCode) saveRoomMusic(roomCode, url); } }}
+          billboardUrl={billboardUrl} dashStyle={dashItem} emote={emoteItem} cosmetic={cosmeticItem}
           onNearShop={setNearShop}
           onRequestShop={() => setShowShop(true)}
           onNearHub={setNearHub}
@@ -255,16 +254,10 @@ export default function GameApp() {
             else if (hub === "character") setShowCharacterHub(true);
           }}
           onDefeat={handleDefeat}
-          onRespawn={handleRespawn}
           onFeed={handleFeed}
         />
         {cosmeticItem?.emoji && (
-          <div
-            className="cosmetic-float-badge pointer-events-none absolute left-1/2 top-[42%] z-20 -translate-x-1/2 select-none text-3xl drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)] sm:text-4xl"
-            aria-hidden
-          >
-            {cosmeticItem.emoji}
-          </div>
+          <div className="cosmetic-float-badge pointer-events-none absolute left-1/2 top-[42%] z-20 -translate-x-1/2 select-none text-3xl drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)] sm:text-4xl" aria-hidden>{cosmeticItem.emoji}</div>
         )}
         <HUD
           stats={stats}
@@ -273,20 +266,17 @@ export default function GameApp() {
           onOpenShop={() => setShowShop(true)}
           onOpenQuests={() => setShowQuests(true)}
           onOpenSettings={() => setShowSettings(true)}
-          claimable={quests.filter((q) => q.done && !q.claimed).length}
+          claimable={claimable}
         />
         {isTouch && (
           <MobileControls
-            onJump={() => canvasRef.current?.triggerJump()}
-            onDash={() => canvasRef.current?.triggerDash()}
-            onMoveKey={(cat) => canvasRef.current?.triggerMove(cat)}
-            setMobileMove={(x, y) => canvasRef.current?.setMobileMove?.(x, y)}
-            emote={emoteItem}
-            onEmote={() => canvasRef.current?.showEmote()}
-            getHeading={getHeading}
+            onJump={() => canvasRef.current?.triggerJump?.()}
+            onDash={() => canvasRef.current?.triggerDash?.()}
+            onMoveKey={(dir) => canvasRef.current?.triggerMove?.(dir)}
+            onMove={(x, y) => canvasRef.current?.setMobileMove?.(x, y)}
           />
         )}
-        <QuickChat onPhrase={(p) => canvasRef.current?.showQuickChat(p)} />
+        <QuickChat onPhrase={(p) => canvasRef.current?.showQuickChat?.(p)} />
         <KillFeed entries={feed} />
         <DefeatOverlay open={!!defeat} info={defeat} onRespawn={handleRespawn} />
         {(nearShop || nearHub) && !showShop && !showSettings && !showBoombox && !showCharacterHub && (
@@ -331,13 +321,11 @@ export default function GameApp() {
         {showCharacterHub && (
           <div className="absolute inset-0 z-50">
             <CharacterSelect
-              onConfirm={(char) => { setCharacter(char); setSavedCharacter(char); saveMyLoadout(toLoadout(char, billboardUrl)); setShowCharacterHub(false); }}
+              onConfirm={(char) => { setCharacter(char); setSavedCharacter(char); try { saveMyLoadout(toLoadout(char, billboardUrl)); } catch {} setShowCharacterHub(false); }}
               onBack={() => setShowCharacterHub(false)}
             />
           </div>
         )}
-        {musicUrl && !roomMuted && <RoomMusicPlayer url={musicUrl} />}
-        <MusicPlayer muted={roomMuted} />
       </div>
     );
   }
