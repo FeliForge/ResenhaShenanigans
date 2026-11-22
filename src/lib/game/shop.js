@@ -2,9 +2,6 @@
 import { getShopItem, getLootPool, GOOFY_BOX } from "@/data/shop";
 import { REDEEM_CODES, normalizeCode } from "@/data/codes";
 
-// Tienda local: monedas e inventario viven en este navegador.
-// El precio se valida aquí, no en un servidor externo.
-
 const WALLET_KEY = "resenha_wallet";
 const INV_KEY = "resenha_inventory";
 const CODES_KEY = "resenha_redeemed_codes";
@@ -33,7 +30,7 @@ function ensureWallet() {
 function ensureInventory() {
   const inventory = readJson(INV_KEY, null);
   if (inventory && Array.isArray(inventory.item_ids)) return inventory;
-  const next = { item_ids: [], dash: "", emote: "" };
+  const next = { item_ids: [], dash: "", emote: "", cosmetic: "" };
   writeJson(INV_KEY, next);
   return next;
 }
@@ -55,6 +52,7 @@ function snapshot(wallet, inventory) {
     owned: inventory.item_ids || [],
     dash: inventory.dash || "",
     emote: inventory.emote || "",
+    cosmetic: inventory.cosmetic || "",
   };
 }
 
@@ -96,7 +94,6 @@ export async function equipItem(itemId) {
   return snapshot(wallet, updated);
 }
 
-/** Open a Goofy Box: pay fixed price, receive one random unowned loot item (or any loot if all owned). */
 export async function openGoofyBox() {
   const wallet = ensureWallet();
   const inventory = ensureInventory();
@@ -131,7 +128,6 @@ export async function openGoofyBox() {
   };
 }
 
-/** Canjear código secreto (una vez por navegador). */
 export async function redeemCode(raw) {
   const code = normalizeCode(raw);
   if (!code) throw new Error("Código vacío");
@@ -151,14 +147,12 @@ export async function redeemCode(raw) {
     return {
       ...snapshot({ ...wallet, coins, total_earned }, inventory),
       message: `+${amount} monedas`,
-      kind: "coins",
-      amount,
     };
   }
 
   if (def.type === "item") {
     const item = getShopItem(def.itemId);
-    if (!item) throw new Error("Recompensa no encontrada");
+    if (!item) throw new Error("Item del código no existe");
     const owned = inventory.item_ids || [];
     const already = owned.includes(item.id);
     const item_ids = already ? owned : [...owned, item.id];
@@ -171,10 +165,7 @@ export async function redeemCode(raw) {
     markRedeemed(code);
     return {
       ...snapshot(wallet, updated),
-      message: item.name || item.id,
-      kind: "item",
-      reward: item,
-      duplicate: already,
+      message: already ? `Ya tenías ${item.name}` : `Desbloqueaste ${item.name}`,
     };
   }
 
