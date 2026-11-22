@@ -10,7 +10,6 @@ const STATE = {
   ready: false,
   mats: [],
   time: { value: 0 },
-  geo: null,
 };
 
 function makeAdFallback(i) {
@@ -35,7 +34,6 @@ function makeAdFallback(i) {
 
 function ensureAds() {
   if (STATE.ready) return STATE;
-  STATE.geo = new THREE.PlaneGeometry(10, 5.5);
   for (let i = 0; i < 6; i++) {
     const tex = makeAdFallback(i);
     const mat = new THREE.ShaderMaterial({
@@ -97,29 +95,80 @@ function ensureAds() {
   return STATE;
 }
 
-/** Place 6 neon ads with TV-static on a hollow building group (local space). */
-export function addNeonAds(g, w, d, FLOOR_H = 12) {
+/**
+ * Place neon ads flush on hollow building faces.
+ * Scales to building size and clamps Y so ads never float above the roof.
+ */
+export function addNeonAds(g, w, d, FLOOR_H = 12, floors = 3) {
   const ads = ensureAds();
+  const H = floors * FLOOR_H;
   const frameMat = new THREE.MeshBasicMaterial({ color: 0x111118 });
+
+  // Ad size scales with facade; keep readable but never wider than ~70% of face
+  const adW = Math.min(10, Math.max(4.5, Math.min(w, d) * 0.42));
+  const adH = adW * 0.55;
+  const margin = adH * 0.55 + 0.4;
+  const yMin = margin + 1.2;
+  const yMax = H - margin - 0.3;
+
+  const clampY = (y) => Math.min(yMax, Math.max(yMin, y));
+
+  // Relative slots: front, sides, back — all on wall surface
   const slots = [
-    { x: 0, y: FLOOR_H * 1.5, z: d / 2 + 0.08, ry: 0 },
-    { x: -w * 0.28, y: FLOOR_H * 2.2, z: d / 2 + 0.08, ry: 0 },
-    { x: w * 0.28, y: FLOOR_H * 0.85, z: d / 2 + 0.08, ry: 0 },
-    { x: -w / 2 - 0.08, y: FLOOR_H * 1.8, z: 0, ry: Math.PI / 2 },
-    { x: w / 2 + 0.08, y: FLOOR_H * 1.2, z: -d * 0.15, ry: -Math.PI / 2 },
-    { x: w * 0.1, y: FLOOR_H * 2.5, z: -d / 2 - 0.08, ry: Math.PI },
+    { x: 0, y: clampY(FLOOR_H * 1.35), z: d / 2 + 0.06, ry: 0, face: "front" },
+    { x: -w * 0.22, y: clampY(FLOOR_H * 0.7), z: d / 2 + 0.06, ry: 0, face: "front" },
+    { x: w * 0.22, y: clampY(H * 0.55), z: d / 2 + 0.06, ry: 0, face: "front" },
+    { x: -w / 2 - 0.06, y: clampY(FLOOR_H * 1.5), z: 0, ry: Math.PI / 2, face: "left" },
+    { x: w / 2 + 0.06, y: clampY(FLOOR_H * 1.1), z: -d * 0.12, ry: -Math.PI / 2, face: "right" },
+    { x: w * 0.08, y: clampY(H * 0.62), z: -d / 2 - 0.06, ry: Math.PI, face: "back" },
   ];
-  for (let i = 0; i < 6; i++) {
+
+  // Avoid overlapping ads on same face when building is narrow
+  const used = [];
+  let placed = 0;
+  for (let i = 0; i < slots.length && placed < 6; i++) {
     const s = slots[i];
-    const mesh = new THREE.Mesh(ads.geo, ads.mats[i]);
+    // Skip if too close to another on same face
+    let overlap = false;
+    for (const u of used) {
+      if (u.face !== s.face) continue;
+      const dx = u.x - s.x;
+      const dy = u.y - s.y;
+      const dz = u.z - s.z;
+      if (dx * dx + dy * dy + dz * dz < (adW * 0.85) * (adW * 0.85)) {
+        overlap = true;
+        break;
+      }
+    }
+    if (overlap) continue;
+
+    // Face-width check: keep ad fully on facade
+    if (s.face === "front" || s.face === "back") {
+      if (Math.abs(s.x) + adW * 0.5 > w * 0.48) continue;
+    } else {
+      if (Math.abs(s.z) + adW * 0.5 > d * 0.48) continue;
+    }
+
+    const geo = new THREE.PlaneGeometry(adW, adH);
+    const mesh = new THREE.Mesh(geo, ads.mats[placed % ads.mats.length]);
     mesh.position.set(s.x, s.y, s.z);
     mesh.rotation.y = s.ry;
     mesh.frustumCulled = true;
     g.add(mesh);
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(10.3, 5.8, 0.08), frameMat);
-    frame.position.set(s.x - Math.sin(s.ry) * 0.04, s.y, s.z - Math.cos(s.ry) * 0.04);
+
+    const frame = new THREE.Mesh(
+      new THREE.BoxGeometry(adW + 0.28, adH + 0.28, 0.07),
+      frameMat
+    );
+    // Slightly behind the plane so plane is visible
+    const nx = Math.sin(s.ry);
+    const nz = Math.cos(s.ry);
+    frame.position.set(s.x - nx * 0.04, s.y, s.z - nz * 0.04);
     frame.rotation.y = s.ry;
     g.add(frame);
+
+    used.push(s);
+    placed++;
   }
 }
 
