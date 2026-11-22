@@ -1,5 +1,12 @@
+// @ts-nocheck
+// Dicionário Português (Brasil).
 export const PT = {
-  "app.title": "Resenha Shenanigans",
+  "app.name": "Resenha Shenanigans",
+  "common.back": "Voltar",
+  "common.close": "Fechar",
+  "common.loading": "Carregando…",
+  "common.save": "Salvar",
+  "common.cancel": "Cancelar",
   "menu.play": "Jogar",
   "menu.join": "Entrar · {code}",
   "menu.players": "Arena ao vivo",
@@ -83,4 +90,6 @@ export const PT = {
   "shop.hint.cosmo_angel": "Aura angelical exclusiva",
   "shop.hint.cosmo_cool": "Estilo cool da box",
   "shop.hint.cosmo_party": "Modo festa exclusivo",
+  "intro.skip": "PULAR",
+  "intro.presents": "Apresenta",
 };
